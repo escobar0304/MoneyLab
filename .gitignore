@@ -4,3 +4,16 @@ dist-ssr
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# Claude Code project config (local paths/permissions, not meant to be shared)
+.claude/
+
+# Secrets / environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*credentials*
+*secret*
