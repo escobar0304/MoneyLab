@@ -1,32 +1,26 @@
 # MoneyLab
 
-A local-only personal finance simulator. Every dollar you log gets allocated into
-buckets by rules you define — percentages, fixed amounts, or nested sub-splits —
-and everything (income, expenses, subscriptions, net worth) is tracked as a
-permanent, append-only ledger stored entirely in your browser.
+A local-only personal money tracker: set your monthly salary, log expenses as they
+happen, and see two real charts of what's going on. Everything is stored as a
+permanent, append-only ledger entirely in your browser.
 
-No accounts, no server, no bank connections. It's a modeling/tracking sandbox with
-real persistence over time.
+No accounts, no server, no bank connections. Deliberately minimal — this isn't a
+full budgeting suite, it's "salary and expenses, that's it."
 
 ## Features
 
-- **Allocation engine** — split an income event across buckets by percent, fixed
-  dollar amount, or "remainder." Rules can be nested (e.g. Investments 30% → Stocks
-  60% / Crypto 40% of that 30%). Save a split as a reusable template, or edit it
-  one-off per transaction.
-- **Expense tracking** — manual entries with free-form category/subcategory, drawn
-  down against a bucket's balance. Monthly summary compares spend per category
-  against the previous month and shows over/underspend vs. what was allocated.
-- **Subscription tracker** — weekly/monthly/yearly billing cycles, trial-end
-  tracking, renewal countdowns, and a running committed monthly/annual total.
-  Elapsed billing cycles are simulated and charged automatically whenever you open
-  the app (not real-time — recalculated on load).
-- **Net worth tracker** — manual assets/liabilities plus investment/savings
-  buckets, which feed into net worth automatically. Snapshot on demand, see the
-  trend over time.
-- **History** — the full ledger, filterable by event type.
-- **Trends** — net worth over time, spend by category, allocation vs. actual
-  variance.
+- **Monthly salary** — set an amount once; it auto-pays itself into your balance
+  every month, even if you don't open the app for a while (elapsed months are
+  caught up on load, with their real historical dates).
+- **Extra income** — a quick one-off entry for anything that isn't your salary (a
+  bonus, a gift, a side gig payment).
+- **Expense tracking** — amount, date, a free-text category (with autocomplete
+  from what you've already typed), optional subcategory and note. A monthly
+  summary compares this month's spend per category against last month's.
+- **Balance** — the one headline number: everything you've earned minus everything
+  you've spent, computed live from the ledger, never entered by hand.
+- **Two charts on Home** — income vs. expenses over time, and spend by category —
+  both real Recharts charts, not sparklines.
 - **Export/import** — the entire ledger as a single JSON file, for backup or
   moving to another device.
 
@@ -34,18 +28,29 @@ real persistence over time.
 
 - **Vite + React + TypeScript**
 - **Zustand** (with the `persist` middleware) for state, backed by `localStorage`
-- **Tailwind CSS v4** for styling
-- **Recharts** for charts
-- **Vitest** for the allocation/derivation math tests
+- **Tailwind CSS v4** for styling, dark-mode only
+- **Recharts** for the two Home charts
+- **Vitest** for the ledger-derivation math tests
 
 No backend, no database — everything lives in one browser's `localStorage`.
+
+### Dark mode, one theme only
+
+There's no light/dark toggle — dark is simply the app's one look, chosen for lower
+eye strain over long sessions. Page background, card surface, and borders sit on
+three distinct lightness steps (`neutral-950` / `neutral-900` / `neutral-800`) so
+sections read as physically separate panels, and body text uses a soft off-white
+(`neutral-100`) rather than pure white. A single `accent` blue (defined once in
+`src/index.css` via Tailwind v4's `@theme`, reused as the chart palette's primary
+hue in `src/lib/chartTheme.ts`) is the one color that means "interactive." The
+chart palette is the `dataviz` skill's validated dark-mode set.
 
 ## Getting started
 
 ```bash
 npm install
 npm run dev      # start the local dev server
-npm run test     # run the allocation/derivation test suite
+npm run test     # run the ledger-derivation test suite
 npm run build    # type-check + production build
 ```
 
@@ -53,98 +58,60 @@ npm run build    # type-check + production build
 
 ### The ledger is the source of truth
 
-Nothing in this app is stored as mutable state. Every action — logging income,
-recording an expense, editing a bucket, renewing a subscription — appends one
-`LedgerEvent` to a single `events: LedgerEvent[]` array. Bucket balances, net
-worth, monthly spend, and every other number on screen are **computed from that
-array on the fly**, never written down directly. That means:
+Nothing in this app is stored as mutable state. Every action — setting your
+salary, logging income, recording an expense — appends one `LedgerEvent` to a
+single `events: LedgerEvent[]` array. Your balance and every chart are **computed
+from that array on the fly**, never written down directly:
 
 - Nothing can silently drift out of sync with its history — recompute from
   `events` and you get the truth.
 - The entire app's data is one JSON array. That's literally what "export" writes
   to disk.
-- Auditing is free: the History tab is just the same array, sorted and filtered.
 
 `events` is persisted to `localStorage` (key `moneylab-v1`) via Zustand's
 `persist` middleware, so it survives reloads without any extra plumbing.
-
-### Two layers of derivation
-
-Some things — buckets, allocation templates, subscriptions — behave like normal
-"current state" even though they're stored as a history of `_upsert` events. A
-small folding layer (`src/lib/entities.ts`) walks the ledger and reduces it down
-to "the current list of buckets," the same way a Redux reducer replays actions.
-Financial numbers — balances, net worth, spend-by-category — go through a
-separate derivation layer (`src/lib/derive.ts`) that's pure functions over the
-event array, so they're trivially unit-testable and can be evaluated **as of any
-point in time** (`asOf`), which is what powers the net worth trend chart.
 
 ### Project structure
 
 ```
 src/
   lib/
-    types.ts          All domain types — Bucket, AllocationRule, Subscription, LedgerEvent union
-    store.ts           Zustand store: the events array, all mutating actions, persistence
-    allocation.ts       The recursive split engine (percent/fixed/remainder + nested sub-rules)
-    entities.ts         Folds bucket_upsert/subscription_upsert/etc. events into "current state" lists
-    derive.ts           Pure functions: bucket balances, net worth, spend, allocation-vs-actual variance
-    subscriptions.ts    Renewal-date math and elapsed-cycle simulation
-    chartTheme.ts       The validated color palette used by every chart
-    format.ts / id.ts   Small formatting/ID helpers
+    types.ts        Domain types — Salary, LedgerEvent union (income/expense/salary_upsert)
+    store.ts         Zustand store: the events array, actions, persistence
+    entities.ts       Folds salary_upsert (+ matching income events) into current salary state
+    derive.ts         Pure functions: balance, balance-over-time, spend by category, monthly totals
+    recurrence.ts      Monthly-cycle date math + elapsed-cycle simulation (powers salary auto-pay)
+    chartTheme.ts      The validated dark-mode color palette used by the two charts
+    format.ts / id.ts  Small formatting/ID helpers
   components/
-    layout/            AppShell + tab navigation
-    ui/                 Shared primitives (Card, Button, Modal, Badge, etc.)
-    home/               Dashboard: balances, income entry, upcoming renewals, month-vs-allocation
-    buckets/            Bucket tree, the recursive AllocationRuleBuilder, template manager
-    expenses/           Expense entry + monthly category summary
-    subscriptions/      Subscription CRUD + renewal list
-    networth/           Net worth entry + trend chart
-    history/            Filterable ledger timeline
-    trends/             The three Recharts views
-    settings/           Export / import / clear-all
+    layout/           AppShell + tab navigation
+    ui/                Shared primitives (Card, Button, Modal, Badge, etc.)
+    home/              Balance, salary form, extra income, the two charts
+    expenses/          Expense entry + monthly category summary
+    settings/          Export / import / clear-all
 ```
 
-### The allocation engine
+Three tabs: **Home**, **Expenses**, **Settings**. That's the whole app.
 
-`allocate(amount, rules)` in `src/lib/allocation.ts` is the heart of the app. Each
-rule is `percent`, `fixed`, or `remainder`. Percent/fixed rules are computed
-first; whatever's left (which can be negative, if you've over-allocated) is split
-across any `remainder` rules, or falls into the built-in **Unallocated** bucket if
-there isn't one. Any rule can carry `subRules`, which recursively re-splits that
-rule's own share instead of crediting its own bucket — that's how "Investments
-30% → Stocks 60% / Crypto 40%" works. It's covered by unit tests in
-`allocation.test.ts` for exactly these cases (plain percent splits, fixed +
-remainder, over-allocation, nesting, and merging repeated bucket references).
+### Salary "simulates" monthly pay
 
-### Subscriptions "simulate" renewals
-
-Subscriptions don't run on a timer. Every time the app loads,
-`runSubscriptionSimulation()` walks each active subscription, works out how many
-billing cycles have elapsed since it was last charged (`elapsedChargeDates` in
-`subscriptions.ts`), and appends one `subscription_charge` event per elapsed
-cycle — so if you don't open the app for two months, you'll see two catch-up
-charges land in the ledger with their original historical dates, deducted from
-the linked bucket.
+Salary doesn't run on a timer. Every time the app loads, `runSalarySimulation()`
+works out how many monthly cycles have elapsed since your salary was last paid
+(`elapsedChargeDates` in `recurrence.ts`) and appends one `income` event per
+elapsed cycle — so if you don't open the app for two months, you'll see two
+catch-up payments land in the ledger with their original historical dates.
 
 ## Is it "optimized to the max"?
 
-No — it's optimized for correctness and clarity of the money math, not for raw
-bundle size or runtime performance, and honestly it doesn't need to be:
+No, but at this scope it doesn't need to be:
 
-- The production JS bundle is ~632 KB (~184 KB gzipped) as a single chunk — no
-  route-level code splitting. Recharts is almost certainly the majority of that
-  weight, and it's only used on 2 of the 8 tabs (Net Worth, Trends). Lazy-loading
-  those two views would be the one change with a real payoff if this mattered.
-- Derived values (`bucketBalances`, `netWorthSeries`, etc.) do an O(n) scan over
-  the full ledger, memoized per component with `useMemo` keyed on the `events`
-  array — so a mutation only triggers one recompute per view, not per render. For
-  a personal ledger (hundreds to low thousands of entries over years) this is
-  effectively instant; it would only start to matter at a scale this app isn't
-  meant for.
-- No virtualization on the History list, no `React.memo` anywhere — the component
-  tree is small enough that it doesn't matter.
+- No lazy-loading or code-splitting — Home (the default tab) is the only place
+  Recharts is used, so there's no other tab whose load time it could protect.
+  Single JS chunk, ~595 KB (~175 KB gzipped).
+- `derive.ts` does an O(n) scan over the full ledger, memoized per component with
+  `useMemo` keyed on the `events` array — a mutation triggers one recompute per
+  view, not per render. For a personal ledger (hundreds to low thousands of
+  entries over years) this is effectively instant.
 
-Given this runs once, locally, for one user, on data that grows slowly, I'd call
-the current tradeoff correct rather than under-optimized. Say the word if you
-want the Recharts lazy-load done anyway.
+Given this runs once, locally, for one user, on data that grows slowly, that's a
+reasonable tradeoff, not a shortfall.

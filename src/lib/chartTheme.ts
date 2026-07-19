@@ -1,17 +1,20 @@
-// Validated default palette (see dataviz skill references/palette.md) — light mode only,
-// matching this app's light-only surface.
+// Validated default palette (see dataviz skill references/palette.md) — dark mode only,
+// matching this app's dark-only surface. Validated via validate_palette.js --mode dark
+// --surface #1a1a19 (all checks pass).
 export const CATEGORICAL = [
-  '#2a78d6', // blue
+  '#3987e5', // blue
   '#008300', // green
-  '#e87ba4', // magenta
-  '#eda100', // yellow
-  '#1baf7a', // aqua
-  '#eb6834', // orange
-  '#4a3aa7', // violet
-  '#e34948', // red
+  '#d55181', // magenta
+  '#c98500', // yellow
+  '#199e70', // aqua
+  '#d95926', // orange
+  '#9085e9', // violet
+  '#e66767', // red
 ];
 
-export const SEQUENTIAL_BLUE = '#2a78d6';
+export const SEQUENTIAL_BLUE = '#3987e5';
+export const SEQUENTIAL_GREEN = '#008300';
+export const SEQUENTIAL_VIOLET = '#9085e9';
 
 export const STATUS = {
   good: '#0ca30c',
@@ -21,12 +24,12 @@ export const STATUS = {
 };
 
 export const CHART_INK = {
-  surface: '#fcfcfb',
-  primary: '#0b0b0b',
-  secondary: '#52514e',
+  surface: '#1a1a19',
+  primary: '#ffffff',
+  secondary: '#c3c2b7',
   muted: '#898781',
-  gridline: '#e1e0d9',
-  axis: '#c3c2b7',
+  gridline: '#2c2c2a',
+  axis: '#383835',
 };
 
 export const MAX_CATEGORICAL_SERIES = 8;

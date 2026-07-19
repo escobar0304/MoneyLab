@@ -65,7 +65,9 @@ export function SpendByCategoryChart() {
           <Tooltip
             formatter={(value, name) => [formatMoney(Number(value) || 0), name]}
             labelFormatter={(v) => monthLabel(String(v ?? ''))}
-            contentStyle={{ borderRadius: 6, borderColor: CHART_INK.gridline, fontSize: 12 }}
+            contentStyle={{ borderRadius: 6, background: '#232322', borderColor: '#383835', fontSize: 12, color: CHART_INK.primary }}
+            labelStyle={{ color: CHART_INK.secondary }}
+            itemStyle={{ color: CHART_INK.primary }}
           />
           <Legend wrapperStyle={{ fontSize: 12, color: CHART_INK.secondary }} />
           {categories.map((cat, i) => (

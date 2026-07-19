@@ -1,52 +1,20 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type {
-  LedgerEvent,
-  AllocationRule,
-  ID,
-  NetWorthEntry,
-  Bucket,
-  Subscription,
-  AllocationTemplate,
-} from './types';
-import { UNALLOCATED_BUCKET_ID } from './types';
-import { allocate } from './allocation';
+import type { LedgerEvent, ID, Salary } from './types';
 import { makeId } from './id';
-import { foldBuckets, foldSubscriptions, foldTemplates } from './entities';
-import { elapsedChargeDates } from './subscriptions';
+import { foldSalary } from './entities';
+import { elapsedChargeDates } from './recurrence';
 
 interface MoneyLabState {
   events: LedgerEvent[];
 
-  addIncome: (input: {
-    amount: number;
-    label: string;
-    rules: AllocationRule[];
-    templateId?: ID;
-    date?: string;
-  }) => void;
-  addExpense: (input: {
-    amount: number;
-    bucketId: ID;
-    category: string;
-    subcategory?: string;
-    note?: string;
-    date?: string;
-  }) => void;
+  addIncome: (input: { amount: number; label: string; salaryId?: ID; date?: string }) => void;
+  addExpense: (input: { amount: number; category: string; subcategory?: string; note?: string; date?: string }) => void;
 
-  upsertBucket: (bucket: Omit<Bucket, 'id'> & { id?: ID }) => Bucket;
-  archiveBucket: (bucketId: ID) => void;
+  upsertSalary: (salary: Omit<Salary, 'id' | 'cycle'> & { id?: ID }) => void;
+  runSalarySimulation: () => void;
 
-  upsertTemplate: (template: Omit<AllocationTemplate, 'id' | 'createdAt'> & { id?: ID }) => void;
-
-  upsertSubscription: (sub: Omit<Subscription, 'id'> & { id?: ID }) => void;
-  cancelSubscription: (id: ID) => void;
-  runSubscriptionSimulation: () => void;
-
-  takeNetWorthSnapshot: (assets: NetWorthEntry[], liabilities: NetWorthEntry[]) => void;
-
-  ensureDefaultBuckets: () => void;
   importEvents: (events: LedgerEvent[]) => void;
   clearAll: () => void;
 }
@@ -56,27 +24,24 @@ export const useStore = create<MoneyLabState>()(
     (set, get) => ({
       events: [],
 
-      addIncome: ({ amount, label, rules, templateId, date }) => {
-        const allocations = allocate(amount, rules);
+      addIncome: ({ amount, label, salaryId, date }) => {
         const event: LedgerEvent = {
           id: makeId(),
           type: 'income',
           timestamp: date ?? new Date().toISOString(),
           amount,
           label,
-          templateId,
-          allocations,
+          salaryId,
         };
         set((s) => ({ events: [...s.events, event] }));
       },
 
-      addExpense: ({ amount, bucketId, category, subcategory, note, date }) => {
+      addExpense: ({ amount, category, subcategory, note, date }) => {
         const event: LedgerEvent = {
           id: makeId(),
           type: 'expense',
           timestamp: date ?? new Date().toISOString(),
           amount,
-          bucketId,
           category,
           subcategory,
           note,
@@ -84,107 +49,31 @@ export const useStore = create<MoneyLabState>()(
         set((s) => ({ events: [...s.events, event] }));
       },
 
-      upsertBucket: (bucket) => {
-        const full: Bucket = { ...bucket, id: bucket.id ?? makeId() };
+      upsertSalary: (salary) => {
+        const full: Salary = { ...salary, id: salary.id ?? makeId(), cycle: 'monthly' };
         const event: LedgerEvent = {
           id: makeId(),
-          type: 'bucket_upsert',
+          type: 'salary_upsert',
           timestamp: new Date().toISOString(),
-          bucket: full,
-        };
-        set((s) => ({ events: [...s.events, event] }));
-        return full;
-      },
-
-      archiveBucket: (bucketId) => {
-        const event: LedgerEvent = {
-          id: makeId(),
-          type: 'bucket_archive',
-          timestamp: new Date().toISOString(),
-          bucketId,
+          salary: full,
         };
         set((s) => ({ events: [...s.events, event] }));
       },
 
-      upsertTemplate: (template) => {
-        const full: AllocationTemplate = {
-          id: template.id ?? makeId(),
-          name: template.name,
-          rules: template.rules,
-          createdAt: new Date().toISOString(),
-        };
-        const event: LedgerEvent = {
-          id: makeId(),
-          type: 'template_upsert',
-          timestamp: new Date().toISOString(),
-          template: full,
-        };
-        set((s) => ({ events: [...s.events, event] }));
-      },
-
-      upsertSubscription: (sub) => {
-        const full: Subscription = { ...sub, id: sub.id ?? makeId() };
-        const event: LedgerEvent = {
-          id: makeId(),
-          type: 'subscription_upsert',
-          timestamp: new Date().toISOString(),
-          subscription: full,
-        };
-        set((s) => ({ events: [...s.events, event] }));
-      },
-
-      cancelSubscription: (id) => {
-        const event: LedgerEvent = {
-          id: makeId(),
-          type: 'subscription_cancel',
-          timestamp: new Date().toISOString(),
-          subscriptionId: id,
-        };
-        set((s) => ({ events: [...s.events, event] }));
-      },
-
-      runSubscriptionSimulation: () => {
+      runSalarySimulation: () => {
         const events = get().events;
-        const subs = foldSubscriptions(events).filter((s) => !s.cancelled);
-        const now = new Date();
-        const newEvents: LedgerEvent[] = [];
-        for (const sub of subs) {
-          for (const d of elapsedChargeDates(sub, now)) {
-            newEvents.push({
-              id: makeId(),
-              type: 'subscription_charge',
-              timestamp: d.toISOString(),
-              subscriptionId: sub.id,
-              amount: sub.amount,
-              bucketId: sub.bucketId,
-            });
-          }
-        }
-        if (newEvents.length > 0) set((s) => ({ events: [...s.events, ...newEvents] }));
-      },
-
-      takeNetWorthSnapshot: (assets, liabilities) => {
-        const event: LedgerEvent = {
+        const salary = foldSalary(events);
+        if (!salary) return;
+        const dates = elapsedChargeDates(salary, new Date());
+        const newEvents: LedgerEvent[] = dates.map((d) => ({
           id: makeId(),
-          type: 'networth_snapshot',
-          timestamp: new Date().toISOString(),
-          assets,
-          liabilities,
-        };
-        set((s) => ({ events: [...s.events, event] }));
-      },
-
-      ensureDefaultBuckets: () => {
-        const buckets = foldBuckets(get().events);
-        if (!buckets.some((b) => b.id === UNALLOCATED_BUCKET_ID)) {
-          const event: LedgerEvent = {
-            id: makeId(),
-            type: 'bucket_upsert',
-            timestamp: new Date().toISOString(),
-            bucket: { id: UNALLOCATED_BUCKET_ID, name: 'Unallocated', parentId: null, kind: 'unallocated' },
-          };
-          set((s) => ({ events: [...s.events, event] }));
-        }
+          type: 'income',
+          timestamp: d.toISOString(),
+          amount: salary.amount,
+          label: 'Monthly salary',
+          salaryId: salary.id,
+        }));
+        if (newEvents.length > 0) set((s) => ({ events: [...s.events, ...newEvents] }));
       },
 
       importEvents: (events) => set({ events }),
@@ -194,18 +83,7 @@ export const useStore = create<MoneyLabState>()(
   )
 );
 
-// Convenience selector hooks. Select the raw `events` array (a stable reference until
-// it changes) and fold it in a useMemo — folding directly inside the zustand selector
-// would return a new array identity on every call and loop useSyncExternalStore forever.
-export const useBuckets = (): Bucket[] => {
+export const useSalary = (): Salary | undefined => {
   const events = useStore((s) => s.events);
-  return useMemo(() => foldBuckets(events), [events]);
-};
-export const useTemplates = (): AllocationTemplate[] => {
-  const events = useStore((s) => s.events);
-  return useMemo(() => foldTemplates(events), [events]);
-};
-export const useSubscriptions = (): Subscription[] => {
-  const events = useStore((s) => s.events);
-  return useMemo(() => foldSubscriptions(events), [events]);
+  return useMemo(() => foldSalary(events), [events]);
 };

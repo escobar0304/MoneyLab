@@ -12,9 +12,9 @@ export function AppShell({
 }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-10 bg-neutral-50/95 backdrop-blur border-b border-neutral-200">
+      <header className="sticky top-0 z-10 bg-neutral-950/95 backdrop-blur border-b border-neutral-800">
         <div className="mx-auto max-w-6xl px-4 pt-4">
-          <h1 className="text-lg font-semibold tracking-tight text-neutral-900">MoneyLab</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-neutral-100">MoneyLab</h1>
         </div>
         <div className="mx-auto max-w-6xl">
           <TabNav active={active} onChange={onChange} />

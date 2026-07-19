@@ -1,29 +1,34 @@
+import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import type { NetWorthPoint } from '../../lib/derive';
+import { useStore } from '../../lib/store';
+import { balanceSeries } from '../../lib/derive';
 import { CHART_INK, SEQUENTIAL_BLUE } from '../../lib/chartTheme';
 import { formatMoney, formatDate } from '../../lib/format';
 import { EmptyState } from '../ui/primitives';
 
-function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: NetWorthPoint }[] }) {
+function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: { timestamp: string; value: number } }[] }) {
   if (!active || !payload || payload.length === 0) return null;
   const point = payload[0].payload;
   return (
-    <div className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-xs shadow-sm">
-      <p className="font-medium text-neutral-900">{formatMoney(point.value)}</p>
-      <p className="text-neutral-500">{formatDate(point.timestamp)}</p>
+    <div className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs shadow-lg shadow-black/40">
+      <p className="font-medium text-neutral-100">{formatMoney(point.value)}</p>
+      <p className="text-neutral-400">{formatDate(point.timestamp)}</p>
     </div>
   );
 }
 
-export function NetWorthChart({ data }: { data: NetWorthPoint[] }) {
+export function NetWorthChart() {
+  const events = useStore((s) => s.events);
+  const data = useMemo(() => balanceSeries(events), [events]);
+
   if (data.length === 0) {
-    return <EmptyState title="No net worth snapshots yet" description="Log your net worth to start a trend line." />;
+    return <EmptyState title="No history yet" description="Net worth over time will show up here once you log income or expenses." />;
   }
   if (data.length === 1) {
     return (
       <div className="py-6 text-center">
-        <p className="text-3xl font-semibold tabular-nums text-neutral-900">{formatMoney(data[0].value)}</p>
-        <p className="mt-1 text-xs text-neutral-500">{formatDate(data[0].timestamp)} — log another snapshot to see a trend</p>
+        <p className="text-3xl font-semibold text-neutral-100">{formatMoney(data[0].value)}</p>
+        <p className="mt-1 text-xs text-neutral-500">{formatDate(data[0].timestamp)} — keep logging to see a trend</p>
       </div>
     );
   }
