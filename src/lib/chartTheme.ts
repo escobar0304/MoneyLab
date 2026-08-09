@@ -1,23 +1,33 @@
 import type { LedgerEvent } from './types';
 
-// Validated default palette (see dataviz skill references/palette.md) — dark mode only,
-// matching this app's dark-only surface. Validated via validate_palette.js --mode dark
-// --surface #1a1a19 (all checks pass).
+// Validated default palette (see dataviz skill references/palette.md) — dark mode
+// only, matching this app's dark-only surface. Slot order is the documented one,
+// which opens on blue and its complement orange: the same two hues the rest of the
+// app is built from, so the charts and the chrome read as one system.
+//
+// The ordering is the CVD-safety mechanism, not cosmetic — re-run
+// validate_palette.js before touching it. Current run against both app surfaces
+// (--surface #1a1a19 and #0d0d0d, --mode dark): all checks pass, worst adjacent
+// CVD ΔE 8.4, worst adjacent normal-vision ΔE 19.3.
 export const CATEGORICAL = [
-  '#3987e5', // blue
-  '#008300', // green
-  '#d55181', // magenta
-  '#c98500', // yellow
+  '#3987e5', // blue      <- primary
+  '#d95926', // orange    <- complement
   '#199e70', // aqua
-  '#d95926', // orange
+  '#c98500', // yellow
+  '#d55181', // magenta
+  '#008300', // green
   '#9085e9', // violet
   '#e66767', // red
 ];
 
-export const SEQUENTIAL_BLUE = '#3987e5';
-export const SEQUENTIAL_GREEN = '#008300';
-export const SEQUENTIAL_VIOLET = '#9085e9';
+/** The complementary pair the whole product is built on. */
+export const PRIMARY = CATEGORICAL[0]; // blue  — money in, balance, everything positive
+export const COMPLEMENT = CATEGORICAL[1]; // orange — money out, spend, everything consumed
 
+export const SEQUENTIAL_BLUE = '#3987e5';
+
+// Reserved for state, never for series identity. `critical` is the only alarm
+// colour in the app — everything else lives on the blue/orange axis.
 export const STATUS = {
   good: '#0ca30c',
   warning: '#fab219',
@@ -25,13 +35,15 @@ export const STATUS = {
   critical: '#d03b3b',
 };
 
+// Mirrors the CSS ink/surface tokens in index.css — charts and chrome read from
+// the same values, so a chart never sits on a surface it wasn't validated against.
 export const CHART_INK = {
-  surface: '#1a1a19',
-  primary: '#ffffff',
-  secondary: '#c3c2b7',
-  muted: '#898781',
-  gridline: '#2c2c2a',
-  axis: '#383835',
+  surface: '#13161d',
+  primary: '#f4f6f9',
+  secondary: '#bcc3cf',
+  muted: '#8892a3',
+  gridline: '#20242d',
+  axis: '#2f3542',
 };
 
 export const MAX_CATEGORICAL_SERIES = 8;

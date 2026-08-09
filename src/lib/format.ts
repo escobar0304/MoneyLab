@@ -26,8 +26,12 @@ export function formatDateTime(iso: string): string {
   });
 }
 
+/** Today as `YYYY-MM-DD` in the *local* calendar. Going via toISOString would
+ * return the UTC date, which is yesterday for the first hour of every day in any
+ * timezone ahead of UTC — including Lisbon on summer time. */
 export function todayInputValue(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export function monthLabel(monthKey: string): string {

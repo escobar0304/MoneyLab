@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useStore } from '../../lib/store';
 import {
   totalBalance,
@@ -20,15 +20,15 @@ import { IncomeVsExpensesChart } from './IncomeVsExpensesChart';
 import { SpendByCategoryChart } from './SpendByCategoryChart';
 import { SpendByCategoryPie } from './SpendByCategoryPie';
 import { BudgetMeter } from './BudgetMeter';
-import { CategoryBullets } from './CategoryBullets';
+import { CategoryDumbbell } from './CategoryDumbbell';
 
 function Delta({ delta, goodWhen, period = 'last month' }: { delta?: number; goodWhen: 'up' | 'down'; period?: string }) {
   if (delta === undefined || delta === 0) {
-    return <p className="mt-1.5 text-xs text-neutral-500">No change vs {period}</p>;
+    return <p className="mt-1.5 text-xs text-ink-muted">No change vs {period}</p>;
   }
   const isGood = goodWhen === 'up' ? delta > 0 : delta < 0;
   return (
-    <p className={`mt-1.5 flex items-center gap-1 text-xs font-medium ${isGood ? 'text-emerald-400' : 'text-red-400'}`}>
+    <p className={`mt-1.5 flex items-center gap-1 text-xs font-medium ${isGood ? 'text-positive' : 'text-complement'}`}>
       {/* Direction is an arrow as well as a colour — the sign never rides on hue alone. */}
       <svg viewBox="0 0 12 12" className={`h-3 w-3 ${delta > 0 ? '' : 'rotate-180'}`} fill="currentColor" aria-hidden="true">
         <path d="M6 2.2 10 7H2l4-4.8Z" />
@@ -38,8 +38,48 @@ function Delta({ delta, goodWhen, period = 'last month' }: { delta?: number; goo
   );
 }
 
-function TileLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs font-medium text-neutral-500">{children}</p>;
+/** Stat tile contract: label, value, then an optional delta or supporting line.
+ * Proportional figures on the value — tabular-nums makes big numbers look loose. */
+function StatTile({
+  label,
+  value,
+  tone = 'ink',
+  children,
+}: {
+  label: string;
+  value: number;
+  tone?: 'ink' | 'critical';
+  children?: ReactNode;
+}) {
+  return (
+    <Card>
+      <p className="text-xs font-medium text-ink-muted">{label}</p>
+      <p className={`mt-1 text-3xl font-semibold ${tone === 'critical' ? 'text-critical-text' : 'text-ink'}`}>
+        <AnimatedNumber value={value} format={formatMoney} />
+      </p>
+      {children}
+    </Card>
+  );
+}
+
+function ChartCard({
+  title,
+  subtitle,
+  children,
+  className = '',
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card className={className}>
+      <p className="text-sm font-semibold text-ink">{title}</p>
+      {subtitle && <p className="mt-0.5 text-xs text-ink-muted">{subtitle}</p>}
+      <div className="mt-3">{children}</div>
+    </Card>
+  );
 }
 
 export function OverviewView() {
@@ -65,8 +105,6 @@ export function OverviewView() {
   }, [spend, events, monthsActive.length, month]);
   const saved = income - spend;
 
-  // The hero figure gets its own entrance ahead of the grid — it is the one
-  // number the page leads with, so it lands first and everything else follows.
   useGSAP(
     () => {
       if (prefersReducedMotion() || !heroRef.current) return;
@@ -86,26 +124,24 @@ export function OverviewView() {
 
   return (
     <div className="space-y-6">
-      {/* Hero — exactly one per view. */}
+      {/* Hero figure — exactly one per view, and the only number at this size. */}
       <div>
-        <TileLabel>Balance</TileLabel>
-        <p ref={heroRef} className="mt-1 text-5xl font-semibold tracking-tight text-neutral-100">
+        <p className="text-xs font-medium text-ink-muted">Balance</p>
+        <p ref={heroRef} className="mt-1 text-5xl font-semibold tracking-tight text-ink">
           <AnimatedNumber value={balance} format={formatMoney} />
         </p>
         <Delta delta={balanceDelta} goodWhen="up" />
       </div>
 
-      {/* Trend charts share a synced crosshair: hovering any one of them
-          highlights the same month on the other two. */}
+      {/* Trends. One series over time is an area; two distinct series are lines.
+          All three timeline charts share a crosshair through syncId. */}
       <Reveal className="grid grid-cols-1 gap-3 lg:grid-cols-3" from="start">
-        <Card className="lg:col-span-2">
-          <p className="mb-3 text-sm font-semibold text-neutral-100">Net worth over time</p>
+        <ChartCard title="Net worth over time" className="lg:col-span-2">
           <NetWorthChart />
-        </Card>
-        <Card>
-          <p className="mb-3 text-sm font-semibold text-neutral-100">Income vs. expenses</p>
+        </ChartCard>
+        <ChartCard title="Income vs. expenses">
           <IncomeVsExpensesChart />
-        </Card>
+        </ChartCard>
       </Reveal>
 
       <div>
@@ -113,46 +149,37 @@ export function OverviewView() {
           Monthly snapshot
         </SectionTitle>
 
-        {/* Bento: the meter and the category ranking get the width they need,
-            the two small figures pack into the remaining column. */}
-        <Reveal key={month} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4" from="center" stagger={0.06}>
+        {/* Headline numbers are stat tiles and a meter — not charts. A ratio
+            against a limit is a meter; a lone value is a tile. */}
+        <Reveal key={`kpi-${month}`} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" from="start" stagger={0.05}>
           <Card className="xl:col-span-2">
             <BudgetMeter month={month} />
           </Card>
-          <Card>
-            <TileLabel>Saved this month</TileLabel>
-            <p className={`mt-1 text-3xl font-semibold ${saved < 0 ? 'text-red-400' : 'text-neutral-100'}`}>
-              <AnimatedNumber value={saved} format={formatMoney} />
+          <StatTile label="Saved this month" value={saved} tone={saved < 0 ? 'critical' : 'ink'}>
+            <p className="mt-1.5 text-xs text-ink-muted">
+              <span className="num-col text-ink-secondary">{formatMoney(income)}</span> in ·{' '}
+              <span className="num-col text-ink-secondary">{formatMoney(spend)}</span> out
             </p>
-            <p className="mt-1.5 text-xs text-neutral-500">
-              <span className="num-col text-neutral-300">{formatMoney(income)}</span> in ·{' '}
-              <span className="num-col text-neutral-300">{formatMoney(spend)}</span> out
-            </p>
-          </Card>
-          <Card>
-            <TileLabel>Spent this month</TileLabel>
-            <p className="mt-1 text-3xl font-semibold text-neutral-100">
-              <AnimatedNumber value={spend} format={formatMoney} />
-            </p>
+          </StatTile>
+          <StatTile label="Spent this month" value={spend}>
             <Delta delta={spendDelta} goodWhen="down" />
-          </Card>
-          <Card className="md:col-span-2">
-            <p className="mb-3 text-sm font-semibold text-neutral-100">Where it went</p>
+          </StatTile>
+        </Reveal>
+
+        <Reveal key={`detail-${month}`} className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-5" from="start" stagger={0.06}>
+          <ChartCard title="Where it went" subtitle="Share of this month's spending" className="xl:col-span-2">
             <SpendByCategoryPie month={month} />
-          </Card>
-          <Card className="md:col-span-2">
-            <p className="mb-1 text-sm font-semibold text-neutral-100">Category vs. last month</p>
-            <p className="mb-3 text-xs text-neutral-500">Ranked by this month's spend</p>
-            <CategoryBullets month={month} />
-          </Card>
+          </ChartCard>
+          <ChartCard title="What changed" subtitle="Every category, last month to this" className="xl:col-span-3">
+            <CategoryDumbbell month={month} />
+          </ChartCard>
         </Reveal>
       </div>
 
-      <Reveal className="grid grid-cols-1 gap-3">
-        <Card>
-          <p className="mb-3 text-sm font-semibold text-neutral-100">Spend by category over time</p>
+      <Reveal className="grid grid-cols-1">
+        <ChartCard title="Spend by category over time" subtitle="Stacked to the monthly total">
           <SpendByCategoryChart />
-        </Card>
+        </ChartCard>
       </Reveal>
     </div>
   );

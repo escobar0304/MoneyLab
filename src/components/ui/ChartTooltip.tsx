@@ -28,8 +28,8 @@ export function ChartTooltip({
   if (!active || !payload || payload.length === 0) return null;
 
   return (
-    <div className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs shadow-lg shadow-black/40">
-      {label !== undefined && <p className="mb-1.5 text-neutral-400">{labelFormatter ? labelFormatter(label) : String(label)}</p>}
+    <div className="rounded-md border border-border bg-surface-1 px-3 py-2 text-xs shadow-lg shadow-black/40">
+      {label !== undefined && <p className="mb-1.5 text-ink-muted">{labelFormatter ? labelFormatter(label) : String(label)}</p>}
       <div className="space-y-1">
         {payload.map((entry, i) => {
           const value = Number(entry.value) || 0;
@@ -38,8 +38,8 @@ export function ChartTooltip({
           return (
             <div key={i} className="flex items-center gap-2">
               <span className="inline-block h-0.5 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-              <span className="font-semibold text-neutral-100">{valueFormatter ? valueFormatter(value, name) : value}</span>
-              {name && <span className="text-neutral-500">{name}</span>}
+              <span className="font-semibold text-ink">{valueFormatter ? valueFormatter(value, name) : value}</span>
+              {name && <span className="text-ink-muted">{name}</span>}
             </div>
           );
         })}

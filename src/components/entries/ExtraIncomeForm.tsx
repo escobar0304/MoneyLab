@@ -25,14 +25,14 @@ export function ExtraIncomeForm() {
 
   if (!open) {
     return (
-      <button type="button" className="text-sm font-medium text-neutral-400 hover:text-neutral-100" onClick={() => setOpen(true)}>
+      <button type="button" className="text-sm font-medium text-ink-muted hover:text-ink" onClick={() => setOpen(true)}>
         + Add extra income
       </button>
     );
   }
 
   return (
-    <div className="rounded-lg border border-neutral-800 p-3">
+    <div className="rounded-lg border border-hairline p-3">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <div>
           <Label htmlFor="extra-amount">Amount</Label>

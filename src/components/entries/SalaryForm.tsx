@@ -25,8 +25,8 @@ export function SalaryForm() {
       {!showForm && salary ? (
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-2xl font-semibold tabular-nums text-neutral-100">{formatMoney(salary.amount)}</p>
-            <p className="text-xs text-neutral-500">Every month since {formatDate(salary.startDate)}</p>
+            <p className="text-2xl font-semibold tabular-nums text-ink">{formatMoney(salary.amount)}</p>
+            <p className="text-xs text-ink-muted">Every month since {formatDate(salary.startDate)}</p>
           </div>
           <Button
             variant="ghost"

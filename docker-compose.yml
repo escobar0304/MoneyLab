@@ -1,6 +1,42 @@
 services:
+  # Production: the app is compiled into the image and served by nginx.
+  # `docker compose restart` restarts nginx but CANNOT pick up source changes —
+  # the built assets are baked into the image. To apply changes here you must
+  # rebuild: `docker compose up -d --build`, or `docker compose up --watch`,
+  # which rebuilds automatically whenever a source file changes.
   moneylab:
     build: .
     ports:
       - "8080:80"
+    restart: unless-stopped
+    develop:
+      watch:
+        - action: rebuild
+          path: ./src
+        - action: rebuild
+          path: ./index.html
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./vite.config.ts
+
+  # Development: source is bind-mounted and Vite serves it, so edits appear
+  # instantly and `docker compose restart moneylab-dev` genuinely restarts the
+  # running app. Start it with: docker compose --profile dev up
+  moneylab-dev:
+    profiles: ["dev"]
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    environment:
+      # Bind-mounted source doesn't emit filesystem events into the container,
+      # so the watcher has to poll or hot reload never fires.
+      VITE_USE_POLLING: "true"
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      # Anonymous volume keeps the container's own node_modules, so the host's
+      # (possibly platform-specific) install never shadows it through the mount.
+      - /app/node_modules
     restart: unless-stopped

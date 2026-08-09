@@ -37,11 +37,24 @@ export function IconEntries(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Sliders. A cog at 18px collapses into a blob; radiating spokes read as a sun. */
 export function IconSettings(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" />
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+      <circle cx="15" cy="7" r="2.1" />
+      <circle cx="9" cy="17" r="2.1" />
+    </Icon>
+  );
+}
+
+/** Markets — a candlestick pair, the form the panel actually shows. */
+export function IconMarkets(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M8 3v3.2M8 17.8V21M16 3v5.2M16 19.8V21" />
+      <rect x="5.2" y="6.2" width="5.6" height="11.6" rx="1.4" />
+      <rect x="13.2" y="8.2" width="5.6" height="11.6" rx="1.4" />
     </Icon>
   );
 }

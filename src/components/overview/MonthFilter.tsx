@@ -17,17 +17,17 @@ export function MonthFilter({ month, months, onChange }: { month: string; months
         aria-label="Previous month"
         disabled={!canPrev}
         onClick={() => canPrev && onChange(months[index - 1])}
-        className="rounded-md px-2 py-1 text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-100 disabled:pointer-events-none disabled:opacity-30"
+        className="rounded-md px-2 py-1 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:pointer-events-none disabled:opacity-30"
       >
         ‹
       </button>
-      <span className="min-w-[8.5rem] text-center text-sm font-medium text-neutral-100">{monthLabel(month)}</span>
+      <span className="min-w-[8.5rem] text-center text-sm font-medium text-ink">{monthLabel(month)}</span>
       <button
         type="button"
         aria-label="Next month"
         disabled={!canNext}
         onClick={() => canNext && onChange(months[index + 1])}
-        className="rounded-md px-2 py-1 text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-neutral-100 disabled:pointer-events-none disabled:opacity-30"
+        className="rounded-md px-2 py-1 text-ink-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:pointer-events-none disabled:opacity-30"
       >
         ›
       </button>

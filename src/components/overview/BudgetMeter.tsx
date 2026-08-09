@@ -2,12 +2,11 @@ import { useMemo, useRef } from 'react';
 import { useStore } from '../../lib/store';
 import { totalIncomeForMonth, totalOutflowForMonth } from '../../lib/derive';
 import { formatMoney } from '../../lib/format';
-import { STATUS } from '../../lib/chartTheme';
+import { PRIMARY, COMPLEMENT, STATUS } from '../../lib/chartTheme';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { EmptyState } from '../ui/primitives';
 
-const ACCENT = '#3987e5';
 
 /**
  * Spend against the month's income, as a meter rather than the two-slice donut
@@ -34,7 +33,9 @@ export function BudgetMeter({ month }: { month: string }) {
     };
   }, [events, month]);
 
-  const tone = over ? STATUS.critical : pct >= 80 ? STATUS.warning : ACCENT;
+  // Blue while there's headroom, sliding to its complement as the month is used
+  // up, and only reaching the reserved alarm colour once you're actually over.
+  const tone = over ? STATUS.critical : pct >= 80 ? COMPLEMENT : PRIMARY;
 
   useGSAP(
     () => {
@@ -58,8 +59,8 @@ export function BudgetMeter({ month }: { month: string }) {
 
   return (
     <div>
-      <p className="text-xs font-medium text-neutral-500">Spent of income</p>
-      <p className="mt-1 text-3xl font-semibold text-neutral-100">
+      <p className="text-xs font-medium text-ink-muted">Spent of income</p>
+      <p className="mt-1 text-3xl font-semibold text-ink">
         <AnimatedNumber value={spent} format={formatMoney} />
       </p>
 
@@ -70,8 +71,8 @@ export function BudgetMeter({ month }: { month: string }) {
       </div>
 
       <div className="mt-2 flex items-baseline justify-between gap-2 text-xs">
-        <span className="text-neutral-500">
-          of <span className="num-col text-neutral-300">{formatMoney(income)}</span> earned
+        <span className="text-ink-muted">
+          of <span className="num-col text-ink-secondary">{formatMoney(income)}</span> earned
         </span>
         <span className="num-col font-medium" style={{ color: tone }}>
           {pct.toFixed(0)}%
@@ -79,7 +80,7 @@ export function BudgetMeter({ month }: { month: string }) {
       </div>
 
       {over && (
-        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-400">
+        <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-critical-text">
           <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0" fill="currentColor" aria-hidden="true">
             <path d="M8 1.5 15 14H1L8 1.5Zm0 4.2a.75.75 0 0 0-.75.75v2.6a.75.75 0 0 0 1.5 0v-2.6A.75.75 0 0 0 8 5.7Zm0 5.1a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Z" />
           </svg>

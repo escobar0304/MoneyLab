@@ -5,6 +5,7 @@ import { useStore } from './lib/store';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from './lib/animation';
 import { OverviewView } from './components/overview/OverviewView';
 import { EntriesView } from './components/entries/EntriesView';
+import { MarketsView } from './components/markets/MarketsView';
 import { SettingsView } from './components/settings/SettingsView';
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
       <div ref={viewRef} key={tab}>
         {tab === 'overview' && <OverviewView />}
         {tab === 'entries' && <EntriesView />}
+        {tab === 'markets' && <MarketsView />}
         {tab === 'settings' && <SettingsView />}
       </div>
     </AppShell>

@@ -3,19 +3,26 @@ import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recha
 import { useStore } from '../../lib/store';
 import { spendByCategoryForMonth } from '../../lib/derive';
 import { formatMoney } from '../../lib/format';
-import { CHART_INK, categoryColorMap } from '../../lib/chartTheme';
+import { CHART_INK, OTHER_LABEL, categoryColorMap } from '../../lib/chartTheme';
 import { ChartTooltip } from '../ui/ChartTooltip';
 import { EmptyState } from '../ui/primitives';
+
+/** A donut is only legible as part-to-whole at a glance; past six slices the
+ * small wedges stop being comparable, so the tail folds into "Other". */
+const MAX_SLICES = 6;
 
 export function SpendByCategoryPie({ month }: { month: string }) {
   const events = useStore((s) => s.events);
   const colors = useMemo(() => categoryColorMap(events), [events]);
 
   const data = useMemo(() => {
-    const byCategory = spendByCategoryForMonth(events, month);
-    return Object.entries(byCategory)
+    const sorted = Object.entries(spendByCategoryForMonth(events, month))
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
+    if (sorted.length <= MAX_SLICES) return sorted;
+    const head = sorted.slice(0, MAX_SLICES - 1);
+    const tail = sorted.slice(MAX_SLICES - 1).reduce((sum, d) => sum + d.value, 0);
+    return [...head, { name: OTHER_LABEL, value: tail }];
   }, [events, month]);
 
   if (data.length === 0) {

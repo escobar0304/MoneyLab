@@ -17,7 +17,7 @@ export function EntriesView() {
         <ExpenseEntryForm />
         <SalaryForm />
         <Card>
-          <p className="mb-3 text-sm font-semibold text-neutral-100">One-off income</p>
+          <p className="mb-3 text-sm font-semibold text-ink">One-off income</p>
           <ExtraIncomeForm />
         </Card>
       </div>

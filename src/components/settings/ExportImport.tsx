@@ -52,7 +52,7 @@ export function ExportImport() {
   return (
     <Card>
       <SectionTitle>Data</SectionTitle>
-      <p className="mb-4 text-sm text-neutral-500">
+      <p className="mb-4 text-sm text-ink-muted">
         Everything lives in this browser's local storage. Export a backup regularly, or move your data to another device.
       </p>
       <div className="flex flex-wrap items-center gap-2">
@@ -74,11 +74,11 @@ export function ExportImport() {
           }}
         />
       </div>
-      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
+      {error && <p className="mt-2 text-sm text-critical-text">{error}</p>}
 
       {pending && (
         <Modal title="Replace all data?" onClose={() => setPending(null)}>
-          <p className="text-sm text-neutral-300">
+          <p className="text-sm text-ink-secondary">
             This file contains <strong>{pending.length}</strong> ledger events. Importing will replace your current{' '}
             <strong>{events.length}</strong> events entirely. This can't be undone unless you have another backup.
           </p>
@@ -95,7 +95,7 @@ export function ExportImport() {
 
       {confirmClear && (
         <Modal title="Clear all data?" onClose={() => setConfirmClear(false)}>
-          <p className="text-sm text-neutral-300">
+          <p className="text-sm text-ink-secondary">
             This permanently deletes all <strong>{events.length}</strong> ledger events — your salary setting, income, and expenses. Export a
             backup first if you're not sure.
           </p>

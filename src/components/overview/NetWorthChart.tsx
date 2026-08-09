@@ -21,8 +21,8 @@ export function NetWorthChart() {
   if (data.length === 1) {
     return (
       <div className="py-6 text-center">
-        <p className="text-3xl font-semibold text-neutral-100">{formatMoney(data[0].value)}</p>
-        <p className="mt-1 text-xs text-neutral-500">{formatDate(data[0].timestamp)} — keep logging to see a trend</p>
+        <p className="text-3xl font-semibold text-ink">{formatMoney(data[0].value)}</p>
+        <p className="mt-1 text-xs text-ink-muted">{formatDate(data[0].timestamp)} — keep logging to see a trend</p>
       </div>
     );
   }

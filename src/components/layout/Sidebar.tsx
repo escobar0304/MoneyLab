@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
 import { LogoMark, LogoWordmark } from './Logo';
-import { IconOverview, IconEntries, IconSettings, IconChevronsLeft } from './icons';
+import { IconOverview, IconEntries, IconMarkets, IconSettings, IconChevronsLeft } from './icons';
 
-export type Tab = 'overview' | 'entries' | 'settings';
+export type Tab = 'overview' | 'entries' | 'markets' | 'settings';
 
 const TABS: { id: Tab; label: string; Icon: typeof IconOverview }[] = [
   { id: 'overview', label: 'Overview', Icon: IconOverview },
   { id: 'entries', label: 'Entries', Icon: IconEntries },
+  { id: 'markets', label: 'Markets', Icon: IconMarkets },
   { id: 'settings', label: 'Settings', Icon: IconSettings },
 ];
 
@@ -81,15 +82,19 @@ export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab
       className="sticky top-0 z-20 flex h-screen shrink-0 flex-col overflow-hidden border-r border-hairline bg-surface-1"
     >
       <div className={`flex h-14 shrink-0 items-center gap-2.5 ${collapsed ? 'justify-center px-0' : 'px-4'}`}>
-        <LogoMark className="h-5.5 w-5.5 shrink-0 text-neutral-300" />
+        <LogoMark className="h-5.5 w-5.5 shrink-0 text-ink-secondary" />
         {!collapsed && <LogoWordmark className="nav-label whitespace-nowrap" />}
       </div>
 
       <nav ref={navRef} className="relative flex flex-col gap-1 px-2.5 py-2">
+        {/* `top-0` is load-bearing: without it the rail's static position already
+            sits below the nav's padding, so translating it by the button's
+            offsetTop would double-count that padding and park it a row low.
+            The inset matches the nav padding so the rail tracks the button width. */}
         <span
           ref={railRef}
           aria-hidden="true"
-          className="pointer-events-none absolute left-0 right-0 rounded-lg bg-accent/12 ring-1 ring-inset ring-accent/25"
+          className="pointer-events-none absolute top-0 left-2.5 right-2.5 rounded-lg bg-accent/12 ring-1 ring-inset ring-accent/25"
         />
         {TABS.map(({ id, label, Icon }) => (
           <button
@@ -105,7 +110,7 @@ export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab
             aria-current={active === id ? 'page' : undefined}
             className={`relative z-10 flex cursor-pointer items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
               collapsed ? 'justify-center' : ''
-            } ${active === id ? 'text-accent' : 'text-neutral-500 hover:text-neutral-200'}`}
+            } ${active === id ? 'text-accent' : 'text-ink-muted hover:text-ink-secondary'}`}
           >
             <Icon className="h-4.5 w-4.5 shrink-0" />
             {!collapsed && <span className="nav-label">{label}</span>}
@@ -118,7 +123,7 @@ export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab
           type="button"
           onClick={toggle}
           aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
-          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-neutral-500 transition-colors duration-200 hover:bg-neutral-800 hover:text-neutral-100"
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors duration-200 hover:bg-surface-2 hover:text-ink"
         >
           <IconChevronsLeft className={`h-4 w-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
         </button>
