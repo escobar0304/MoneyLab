@@ -4,22 +4,16 @@ import { useStore } from '../../lib/store';
 import { balanceSeries } from '../../lib/derive';
 import { CHART_INK, SEQUENTIAL_BLUE } from '../../lib/chartTheme';
 import { formatMoney, formatDate } from '../../lib/format';
+import { ChartTooltip } from '../ui/ChartTooltip';
 import { EmptyState } from '../ui/primitives';
-
-function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: { timestamp: string; value: number } }[] }) {
-  if (!active || !payload || payload.length === 0) return null;
-  const point = payload[0].payload;
-  return (
-    <div className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs shadow-lg shadow-black/40">
-      <p className="font-medium text-neutral-100">{formatMoney(point.value)}</p>
-      <p className="text-neutral-400">{formatDate(point.timestamp)}</p>
-    </div>
-  );
-}
 
 export function NetWorthChart() {
   const events = useStore((s) => s.events);
-  const data = useMemo(() => balanceSeries(events), [events]);
+  // Sliced to the same trailing window as the other two synced timeline charts
+  // (IncomeVsExpensesChart, SpendByCategoryChart) so index-based syncId alignment
+  // (Recharts syncs by data index, not by matching X value) points at the same month.
+  const data = useMemo(() => balanceSeries(events).slice(-6), [events]);
+  const lastIndex = data.length - 1;
 
   if (data.length === 0) {
     return <EmptyState title="No history yet" description="Net worth over time will show up here once you log income or expenses." />;
@@ -36,7 +30,7 @@ export function NetWorthChart() {
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+        <AreaChart data={data} syncId="home-timeline" margin={{ top: 20, right: 8, left: 8, bottom: 0 }}>
           <defs>
             <linearGradient id="netWorthFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={SEQUENTIAL_BLUE} stopOpacity={0.18} />
@@ -61,14 +55,28 @@ export function NetWorthChart() {
             axisLine={false}
             width={72}
           />
-          <Tooltip content={<ChartTooltip />} cursor={{ stroke: CHART_INK.axis, strokeWidth: 1 }} />
+          <Tooltip
+            content={<ChartTooltip labelFormatter={(l) => formatDate(String(l))} valueFormatter={(v) => formatMoney(v)} />}
+            cursor={{ stroke: CHART_INK.axis, strokeWidth: 1 }}
+          />
           <Area
             type="monotone"
             dataKey="value"
             stroke={SEQUENTIAL_BLUE}
             strokeWidth={2}
             fill="url(#netWorthFill)"
-            dot={false}
+            dot={(props: { cx?: number; cy?: number; index?: number }) => {
+              const { cx, cy, index } = props;
+              if (index !== lastIndex || typeof cx !== 'number' || typeof cy !== 'number') return <g key={`dot-${index}`} />;
+              return (
+                <g key={`dot-${index}`}>
+                  <circle cx={cx} cy={cy} r={5} fill={SEQUENTIAL_BLUE} stroke={CHART_INK.surface} strokeWidth={2} />
+                  <text x={cx - 8} y={cy - 12} textAnchor="end" fontSize={11} fill={CHART_INK.secondary}>
+                    Now: {formatMoney(data[lastIndex].value)}
+                  </text>
+                </g>
+              );
+            }}
             activeDot={{ r: 4, fill: SEQUENTIAL_BLUE, stroke: CHART_INK.surface, strokeWidth: 2 }}
           />
         </AreaChart>

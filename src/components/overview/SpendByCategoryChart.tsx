@@ -3,24 +3,24 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { useStore } from '../../lib/store';
 import { monthsWithActivity, spendByCategoryForMonth } from '../../lib/derive';
 import { monthLabel, formatMoney } from '../../lib/format';
-import { CATEGORICAL, CHART_INK, MAX_CATEGORICAL_SERIES, OTHER_LABEL } from '../../lib/chartTheme';
+import { CHART_INK, MAX_CATEGORICAL_SERIES, OTHER_LABEL, categoryColorMap, rankedCategories } from '../../lib/chartTheme';
+import { ChartTooltip } from '../ui/ChartTooltip';
 import { EmptyState } from '../ui/primitives';
 
 export function SpendByCategoryChart() {
   const events = useStore((s) => s.events);
+  const colors = useMemo(() => categoryColorMap(events), [events]);
 
   const { data, categories } = useMemo(() => {
     const months = monthsWithActivity(events).slice(-6); // last 6 active months
     const byMonth = months.map((m) => spendByCategoryForMonth(events, m));
 
-    const totals = new Map<string, number>();
-    for (const monthData of byMonth) {
-      for (const [cat, amt] of Object.entries(monthData)) totals.set(cat, (totals.get(cat) ?? 0) + amt);
-    }
-    const sortedCats = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
+    // Same historical ranking every other chart uses (see chartTheme.ts) — not a
+    // local top-N over just this window — so "top" categories here match "top"
+    // categories (and their colors) everywhere else in the app.
     const topCap = MAX_CATEGORICAL_SERIES - 1; // reserve one slot for "Other"
-    const topCats = sortedCats.slice(0, topCap).map(([c]) => c);
-    const hasOther = sortedCats.length > topCap;
+    const topCats = rankedCategories(events).slice(0, topCap);
+    const seenBeyondTop = new Set<string>();
 
     const rows = months.map((m, i) => {
       const monthData = byMonth[i];
@@ -28,13 +28,16 @@ export function SpendByCategoryChart() {
       let other = 0;
       for (const [cat, amt] of Object.entries(monthData)) {
         if (topCats.includes(cat)) row[cat] = (Number(row[cat]) || 0) + amt;
-        else other += amt;
+        else {
+          other += amt;
+          seenBeyondTop.add(cat);
+        }
       }
-      if (hasOther) row[OTHER_LABEL] = other;
+      if (seenBeyondTop.size > 0 || other > 0) row[OTHER_LABEL] = other;
       return row;
     });
 
-    return { data: rows, categories: hasOther ? [...topCats, OTHER_LABEL] : topCats };
+    return { data: rows, categories: seenBeyondTop.size > 0 ? [...topCats, OTHER_LABEL] : topCats };
   }, [events]);
 
   if (data.length === 0) {
@@ -44,7 +47,9 @@ export function SpendByCategoryChart() {
   return (
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
+        {/* maxBarSize caps the column so a two-month window doesn't render as
+            two saturated slabs the width of the card — the mark stays a mark. */}
+        <BarChart data={data} syncId="home-timeline" maxBarSize={48} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
           <CartesianGrid stroke={CHART_INK.gridline} vertical={false} />
           <XAxis
             dataKey="month"
@@ -63,11 +68,8 @@ export function SpendByCategoryChart() {
             width={64}
           />
           <Tooltip
-            formatter={(value, name) => [formatMoney(Number(value) || 0), name]}
-            labelFormatter={(v) => monthLabel(String(v ?? ''))}
-            contentStyle={{ borderRadius: 6, background: '#232322', borderColor: '#383835', fontSize: 12, color: CHART_INK.primary }}
-            labelStyle={{ color: CHART_INK.secondary }}
-            itemStyle={{ color: CHART_INK.primary }}
+            cursor={{ fill: CHART_INK.gridline, opacity: 0.4 }}
+            content={<ChartTooltip labelFormatter={(l) => monthLabel(String(l))} valueFormatter={(v) => formatMoney(v)} />}
           />
           <Legend wrapperStyle={{ fontSize: 12, color: CHART_INK.secondary }} />
           {categories.map((cat, i) => (
@@ -75,8 +77,9 @@ export function SpendByCategoryChart() {
               key={cat}
               dataKey={cat}
               stackId="spend"
-              fill={i < CATEGORICAL.length ? CATEGORICAL[i] : CHART_INK.muted}
+              fill={colors.get(cat) ?? CHART_INK.muted}
               radius={i === categories.length - 1 ? [3, 3, 0, 0] : undefined}
+              activeBar={{ fillOpacity: 0.75, stroke: CHART_INK.surface, strokeWidth: 2 }}
             />
           ))}
         </BarChart>

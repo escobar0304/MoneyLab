@@ -1,12 +1,40 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, LabelHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react';
+import { useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type LabelHTMLAttributes, type MouseEvent, type ReactNode, type SelectHTMLAttributes } from 'react';
 
+/**
+ * Every panel in the app, on every page — so the spotlight is a property of the
+ * design system rather than a dashboard-only flourish.
+ *
+ * The pointer position is written straight to CSS custom properties instead of
+ * React state: a mousemove handler that called setState would re-render the
+ * card's entire subtree (charts included) on every pointer sample.
+ */
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-xl border border-neutral-800 bg-neutral-900 p-4 ${className}`}>{children}</div>;
+  const ref = useRef<HTMLDivElement>(null);
+
+  const track = (e: MouseEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty('--mx', `${e.clientX - r.left}px`);
+    el.style.setProperty('--my', `${e.clientY - r.top}px`);
+  };
+
+  return (
+    <div
+      ref={ref}
+      onMouseMove={track}
+      onMouseEnter={() => ref.current?.style.setProperty('--spot-opacity', '1')}
+      onMouseLeave={() => ref.current?.style.setProperty('--spot-opacity', '0')}
+      className={`spotlight relative overflow-hidden rounded-xl border border-hairline bg-surface-1 p-4 transition-colors duration-200 hover:border-neutral-700 ${className}`}
+    >
+      <div className="relative">{children}</div>
+    </div>
+  );
 }
 
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="mb-3 flex items-center justify-between border-b border-neutral-800 pb-3">
+    <div className="mb-3 flex items-center justify-between border-b border-hairline pb-3">
       <h2 className="text-base font-semibold text-neutral-100">{children}</h2>
       {action}
     </div>
@@ -30,7 +58,7 @@ export function Button({
   };
   return (
     <button
-      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:pointer-events-none ${variants[variant]} ${className}`}
+      className={`cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-200 disabled:opacity-40 disabled:pointer-events-none ${variants[variant]} ${className}`}
       {...props}
     />
   );
@@ -48,7 +76,7 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full rounded-md border border-neutral-700 bg-neutral-950 px-2.5 py-1.5 text-sm text-neutral-100 outline-none placeholder:text-neutral-600 focus:border-accent ${props.className ?? ''}`}
+      className={`w-full rounded-md border border-neutral-700 bg-surface-0 px-2.5 py-1.5 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-accent/30 placeholder:text-neutral-600 focus:border-accent ${props.className ?? ''}`}
     />
   );
 }
@@ -57,7 +85,7 @@ export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
-      className={`w-full rounded-md border border-neutral-700 bg-neutral-950 px-2.5 py-1.5 text-sm text-neutral-100 outline-none focus:border-accent ${props.className ?? ''}`}
+      className={`w-full rounded-md border border-neutral-700 bg-surface-0 px-2.5 py-1.5 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent ${props.className ?? ''}`}
     />
   );
 }

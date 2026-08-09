@@ -32,7 +32,7 @@ export interface BalancePoint {
   value: number;
 }
 
-function endOfMonth(month: string): string {
+export function endOfMonth(month: string): string {
   const [year, m] = month.split('-').map(Number);
   return new Date(year, m, 0, 23, 59, 59, 999).toISOString();
 }

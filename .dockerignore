@@ -1,0 +1,8 @@
+node_modules
+dist
+dist-ssr
+.git
+.claude
+*.local
+.DS_Store
+*.tsbuildinfo

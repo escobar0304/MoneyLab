@@ -1,10 +1,27 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Design tokens — the single source of truth for every page, not just the
+   dashboard. Surfaces are a 3-step elevation ramp so nested panels never rely
+   on borders alone to separate; spacing is the dense/dashboard scale (8-32px).
+   --------------------------------------------------------------------------- */
 @theme {
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
   --color-accent: #3987e5;
   --color-accent-hover: #5ea0ee;
   --color-accent-soft: #1c3a5c;
+
+  /* Elevation ramp. surface-0 is the page, -1 a card, -2 a panel inside a card. */
+  --color-surface-0: #0a0a0a;
+  --color-surface-1: #131313;
+  --color-surface-2: #1a1a19;
+  --color-hairline: #262625;
+
+  /* Dense dashboard spacing scale */
+  --spacing-gutter: 0.75rem;
+  --spacing-section: 1.5rem;
 }
 
 html {
@@ -12,11 +29,36 @@ html {
 }
 
 body {
-  @apply bg-neutral-950 text-neutral-100 antialiased;
+  background: var(--color-surface-0);
+  @apply text-neutral-100 antialiased;
 }
 
 ::selection {
   @apply bg-accent text-white;
+}
+
+/* Numeric columns that must align vertically. Hero/stat figures deliberately
+   keep proportional figures — tabular-nums makes large numbers look loose. */
+.num-col {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+/* Pointer-tracked spotlight. The gradient centre is written to --mx/--my by
+   Card; with no pointer over the card the alpha stays 0, so it costs nothing. */
+.spotlight::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--spot-opacity, 0);
+  transition: opacity 220ms ease-out;
+  background: radial-gradient(
+    260px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in oklab, var(--color-accent) 12%, transparent),
+    transparent 70%
+  );
 }
 
 .no-scrollbar {
@@ -26,3 +68,4 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+

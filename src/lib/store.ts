@@ -58,6 +58,10 @@ export const useStore = create<MoneyLabState>()(
           salary: full,
         };
         set((s) => ({ events: [...s.events, event] }));
+        // Catch up the elapsed pay cycles straight away. Without this the
+        // simulation only runs on app start, so a salary set with a past start
+        // date shows no income at all until the page is reloaded.
+        get().runSalarySimulation();
       },
 
       runSalarySimulation: () => {
