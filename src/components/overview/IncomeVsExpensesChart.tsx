@@ -5,6 +5,7 @@ import { monthsWithActivity, totalIncomeForMonth, totalOutflowForMonth } from '.
 import { monthLabel, formatMoney } from '../../lib/format';
 import { PRIMARY, COMPLEMENT, CHART_INK } from '../../lib/chartTheme';
 import { ChartTooltip } from '../ui/ChartTooltip';
+import { ChartLegend, EndpointLabel, Plot, crosshair, gridProps, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
 import { EmptyState } from '../ui/primitives';
 
 export function IncomeVsExpensesChart() {
@@ -25,32 +26,25 @@ export function IncomeVsExpensesChart() {
   }
 
   return (
-    <div className="h-72 w-full">
+    <Plot>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} syncId="home-timeline" margin={{ top: 20, right: 8, left: 8, bottom: 0 }}>
-          <CartesianGrid stroke={CHART_INK.gridline} vertical={false} />
-          <XAxis
-            dataKey="month"
-            tickFormatter={(v: string) => monthLabel(v).split(' ')[0]}
-            stroke={CHART_INK.axis}
-            tick={{ fill: CHART_INK.muted, fontSize: 11 }}
-            tickLine={false}
-            axisLine={{ stroke: CHART_INK.axis }}
-          />
-          <YAxis
-            tickFormatter={(v: number) => formatMoney(v)}
-            stroke={CHART_INK.axis}
-            tick={{ fill: CHART_INK.muted, fontSize: 11 }}
-            tickLine={false}
-            axisLine={false}
-            width={64}
-          />
+        <LineChart data={data} syncId="home-timeline" margin={plotMargin}>
+          <CartesianGrid {...gridProps} />
+          <XAxis dataKey="month" tickFormatter={(v: string) => monthLabel(v).split(' ')[0]} {...xAxisProps} />
+          <YAxis {...yAxisProps} />
           <Tooltip
             content={<ChartTooltip labelFormatter={(l) => monthLabel(String(l))} valueFormatter={(v) => formatMoney(v)} />}
-            cursor={{ stroke: CHART_INK.axis, strokeWidth: 1 }}
+            cursor={crosshair}
           />
-          <Legend wrapperStyle={{ fontSize: 12, color: CHART_INK.secondary }} />
-          <Line type="monotone" dataKey="Income" stroke={PRIMARY} strokeWidth={2} dot={{ r: 3, fill: PRIMARY }} activeDot={{ r: 4 }} />
+          <Legend content={<ChartLegend />} verticalAlign="top" align="left" height={22} />
+          <Line
+            type="monotone"
+            dataKey="Income"
+            stroke={PRIMARY}
+            strokeWidth={2}
+            dot={{ r: 3, fill: PRIMARY, strokeWidth: 0 }}
+            activeDot={{ r: 4, stroke: CHART_INK.surface, strokeWidth: 2 }}
+          />
           <Line
             type="monotone"
             dataKey="Expenses"
@@ -58,22 +52,21 @@ export function IncomeVsExpensesChart() {
             strokeWidth={2}
             dot={(props: { cx?: number; cy?: number; index?: number }) => {
               const { cx, cy, index } = props;
-              if (index !== lastIndex || typeof cx !== 'number' || typeof cy !== 'number') {
-                return <circle key={`dot-${index}`} cx={cx} cy={cy} r={3} fill={COMPLEMENT} />;
-              }
+              if (typeof cx !== 'number' || typeof cy !== 'number') return <g key={`dot-${index}`} />;
+              if (index !== lastIndex) return <circle key={`dot-${index}`} cx={cx} cy={cy} r={3} fill={COMPLEMENT} />;
               return (
                 <g key={`dot-${index}`}>
-                  <circle cx={cx} cy={cy} r={5} fill={COMPLEMENT} stroke={CHART_INK.surface} strokeWidth={2} />
-                  <text x={cx - 8} y={cy - 12} textAnchor="end" fontSize={11} fill={CHART_INK.secondary}>
-                    Now: {formatMoney(data[lastIndex].Expenses)}
-                  </text>
+                  <circle cx={cx} cy={cy} r={4} fill={COMPLEMENT} stroke={CHART_INK.surface} strokeWidth={2} />
+                  <EndpointLabel x={cx} y={cy}>
+                    {formatMoney(data[lastIndex].Expenses)}
+                  </EndpointLabel>
                 </g>
               );
             }}
-            activeDot={{ r: 4 }}
+            activeDot={{ r: 4, stroke: CHART_INK.surface, strokeWidth: 2 }}
           />
         </LineChart>
       </ResponsiveContainer>
-    </div>
+    </Plot>
   );
 }

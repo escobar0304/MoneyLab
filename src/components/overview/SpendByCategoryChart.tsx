@@ -5,6 +5,7 @@ import { monthsWithActivity, spendByCategoryForMonth } from '../../lib/derive';
 import { monthLabel, formatMoney } from '../../lib/format';
 import { CHART_INK, MAX_CATEGORICAL_SERIES, OTHER_LABEL, categoryColorMap, rankedCategories } from '../../lib/chartTheme';
 import { ChartTooltip } from '../ui/ChartTooltip';
+import { ChartLegend, Plot, barCursor, gridProps, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
 import { EmptyState } from '../ui/primitives';
 
 export function SpendByCategoryChart() {
@@ -45,33 +46,19 @@ export function SpendByCategoryChart() {
   }
 
   return (
-    <div className="h-72 w-full">
+    <Plot>
       <ResponsiveContainer width="100%" height="100%">
         {/* maxBarSize caps the column so a two-month window doesn't render as
             two saturated slabs the width of the card — the mark stays a mark. */}
-        <BarChart data={data} syncId="home-timeline" maxBarSize={48} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-          <CartesianGrid stroke={CHART_INK.gridline} vertical={false} />
-          <XAxis
-            dataKey="month"
-            tickFormatter={(v: string) => monthLabel(v).split(' ')[0]}
-            stroke={CHART_INK.axis}
-            tick={{ fill: CHART_INK.muted, fontSize: 11 }}
-            tickLine={false}
-            axisLine={{ stroke: CHART_INK.axis }}
-          />
-          <YAxis
-            tickFormatter={(v: number) => formatMoney(v)}
-            stroke={CHART_INK.axis}
-            tick={{ fill: CHART_INK.muted, fontSize: 11 }}
-            tickLine={false}
-            axisLine={false}
-            width={64}
-          />
+        <BarChart data={data} syncId="home-timeline" maxBarSize={44} margin={plotMargin}>
+          <CartesianGrid {...gridProps} />
+          <XAxis dataKey="month" tickFormatter={(v: string) => monthLabel(v).split(' ')[0]} {...xAxisProps} />
+          <YAxis {...yAxisProps} />
           <Tooltip
-            cursor={{ fill: CHART_INK.gridline, opacity: 0.4 }}
+            cursor={barCursor}
             content={<ChartTooltip labelFormatter={(l) => monthLabel(String(l))} valueFormatter={(v) => formatMoney(v)} />}
           />
-          <Legend wrapperStyle={{ fontSize: 12, color: CHART_INK.secondary }} />
+          <Legend content={<ChartLegend />} verticalAlign="top" align="left" height={22} />
           {categories.map((cat, i) => (
             <Bar
               key={cat}
@@ -79,11 +66,15 @@ export function SpendByCategoryChart() {
               stackId="spend"
               fill={colors.get(cat) ?? CHART_INK.muted}
               radius={i === categories.length - 1 ? [3, 3, 0, 0] : undefined}
+              // A 2px gap in the surface colour is what separates stacked
+              // segments — never a stroke drawn around each one.
+              stroke={CHART_INK.surface}
+              strokeWidth={2}
               activeBar={{ fillOpacity: 0.75, stroke: CHART_INK.surface, strokeWidth: 2 }}
             />
           ))}
         </BarChart>
       </ResponsiveContainer>
-    </div>
+    </Plot>
   );
 }

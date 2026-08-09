@@ -7,6 +7,25 @@ export function formatMoney(amount: number): string {
   return currencyFormatter.format(amount);
 }
 
+/**
+ * Short money for axis ticks: "3k €", "1,5k €", "500 €".
+ *
+ * A column of "3000,00 €" down the left of a plot is five repetitions of the
+ * same information and eats ~70px of the card. Keeps pt-PT's comma decimal and
+ * trailing symbol so it doesn't read as a different locale from the tooltips.
+ */
+export function formatMoneyCompact(amount: number): string {
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? '-' : '';
+  if (abs >= 1_000_000) return `${sign}${trimZero(abs / 1_000_000)}M €`;
+  if (abs >= 1_000) return `${sign}${trimZero(abs / 1_000)}k €`;
+  return `${sign}${Math.round(abs)} €`;
+}
+
+function trimZero(n: number): string {
+  return n.toFixed(1).replace(/\.0$/, '').replace('.', ',');
+}
+
 export function formatSignedMoney(amount: number): string {
   const formatted = currencyFormatter.format(Math.abs(amount));
   return amount < 0 ? `-${formatted}` : formatted;

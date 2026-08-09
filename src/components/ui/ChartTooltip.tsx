@@ -1,3 +1,5 @@
+import { CHART_INK } from '../../lib/chartTheme';
+
 interface TooltipEntry {
   name?: string;
   value?: number | string;
@@ -27,19 +29,26 @@ export function ChartTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null;
 
+  // With one series there is nothing to tell apart, and the card title already
+  // names what's plotted — so the series name is suppressed rather than echoing
+  // the raw dataKey ("value") back at the reader.
+  const showNames = payload.length > 1;
+
   return (
-    <div className="rounded-md border border-border bg-surface-1 px-3 py-2 text-xs shadow-lg shadow-black/40">
+    // surface-2, one step above the card it floats over — on surface-1 it would
+    // be the same colour as the card and read as a hole rather than a layer.
+    <div className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs shadow-lg shadow-black/50">
       {label !== undefined && <p className="mb-1.5 text-ink-muted">{labelFormatter ? labelFormatter(label) : String(label)}</p>}
       <div className="space-y-1">
         {payload.map((entry, i) => {
           const value = Number(entry.value) || 0;
           const name = entry.name ?? '';
-          const color = entry.color ?? entry.fill ?? entry.payload?.fill ?? '#898781';
+          const color = entry.color ?? entry.fill ?? entry.payload?.fill ?? CHART_INK.muted;
           return (
             <div key={i} className="flex items-center gap-2">
               <span className="inline-block h-0.5 w-3 shrink-0 rounded-full" style={{ backgroundColor: color }} />
               <span className="font-semibold text-ink">{valueFormatter ? valueFormatter(value, name) : value}</span>
-              {name && <span className="text-ink-muted">{name}</span>}
+              {showNames && name && <span className="text-ink-muted">{name}</span>}
             </div>
           );
         })}

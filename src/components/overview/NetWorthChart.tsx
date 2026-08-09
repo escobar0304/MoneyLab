@@ -2,9 +2,10 @@ import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useStore } from '../../lib/store';
 import { balanceSeries } from '../../lib/derive';
-import { CHART_INK, SEQUENTIAL_BLUE } from '../../lib/chartTheme';
+import { CHART_INK, PRIMARY } from '../../lib/chartTheme';
 import { formatMoney, formatDate } from '../../lib/format';
 import { ChartTooltip } from '../ui/ChartTooltip';
+import { EndpointLabel, Plot, crosshair, gridProps, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
 import { EmptyState } from '../ui/primitives';
 
 export function NetWorthChart() {
@@ -28,41 +29,29 @@ export function NetWorthChart() {
   }
 
   return (
-    <div className="h-64 w-full">
+    <Plot>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} syncId="home-timeline" margin={{ top: 20, right: 8, left: 8, bottom: 0 }}>
+        <AreaChart data={data} syncId="home-timeline" margin={plotMargin}>
           <defs>
+            {/* Fades to nothing well before the baseline so the fill dissolves
+                into the card instead of ending on a visible edge. */}
             <linearGradient id="netWorthFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={SEQUENTIAL_BLUE} stopOpacity={0.18} />
-              <stop offset="100%" stopColor={SEQUENTIAL_BLUE} stopOpacity={0} />
+              <stop offset="0%" stopColor={PRIMARY} stopOpacity={0.22} />
+              <stop offset="70%" stopColor={PRIMARY} stopOpacity={0.04} />
+              <stop offset="100%" stopColor={PRIMARY} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke={CHART_INK.gridline} vertical={false} />
-          <XAxis
-            dataKey="timestamp"
-            tickFormatter={(v: string) => formatDate(v)}
-            stroke={CHART_INK.axis}
-            tick={{ fill: CHART_INK.muted, fontSize: 11 }}
-            tickLine={false}
-            axisLine={{ stroke: CHART_INK.axis }}
-            minTickGap={32}
-          />
-          <YAxis
-            tickFormatter={(v: number) => formatMoney(v)}
-            stroke={CHART_INK.axis}
-            tick={{ fill: CHART_INK.muted, fontSize: 11 }}
-            tickLine={false}
-            axisLine={false}
-            width={72}
-          />
+          <CartesianGrid {...gridProps} />
+          <XAxis dataKey="timestamp" tickFormatter={(v: string) => formatDate(v)} {...xAxisProps} />
+          <YAxis {...yAxisProps} />
           <Tooltip
             content={<ChartTooltip labelFormatter={(l) => formatDate(String(l))} valueFormatter={(v) => formatMoney(v)} />}
-            cursor={{ stroke: CHART_INK.axis, strokeWidth: 1 }}
+            cursor={crosshair}
           />
           <Area
             type="monotone"
             dataKey="value"
-            stroke={SEQUENTIAL_BLUE}
+            stroke={PRIMARY}
             strokeWidth={2}
             fill="url(#netWorthFill)"
             dot={(props: { cx?: number; cy?: number; index?: number }) => {
@@ -70,17 +59,17 @@ export function NetWorthChart() {
               if (index !== lastIndex || typeof cx !== 'number' || typeof cy !== 'number') return <g key={`dot-${index}`} />;
               return (
                 <g key={`dot-${index}`}>
-                  <circle cx={cx} cy={cy} r={5} fill={SEQUENTIAL_BLUE} stroke={CHART_INK.surface} strokeWidth={2} />
-                  <text x={cx - 8} y={cy - 12} textAnchor="end" fontSize={11} fill={CHART_INK.secondary}>
-                    Now: {formatMoney(data[lastIndex].value)}
-                  </text>
+                  <circle cx={cx} cy={cy} r={4} fill={PRIMARY} stroke={CHART_INK.surface} strokeWidth={2} />
+                  <EndpointLabel x={cx} y={cy}>
+                    {formatMoney(data[lastIndex].value)}
+                  </EndpointLabel>
                 </g>
               );
             }}
-            activeDot={{ r: 4, fill: SEQUENTIAL_BLUE, stroke: CHART_INK.surface, strokeWidth: 2 }}
+            activeDot={{ r: 4, fill: PRIMARY, stroke: CHART_INK.surface, strokeWidth: 2 }}
           />
         </AreaChart>
       </ResponsiveContainer>
-    </div>
+    </Plot>
   );
 }
