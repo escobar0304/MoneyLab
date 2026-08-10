@@ -101,3 +101,17 @@ body {
   display: none;
 }
 
+
+/* Visually hidden but announced — used for table captions that would be
+   redundant on screen because the card title already says the same thing. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

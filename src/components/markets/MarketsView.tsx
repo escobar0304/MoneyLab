@@ -3,6 +3,7 @@ import { useWatchlist } from '../../lib/watchlist';
 import { Button, Card, Input, Label, SectionTitle, EmptyState } from '../ui/primitives';
 import { Reveal } from '../ui/Reveal';
 import { TradingViewChart, type Interval, type Style } from './TradingViewChart';
+import { HoldingsManager } from './HoldingsManager';
 
 const INTERVALS: { id: Interval; label: string }[] = [
   { id: '5', label: '5m' },
@@ -70,6 +71,8 @@ export function MarketsView() {
 
   return (
     <Reveal className="space-y-3" from="start">
+      <HoldingsManager />
+
       <Card>
         <SectionTitle action={<Button variant="ghost" onClick={() => setAdding((v) => !v)}>{adding ? 'Cancel' : '+ Add symbol'}</Button>}>
           Watchlist

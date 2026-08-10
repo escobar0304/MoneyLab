@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { useStore } from '../../lib/store';
+import { useStore, useHoldings, useBudgets } from '../../lib/store';
 import {
   totalBalance,
   totalOutflowForMonth,
@@ -10,7 +10,17 @@ import {
   endOfMonth,
 } from '../../lib/derive';
 import { Card, SectionTitle, EmptyState } from '../ui/primitives';
-import { formatMoney } from '../../lib/format';
+import { ChartCard } from '../ui/ChartCard';
+import {
+  netWorthTable,
+  incomeVsExpensesTable,
+  spendByCategoryTable,
+  categoryChangeTable,
+  spendOverTimeTable,
+  savingsRateTable,
+  budgetsTable,
+} from '../../lib/chartTables';
+import { formatMoney, monthLabel } from '../../lib/format';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { Reveal } from '../ui/Reveal';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
@@ -21,6 +31,10 @@ import { SpendByCategoryChart } from './SpendByCategoryChart';
 import { SpendByCategoryPie } from './SpendByCategoryPie';
 import { BudgetMeter } from './BudgetMeter';
 import { CategoryDumbbell } from './CategoryDumbbell';
+import { BudgetProgress } from './BudgetProgress';
+import { SavingsRateChart } from './SavingsRateChart';
+import { Anomalies } from './Anomalies';
+import { forecastMonth, sameMonthLastYear, portfolioSummary } from '../../lib/analysis';
 
 function Delta({ delta, goodWhen, period = 'last month' }: { delta?: number; goodWhen: 'up' | 'down'; period?: string }) {
   if (delta === undefined || delta === 0) {
@@ -62,28 +76,10 @@ function StatTile({
   );
 }
 
-function ChartCard({
-  title,
-  subtitle,
-  children,
-  className = '',
-}: {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <Card className={className}>
-      <p className="text-sm font-semibold text-ink">{title}</p>
-      {subtitle && <p className="mt-0.5 text-xs text-ink-muted">{subtitle}</p>}
-      <div className="mt-3">{children}</div>
-    </Card>
-  );
-}
-
 export function OverviewView() {
   const events = useStore((s) => s.events);
+  const holdings = useHoldings();
+  const budgets = useBudgets();
   const heroRef = useRef<HTMLParagraphElement>(null);
 
   const currentMonth = monthKey(new Date().toISOString());
@@ -104,6 +100,18 @@ export function OverviewView() {
     return spend - totalOutflowForMonth(events, previousMonthKey(month));
   }, [spend, events, monthsActive.length, month]);
   const saved = income - spend;
+
+  const forecast = useMemo(() => forecastMonth(events, month), [events, month]);
+  // Only offered when the same month a year ago actually has data; a delta
+  // against an empty month would read as a 100% drop rather than "no data".
+  const lastYearMonth = sameMonthLastYear(month);
+  const lastYearSpend = useMemo(() => totalOutflowForMonth(events, lastYearMonth), [events, lastYearMonth]);
+  const seasonalDelta = lastYearSpend > 0 ? spend - lastYearSpend : undefined;
+
+  // Net worth only differs from cash once something is actually held, so the
+  // hero stays a single honest number until there is a portfolio to add.
+  const portfolio = useMemo(() => portfolioSummary(holdings), [holdings]);
+  const netWorth = balance + portfolio.value;
 
   useGSAP(
     () => {
@@ -126,20 +134,37 @@ export function OverviewView() {
     <div className="space-y-6">
       {/* Hero figure — exactly one per view, and the only number at this size. */}
       <div>
-        <p className="text-xs font-medium text-ink-muted">Balance</p>
+        <p className="text-xs font-medium text-ink-muted">{holdings.length > 0 ? 'Net worth' : 'Balance'}</p>
         <p ref={heroRef} className="mt-1 text-5xl font-semibold tracking-tight text-ink">
-          <AnimatedNumber value={balance} format={formatMoney} />
+          <AnimatedNumber value={netWorth} format={formatMoney} />
         </p>
-        <Delta delta={balanceDelta} goodWhen="up" />
+        {holdings.length > 0 ? (
+          <p className="mt-1.5 text-xs text-ink-muted">
+            <span className="num-col text-ink-secondary">{formatMoney(balance)}</span> cash ·{' '}
+            <span className="num-col text-ink-secondary">{formatMoney(portfolio.value)}</span> invested
+            {portfolio.gainPct !== null && (
+              <>
+                {' '}
+                (<span className="num-col" style={{ color: portfolio.gain >= 0 ? 'var(--color-positive)' : 'var(--color-complement)' }}>
+                  {portfolio.gain >= 0 ? '+' : '−'}
+                  {formatMoney(Math.abs(portfolio.gain))}
+                </span>
+                )
+              </>
+            )}
+          </p>
+        ) : (
+          <Delta delta={balanceDelta} goodWhen="up" />
+        )}
       </div>
 
       {/* Trends. One series over time is an area; two distinct series are lines.
           All three timeline charts share a crosshair through syncId. */}
       <Reveal className="grid grid-cols-1 gap-3 lg:grid-cols-3" from="start">
-        <ChartCard title="Net worth over time" className="lg:col-span-2">
+        <ChartCard title="Net worth over time" table={netWorthTable(events)} className="lg:col-span-2">
           <NetWorthChart />
         </ChartCard>
-        <ChartCard title="Income vs. expenses">
+        <ChartCard title="Income vs. expenses" table={incomeVsExpensesTable(events)}>
           <IncomeVsExpensesChart />
         </ChartCard>
       </Reveal>
@@ -163,21 +188,69 @@ export function OverviewView() {
           </StatTile>
           <StatTile label="Spent this month" value={spend}>
             <Delta delta={spendDelta} goodWhen="down" />
+            {seasonalDelta !== undefined && <Delta delta={seasonalDelta} goodWhen="down" period={monthLabel(lastYearMonth)} />}
           </StatTile>
         </Reveal>
 
+        {forecast.daysRemaining > 0 && (
+          <Reveal key={`forecast-${month}`} className="mt-3 grid grid-cols-1">
+            <Card>
+              <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+                <div>
+                  <p className="text-xs font-medium text-ink-muted">Projected month end</p>
+                  <p className="mt-1 text-3xl font-semibold text-ink">
+                    <AnimatedNumber value={forecast.total} format={formatMoney} />
+                  </p>
+                </div>
+                {/* The three parts have very different certainties, so they are
+                    shown separately rather than hidden inside one number. */}
+                <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+                  <div>
+                    <dt className="text-ink-muted">Already spent</dt>
+                    <dd className="num-col text-ink-secondary">{formatMoney(forecast.actual)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-muted">Recurring still due</dt>
+                    <dd className="num-col text-ink-secondary">{formatMoney(forecast.scheduled)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-ink-muted">At current pace</dt>
+                    <dd className="num-col text-ink-secondary">{formatMoney(forecast.projected)}</dd>
+                  </div>
+                </dl>
+              </div>
+              <p className="mt-2 text-xs text-ink-muted">
+                {forecast.daysRemaining} {forecast.daysRemaining === 1 ? 'day' : 'days'} left
+                {!forecast.reliable && ' · too early in the month for the pace estimate to mean much'}
+              </p>
+            </Card>
+          </Reveal>
+        )}
+
         <Reveal key={`detail-${month}`} className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-5" from="start" stagger={0.06}>
-          <ChartCard title="Where it went" subtitle="Share of this month's spending" className="xl:col-span-2">
+          <ChartCard title="Where it went" subtitle="Share of this month's spending" table={spendByCategoryTable(events, month)} className="xl:col-span-2">
             <SpendByCategoryPie month={month} />
           </ChartCard>
-          <ChartCard title="What changed" subtitle="Every category, last month to this" className="xl:col-span-3">
+          <ChartCard title="What changed" subtitle="Every category, last month to this" table={categoryChangeTable(events, month)} className="xl:col-span-3">
             <CategoryDumbbell month={month} />
           </ChartCard>
         </Reveal>
       </div>
 
-      <Reveal className="grid grid-cols-1">
-        <ChartCard title="Spend by category over time" subtitle="Stacked to the monthly total">
+      <Reveal key={`budgets-${month}`} className="grid grid-cols-1 gap-3 lg:grid-cols-2" from="start">
+        <ChartCard title="Budgets" subtitle="Against this month's limits" table={budgetsTable(events, budgets, month)}>
+          <BudgetProgress month={month} />
+        </ChartCard>
+        <ChartCard title="Worth a look" subtitle="Charges that are large for their category">
+          <Anomalies month={month} />
+        </ChartCard>
+      </Reveal>
+
+      <Reveal className="grid grid-cols-1 gap-3 lg:grid-cols-2" from="start">
+        <ChartCard title="Savings rate" subtitle="Share of income kept, per month" table={savingsRateTable(events)}>
+          <SavingsRateChart />
+        </ChartCard>
+        <ChartCard title="Spend by category over time" subtitle="Stacked to the monthly total" table={spendOverTimeTable(events)}>
           <SpendByCategoryChart />
         </ChartCard>
       </Reveal>

@@ -5,7 +5,7 @@ import { balanceSeries } from '../../lib/derive';
 import { CHART_INK, PRIMARY } from '../../lib/chartTheme';
 import { formatMoney, formatDate } from '../../lib/format';
 import { ChartTooltip } from '../ui/ChartTooltip';
-import { EndpointLabel, Plot, crosshair, gridProps, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
+import { EndpointLabel, Plot, crosshair, gridProps, niceScale, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
 import { EmptyState } from '../ui/primitives';
 
 export function NetWorthChart() {
@@ -15,6 +15,7 @@ export function NetWorthChart() {
   // (Recharts syncs by data index, not by matching X value) points at the same month.
   const data = useMemo(() => balanceSeries(events).slice(-6), [events]);
   const lastIndex = data.length - 1;
+  const scale = useMemo(() => niceScale(Math.max(...data.map((d) => d.value), 0)), [data]);
 
   if (data.length === 0) {
     return <EmptyState title="No history yet" description="Net worth over time will show up here once you log income or expenses." />;
@@ -43,7 +44,7 @@ export function NetWorthChart() {
           </defs>
           <CartesianGrid {...gridProps} />
           <XAxis dataKey="timestamp" tickFormatter={(v: string) => formatDate(v)} {...xAxisProps} />
-          <YAxis {...yAxisProps} />
+          <YAxis {...yAxisProps} {...(scale ?? {})} />
           <Tooltip
             content={<ChartTooltip labelFormatter={(l) => formatDate(String(l))} valueFormatter={(v) => formatMoney(v)} />}
             cursor={crosshair}

@@ -1,4 +1,5 @@
-import { useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type LabelHTMLAttributes, type MouseEvent, type ReactNode, type SelectHTMLAttributes } from 'react';
+import { createPortal } from 'react-dom';
+import { useEffect, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type LabelHTMLAttributes, type MouseEvent, type ReactNode, type SelectHTMLAttributes } from 'react';
 
 /**
  * Every panel in the app, on every page — so the spotlight is a property of the
@@ -100,9 +101,31 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tones[tone]}`}>{children}</span>;
 }
 
+/**
+ * Rendered through a portal to document.body, deliberately.
+ *
+ * `position: fixed` resolves against the viewport only while no ancestor has a
+ * transform. Any GSAP tween that leaves a transform behind — a page transition,
+ * a card reveal — silently promotes that ancestor to the containing block, and
+ * an intermediate `overflow: hidden` (every Card has one) then clips the modal
+ * to a sliver. The portal takes the modal out of that subtree entirely, so it
+ * cannot be re-broken by an animation added somewhere far away later.
+ */
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-surface-0/80 p-4 pt-16 sm:pt-24">
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-surface-0/80 p-4 pt-16 sm:pt-24"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="w-full max-w-md rounded-xl border border-hairline bg-surface-1 p-5 shadow-2xl shadow-black/40">
         <div className="mb-4 flex items-center justify-between border-b border-hairline pb-3">
           <h3 className="text-sm font-semibold text-ink">{title}</h3>
@@ -112,7 +135,8 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

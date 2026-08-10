@@ -5,7 +5,7 @@ import { monthsWithActivity, totalIncomeForMonth, totalOutflowForMonth } from '.
 import { monthLabel, formatMoney } from '../../lib/format';
 import { PRIMARY, COMPLEMENT, CHART_INK } from '../../lib/chartTheme';
 import { ChartTooltip } from '../ui/ChartTooltip';
-import { ChartLegend, EndpointLabel, Plot, crosshair, gridProps, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
+import { ChartLegend, EndpointLabel, Plot, crosshair, gridProps, niceScale, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
 import { EmptyState } from '../ui/primitives';
 
 export function IncomeVsExpensesChart() {
@@ -20,6 +20,7 @@ export function IncomeVsExpensesChart() {
     }));
   }, [events]);
   const lastIndex = data.length - 1;
+  const scale = useMemo(() => niceScale(Math.max(...data.flatMap((d) => [d.Income, d.Expenses]), 0)), [data]);
 
   if (data.length === 0) {
     return <EmptyState title="No income or expenses logged yet" description="Cash flow will appear here once you log activity." />;
@@ -31,7 +32,7 @@ export function IncomeVsExpensesChart() {
         <LineChart data={data} syncId="home-timeline" margin={plotMargin}>
           <CartesianGrid {...gridProps} />
           <XAxis dataKey="month" tickFormatter={(v: string) => monthLabel(v).split(' ')[0]} {...xAxisProps} />
-          <YAxis {...yAxisProps} />
+          <YAxis {...yAxisProps} {...(scale ?? {})} />
           <Tooltip
             content={<ChartTooltip labelFormatter={(l) => monthLabel(String(l))} valueFormatter={(v) => formatMoney(v)} />}
             cursor={crosshair}

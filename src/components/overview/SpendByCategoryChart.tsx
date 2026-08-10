@@ -5,7 +5,7 @@ import { monthsWithActivity, spendByCategoryForMonth } from '../../lib/derive';
 import { monthLabel, formatMoney } from '../../lib/format';
 import { CHART_INK, MAX_CATEGORICAL_SERIES, OTHER_LABEL, categoryColorMap, rankedCategories } from '../../lib/chartTheme';
 import { ChartTooltip } from '../ui/ChartTooltip';
-import { ChartLegend, Plot, barCursor, gridProps, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
+import { ChartLegend, Plot, barCursor, gridProps, niceScale, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
 import { EmptyState } from '../ui/primitives';
 
 export function SpendByCategoryChart() {
@@ -41,6 +41,12 @@ export function SpendByCategoryChart() {
     return { data: rows, categories: seenBeyondTop.size > 0 ? [...topCats, OTHER_LABEL] : topCats };
   }, [events]);
 
+  // Stacked, so the scale is driven by the column total, not any one series.
+  const scale = useMemo(
+    () => niceScale(Math.max(...data.map((row) => Object.entries(row).reduce((sum, [k, v]) => (k === 'month' ? sum : sum + Number(v || 0)), 0)), 0)),
+    [data]
+  );
+
   if (data.length === 0) {
     return <EmptyState title="No expenses logged yet" description="Spend by category will appear here once you log expenses." />;
   }
@@ -53,7 +59,7 @@ export function SpendByCategoryChart() {
         <BarChart data={data} syncId="home-timeline" maxBarSize={44} margin={plotMargin}>
           <CartesianGrid {...gridProps} />
           <XAxis dataKey="month" tickFormatter={(v: string) => monthLabel(v).split(' ')[0]} {...xAxisProps} />
-          <YAxis {...yAxisProps} />
+          <YAxis {...yAxisProps} {...(scale ?? {})} />
           <Tooltip
             cursor={barCursor}
             content={<ChartTooltip labelFormatter={(l) => monthLabel(String(l))} valueFormatter={(v) => formatMoney(v)} />}

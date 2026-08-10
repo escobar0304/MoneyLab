@@ -58,6 +58,28 @@ const NICE_STEPS = [1, 2, 2.5, 5, 10];
  * Returns null for domains crossing zero, where a zero-anchored scale would be
  * the wrong answer — those fall back to Recharts' own handling.
  */
+/**
+ * The same rounding for a scale that isn't anchored at zero.
+ *
+ * A savings rate runs from negative to positive, so `niceScale`'s zero floor is
+ * wrong for it — but a raw min/max domain gives ticks like -14 / 16 / 46 / 76 /
+ * 101, which are as arbitrary as they look.
+ */
+export function niceSpan(lo: number, hi: number, targetTicks = 5): { domain: [number, number]; ticks: number[] } {
+  const low = Math.min(lo, hi);
+  const high = Math.max(lo, hi);
+  const span = high - low || Math.abs(high) || 1;
+  const rawStep = span / (targetTicks - 1);
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const step = (NICE_STEPS.find((s) => s * magnitude >= rawStep) ?? 10) * magnitude;
+
+  const bottom = Math.floor(low / step) * step;
+  const top = Math.ceil(high / step) * step;
+  const ticks: number[] = [];
+  for (let v = bottom; v <= top + step / 2; v += step) ticks.push(Math.round(v * 1e6) / 1e6);
+  return { domain: [bottom, top], ticks };
+}
+
 export function niceScale(max: number, targetTicks = 5): { domain: [number, number]; ticks: number[] } | null {
   if (!Number.isFinite(max) || max <= 0) return null;
   const rawStep = max / (targetTicks - 1);
