@@ -5,6 +5,13 @@ dist-ssr
 .DS_Store
 *.tsbuildinfo
 
+# Playwright output. Traces and screenshots are per-run debris; the specs
+# themselves live in e2e/ and are committed.
+playwright-report/
+test-results/
+blob-report/
+/playwright/.cache/
+
 # Claude Code project config (local paths/permissions, not meant to be shared)
 .claude/
 

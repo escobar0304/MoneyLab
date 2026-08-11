@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
 import { LogoMark, LogoWordmark } from './Logo';
-import { IconOverview, IconEntries, IconMarkets, IconSettings, IconChevronsLeft } from './icons';
+import { IconOverview, IconEntries, IconPlan, IconMarkets, IconSettings, IconChevronsLeft } from './icons';
 
-export type Tab = 'overview' | 'entries' | 'markets' | 'settings';
+export type Tab = 'overview' | 'entries' | 'plan' | 'markets' | 'settings';
 
 const TABS: { id: Tab; label: string; Icon: typeof IconOverview }[] = [
   { id: 'overview', label: 'Overview', Icon: IconOverview },
   { id: 'entries', label: 'Entries', Icon: IconEntries },
+  { id: 'plan', label: 'Plan', Icon: IconPlan },
   { id: 'markets', label: 'Markets', Icon: IconMarkets },
   { id: 'settings', label: 'Settings', Icon: IconSettings },
 ];

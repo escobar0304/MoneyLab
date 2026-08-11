@@ -59,6 +59,18 @@ export function IconMarkets(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Plan — a target. Concentric rings survive 18px where a flag or a calendar
+ * turns to mush, and "aiming at something" is what the page is about. */
+export function IconPlan(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="0.6" fill="currentColor" />
+    </Icon>
+  );
+}
+
 export function IconChevronsLeft(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

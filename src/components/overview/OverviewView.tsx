@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { useStore, useHoldings, useBudgets } from '../../lib/store';
+import { useStore, usePositions, useBudgets, useDebts } from '../../lib/store';
+import { foldTrades, foldDividends, investmentSummary } from '../../lib/investments';
+import { totalOwed } from '../../lib/debt';
 import {
   totalBalance,
   totalOutflowForMonth,
@@ -34,7 +36,7 @@ import { CategoryDumbbell } from './CategoryDumbbell';
 import { BudgetProgress } from './BudgetProgress';
 import { SavingsRateChart } from './SavingsRateChart';
 import { Anomalies } from './Anomalies';
-import { forecastMonth, sameMonthLastYear, portfolioSummary } from '../../lib/analysis';
+import { forecastMonth, sameMonthLastYear } from '../../lib/analysis';
 
 function Delta({ delta, goodWhen, period = 'last month' }: { delta?: number; goodWhen: 'up' | 'down'; period?: string }) {
   if (delta === undefined || delta === 0) {
@@ -78,7 +80,8 @@ function StatTile({
 
 export function OverviewView() {
   const events = useStore((s) => s.events);
-  const holdings = useHoldings();
+  const positions = usePositions();
+  const debts = useDebts();
   const budgets = useBudgets();
   const heroRef = useRef<HTMLParagraphElement>(null);
 
@@ -108,10 +111,17 @@ export function OverviewView() {
   const lastYearSpend = useMemo(() => totalOutflowForMonth(events, lastYearMonth), [events, lastYearMonth]);
   const seasonalDelta = lastYearSpend > 0 ? spend - lastYearSpend : undefined;
 
-  // Net worth only differs from cash once something is actually held, so the
-  // hero stays a single honest number until there is a portfolio to add.
-  const portfolio = useMemo(() => portfolioSummary(holdings), [holdings]);
-  const netWorth = balance + portfolio.value;
+  // Net worth only differs from cash once something is actually held or owed,
+  // so the hero stays a single honest number until there is something to add.
+  const portfolio = useMemo(
+    () => investmentSummary(positions, foldTrades(events), foldDividends(events)),
+    [positions, events]
+  );
+  const owed = useMemo(() => totalOwed(debts), [debts]);
+  // Assets minus liabilities. Counting the flat's deposit while ignoring the
+  // mortgage against it is the single easiest way for this figure to lie.
+  const netWorth = balance + portfolio.value - owed;
+  const composed = positions.length > 0 || owed > 0;
 
   useGSAP(
     () => {
@@ -134,22 +144,39 @@ export function OverviewView() {
     <div className="space-y-6">
       {/* Hero figure — exactly one per view, and the only number at this size. */}
       <div>
-        <p className="text-xs font-medium text-ink-muted">{holdings.length > 0 ? 'Net worth' : 'Balance'}</p>
-        <p ref={heroRef} className="mt-1 text-5xl font-semibold tracking-tight text-ink">
+        <p className="text-xs font-medium text-ink-muted">{composed ? 'Net worth' : 'Balance'}</p>
+        <p ref={heroRef} className={`mt-1 text-5xl font-semibold tracking-tight ${netWorth < 0 ? 'text-critical-text' : 'text-ink'}`}>
           <AnimatedNumber value={netWorth} format={formatMoney} />
         </p>
-        {holdings.length > 0 ? (
+        {composed ? (
+          // The parts are spelled out because a single net figure hides which
+          // side moved — a good month and a repriced portfolio look identical.
           <p className="mt-1.5 text-xs text-ink-muted">
-            <span className="num-col text-ink-secondary">{formatMoney(balance)}</span> cash ·{' '}
-            <span className="num-col text-ink-secondary">{formatMoney(portfolio.value)}</span> invested
-            {portfolio.gainPct !== null && (
+            <span className="num-col text-ink-secondary">{formatMoney(balance)}</span> cash
+            {positions.length > 0 && (
               <>
-                {' '}
-                (<span className="num-col" style={{ color: portfolio.gain >= 0 ? 'var(--color-positive)' : 'var(--color-complement)' }}>
-                  {portfolio.gain >= 0 ? '+' : '−'}
-                  {formatMoney(Math.abs(portfolio.gain))}
-                </span>
-                )
+                {' · '}
+                <span className="num-col text-ink-secondary">{formatMoney(portfolio.value)}</span> invested
+                {portfolio.returnPct !== null && (
+                  <>
+                    {' '}
+                    (
+                    <span
+                      className="num-col"
+                      style={{ color: portfolio.totalReturn >= 0 ? 'var(--color-positive)' : 'var(--color-complement)' }}
+                    >
+                      {portfolio.totalReturn >= 0 ? '+' : '−'}
+                      {formatMoney(Math.abs(portfolio.totalReturn))}
+                    </span>
+                    )
+                  </>
+                )}
+              </>
+            )}
+            {owed > 0 && (
+              <>
+                {' · '}
+                <span className="num-col text-complement">−{formatMoney(owed)}</span> owed
               </>
             )}
           </p>

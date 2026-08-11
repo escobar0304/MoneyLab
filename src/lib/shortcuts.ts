@@ -10,6 +10,7 @@ export interface Shortcut {
 export const SHORTCUTS: Shortcut[] = [
   { keys: 'G then O', description: 'Go to Overview', group: 'Navigate' },
   { keys: 'G then E', description: 'Go to Entries', group: 'Navigate' },
+  { keys: 'G then P', description: 'Go to Plan', group: 'Navigate' },
   { keys: 'G then M', description: 'Go to Markets', group: 'Navigate' },
   { keys: 'G then S', description: 'Go to Settings', group: 'Navigate' },
   { keys: 'N', description: 'Log a new expense', group: 'Act' },
@@ -36,8 +37,12 @@ const CHORD_MS = 1200;
  * single letters are free here — the app has no text-first surface — and every
  * useful modifier combination is already claimed by the browser.
  */
+/** Kept in step with `Tab` in Sidebar.tsx; declared here so the keyboard layer
+ * doesn't import a component just for a union. */
+export type ShortcutTab = 'overview' | 'entries' | 'plan' | 'markets' | 'settings';
+
 export function useShortcuts(handlers: {
-  onNavigate: (tab: 'overview' | 'entries' | 'markets' | 'settings') => void;
+  onNavigate: (tab: ShortcutTab) => void;
   onNewExpense: () => void;
   onUndo: () => void;
   onHelp: () => void;
@@ -60,11 +65,11 @@ export function useShortcuts(handlers: {
       const key = e.key.toLowerCase();
 
       if (Date.now() < chordUntil) {
-        const tab = { o: 'overview', e: 'entries', m: 'markets', s: 'settings' }[key];
+        const tab = { o: 'overview', e: 'entries', p: 'plan', m: 'markets', s: 'settings' }[key];
         chordUntil = 0;
         if (tab) {
           e.preventDefault();
-          handlers.onNavigate(tab as 'overview' | 'entries' | 'markets' | 'settings');
+          handlers.onNavigate(tab as ShortcutTab);
           return;
         }
       }

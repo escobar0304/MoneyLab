@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { foldRecurring, foldCategories, foldBudgets, foldPostedMonths, foldSkips } from './entities';
+import {
+  foldRecurring,
+  foldCategories,
+  foldBudgets,
+  foldPostedMonths,
+  foldSkips,
+  foldCleared,
+  reconcile,
+  renameCategoryIn,
+} from './entities';
 import { normalizeEvents } from './migrations';
 import { occurrencesUpTo } from './recurrence';
 import type { LedgerEvent } from './types';
@@ -129,5 +138,125 @@ describe('foldBudgets', () => {
       { id: '2', type: 'category_remove', timestamp: '2026-02-01T00:00:00.000Z', name: 'Food' },
     ];
     expect(foldBudgets(events).size).toBe(0);
+  });
+});
+
+const expense = (id: string, category: string, amount = 10, timestamp = '2026-03-01T00:00:00.000Z'): LedgerEvent => ({
+  id,
+  type: 'expense',
+  timestamp,
+  amount,
+  category,
+});
+
+describe('renameCategoryIn', () => {
+  const base: LedgerEvent[] = [
+    { id: 'c1', type: 'category_upsert', timestamp: '2026-01-01T00:00:00.000Z', name: 'Food' },
+    { id: 'c2', type: 'category_upsert', timestamp: '2026-01-01T00:00:00.000Z', name: 'Rent' },
+    expense('e1', 'Food'),
+    expense('e2', 'Rent'),
+    { id: 'b1', type: 'budget_set', timestamp: '2026-01-01T00:00:00.000Z', category: 'Food', amount: 300 },
+  ];
+
+  it('renames the category on every entry, the picker and the budget', () => {
+    const { events, merged } = renameCategoryIn(base, 'Food', 'Groceries');
+    expect(merged).toBe(false);
+    expect(foldCategories(events)).toEqual(['Groceries', 'Rent']);
+    expect(events.filter((e) => e.type === 'expense' && e.category === 'Groceries')).toHaveLength(1);
+    expect(foldBudgets(events).get('Groceries')).toBe(300);
+    expect(foldBudgets(events).has('Food')).toBe(false);
+  });
+
+  it('renames the category named by a recurring rule', () => {
+    // Otherwise the next generated charge would quietly recreate the old name.
+    const withRule: LedgerEvent[] = [
+      ...base,
+      {
+        id: 'r1',
+        type: 'recurring_upsert',
+        timestamp: '2026-01-01T00:00:00.000Z',
+        rule: { id: 'r', kind: 'expense', label: 'Weekly shop', amount: 50, category: 'Food', cycle: 'monthly', startDate: '2026-01-01', active: true },
+      },
+    ];
+    const { events } = renameCategoryIn(withRule, 'Food', 'Groceries');
+    expect(foldRecurring(events, 'expense')[0].category).toBe('Groceries');
+    expect(foldCategories(events)).not.toContain('Food');
+  });
+
+  it('merges into an existing category, moving its entries', () => {
+    const { events, merged } = renameCategoryIn(base, 'Food', 'Rent');
+    expect(merged).toBe(true);
+    expect(foldCategories(events)).toEqual(['Rent']);
+    expect(events.filter((e) => e.type === 'expense' && e.category === 'Rent')).toHaveLength(2);
+  });
+
+  it('drops the source budget on a merge so the target keeps its own', () => {
+    const withBoth: LedgerEvent[] = [
+      ...base,
+      { id: 'b2', type: 'budget_set', timestamp: '2026-02-01T00:00:00.000Z', category: 'Rent', amount: 900 },
+    ];
+    // Rewriting the source's limit onto the target would let whichever was set
+    // most recently silently win.
+    const { events } = renameCategoryIn(withBoth, 'Food', 'Rent');
+    expect(foldBudgets(events).get('Rent')).toBe(900);
+    expect(foldBudgets(events).size).toBe(1);
+  });
+
+  it('treats a case fix as a rename, not a merge into itself', () => {
+    const { events, merged } = renameCategoryIn(base, 'Food', 'food');
+    expect(merged).toBe(false);
+    expect(foldCategories(events)).toEqual(['Rent', 'food']);
+  });
+
+  it('leaves the ledger untouched for an empty or identical name', () => {
+    expect(renameCategoryIn(base, 'Food', '  ').events).toBe(base);
+    expect(renameCategoryIn(base, 'Food', 'Food').events).toBe(base);
+  });
+
+  it('does not touch other categories', () => {
+    const { events } = renameCategoryIn(base, 'Food', 'Groceries');
+    expect(events.filter((e) => e.type === 'expense' && e.category === 'Rent')).toHaveLength(1);
+  });
+});
+
+describe('foldCleared', () => {
+  it('tracks the latest assertion per entry', () => {
+    const events: LedgerEvent[] = [
+      expense('e1', 'Food'),
+      { id: 'k1', type: 'entry_cleared', timestamp: '2026-03-02T00:00:00.000Z', entryId: 'e1', cleared: true },
+    ];
+    expect(foldCleared(events).has('e1')).toBe(true);
+  });
+
+  it('lets an entry be un-ticked again', () => {
+    const events: LedgerEvent[] = [
+      expense('e1', 'Food'),
+      { id: 'k1', type: 'entry_cleared', timestamp: '2026-03-02T00:00:00.000Z', entryId: 'e1', cleared: true },
+      { id: 'k2', type: 'entry_cleared', timestamp: '2026-03-03T00:00:00.000Z', entryId: 'e1', cleared: false },
+    ];
+    expect(foldCleared(events).has('e1')).toBe(false);
+  });
+});
+
+describe('reconcile', () => {
+  const events: LedgerEvent[] = [
+    { id: 'i1', type: 'income', timestamp: '2026-03-01T00:00:00.000Z', amount: 1000, label: 'Salary' },
+    expense('e1', 'Food', 200),
+    expense('e2', 'Rent', 300),
+    { id: 'k1', type: 'entry_cleared', timestamp: '2026-03-04T00:00:00.000Z', entryId: 'i1', cleared: true },
+    { id: 'k2', type: 'entry_cleared', timestamp: '2026-03-04T00:00:00.000Z', entryId: 'e1', cleared: true },
+  ];
+
+  it('splits the balance into verified and not', () => {
+    // 1000 in and 200 out are ticked off; the 300 rent is not.
+    expect(reconcile(events)).toEqual({ clearedBalance: 800, unclearedBalance: -300, clearedCount: 2, unclearedCount: 1 });
+  });
+
+  it('can be scoped to the entries on screen', () => {
+    expect(reconcile(events, new Set(['e1', 'e2']))).toMatchObject({ clearedBalance: -200, unclearedBalance: -300 });
+  });
+
+  it('counts nothing as cleared when nothing has been ticked', () => {
+    expect(reconcile([events[0], events[1]])).toMatchObject({ clearedBalance: 0, clearedCount: 0, unclearedCount: 2 });
   });
 });

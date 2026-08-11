@@ -1,37 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { portfolioSummary } from './analysis';
 import { foldHoldings } from './entities';
 import { toBase, formatForeign, BASE_CURRENCY } from './currency';
 import type { Holding, LedgerEvent } from './types';
 
+// Portfolio valuation moved to investments.ts and is covered by
+// investments.test.ts, where the trade log it now depends on also lives.
+
 const h = (over: Partial<Holding>): Holding => ({ id: 'h', symbol: 'X', label: 'X', quantity: 1, avgCost: 100, ...over });
-
-describe('portfolioSummary', () => {
-  it('values a priced holding at the market price', () => {
-    expect(portfolioSummary([h({ quantity: 2, avgCost: 100, lastPrice: 150 })])).toMatchObject({ cost: 200, value: 300, gain: 100, gainPct: 50 });
-  });
-
-  it('falls back to cost for an unpriced holding rather than counting it as zero', () => {
-    const s = portfolioSummary([h({ quantity: 2, avgCost: 100 })]);
-    expect({ cost: s.cost, value: s.value, gain: s.gain, unpriced: s.unpriced }).toEqual({ cost: 200, value: 200, gain: 0, unpriced: 1 });
-  });
-
-  it('reports a loss without flipping the sign', () => {
-    expect(portfolioSummary([h({ quantity: 1, avgCost: 100, lastPrice: 60 })])).toMatchObject({ gain: -40, gainPct: -40 });
-  });
-
-  it('surfaces the oldest price so a stale valuation can be qualified', () => {
-    const s = portfolioSummary([
-      h({ id: 'a', quantity: 1, avgCost: 10, lastPrice: 12, lastPriceAt: '2026-08-01T00:00:00.000Z' }),
-      h({ id: 'b', quantity: 1, avgCost: 10, lastPrice: 9, lastPriceAt: '2026-06-01T00:00:00.000Z' }),
-    ]);
-    expect(s.stalestPriceAt).toBe('2026-06-01T00:00:00.000Z');
-  });
-
-  it('has no gain percentage when nothing was bought', () => {
-    expect(portfolioSummary([]).gainPct).toBeNull();
-  });
-});
 
 describe('foldHoldings', () => {
   it('applies the latest upsert and drops removals', () => {

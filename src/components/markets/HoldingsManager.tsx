@@ -1,57 +1,290 @@
 import { useMemo, useState } from 'react';
-import { useStore, useHoldings } from '../../lib/store';
-import { useWatchlist } from '../../lib/watchlist';
-import { portfolioSummary } from '../../lib/analysis';
-import { formatMoney, formatDate } from '../../lib/format';
+import { useStore, usePositions } from '../../lib/store';
+import { foldTrades, foldDividends, investmentSummary, type Position } from '../../lib/investments';
+import { formatMoney, formatDate, todayInputValue } from '../../lib/format';
 import { PRIMARY, COMPLEMENT } from '../../lib/chartTheme';
-import { Button, Card, Input, Label, SectionTitle } from '../ui/primitives';
-import type { Holding } from '../../lib/types';
-
-interface Draft {
-  symbol: string;
-  label: string;
-  quantity: string;
-  avgCost: string;
-  lastPrice: string;
-}
-
-const empty = (): Draft => ({ symbol: '', label: '', quantity: '', avgCost: '', lastPrice: '' });
+import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
+import { SymbolPicker } from './SymbolPicker';
 
 function daysOld(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 }
 
-function HoldingRow({ holding }: { holding: Holding }) {
+/** Gains are the one place colour carries meaning, so the sign is spelled out
+ * as well — a reader who cannot separate the two hues still gets the direction. */
+function Signed({ value, suffix }: { value: number; suffix?: string }) {
+  return (
+    <span className="num-col font-medium" style={{ color: value >= 0 ? PRIMARY : COMPLEMENT }}>
+      {value >= 0 ? '+' : '−'}
+      {formatMoney(Math.abs(value))}
+      {suffix}
+    </span>
+  );
+}
+
+interface TradeDraft {
+  side: 'buy' | 'sell';
+  quantity: string;
+  price: string;
+  fees: string;
+  date: string;
+}
+
+const emptyTrade = (): TradeDraft => ({ side: 'buy', quantity: '', price: '', fees: '', date: todayInputValue() });
+
+/** The trade and dividend log for one holding, plus the forms that add to it. */
+function PositionDetail({ position }: { position: Position }) {
+  const events = useStore((s) => s.events);
+  const addTrade = useStore((s) => s.addTrade);
+  const addDividend = useStore((s) => s.addDividend);
+  const removeEvent = useStore((s) => s.removeInvestmentEvent);
+
+  const [trade, setTrade] = useState<TradeDraft>(emptyTrade());
+  const [dividend, setDividend] = useState({ amount: '', date: todayInputValue(), asIncome: false });
+
+  const log = useMemo(() => {
+    const trades = foldTrades(events).filter((t) => t.holdingId === position.holding.id);
+    const dividends = foldDividends(events).filter((d) => d.holdingId === position.holding.id);
+    return [...trades, ...dividends].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  }, [events, position.holding.id]);
+
+  const quantity = Number(trade.quantity);
+  const price = Number(trade.price);
+  const tradeValid =
+    quantity > 0 && price > 0 && (trade.side === 'buy' || quantity <= position.quantity || position.tradeCount === 0);
+  const overselling = trade.side === 'sell' && quantity > position.quantity && position.tradeCount > 0;
+
+  const submitTrade = () => {
+    if (!tradeValid) return;
+    addTrade({
+      holdingId: position.holding.id,
+      side: trade.side,
+      quantity,
+      price,
+      fees: Number(trade.fees) > 0 ? Number(trade.fees) : undefined,
+      date: new Date(trade.date).toISOString(),
+    });
+    setTrade(emptyTrade());
+  };
+
+  const submitDividend = () => {
+    const amount = Number(dividend.amount);
+    if (!(amount > 0)) return;
+    addDividend({
+      holdingId: position.holding.id,
+      amount,
+      date: new Date(dividend.date).toISOString(),
+      alsoLogAsIncome: dividend.asIncome,
+      label: `Dividend · ${position.holding.label}`,
+    });
+    setDividend({ amount: '', date: todayInputValue(), asIncome: false });
+  };
+
+  return (
+    <div className="mt-3 space-y-3 border-t border-hairline pt-3">
+      {position.tradeCount === 0 && position.quantity > 0 && (
+        <p className="rounded-lg border border-hairline bg-surface-0 p-2.5 text-xs text-ink-muted">
+          This position was entered by hand. Logging a trade switches it to the trade log — the{' '}
+          <span className="num-col text-ink-secondary">{position.quantity}</span> units already recorded become an opening
+          purchase at <span className="num-col text-ink-secondary">{formatMoney(position.avgCost)}</span>, so nothing is lost.
+        </p>
+      )}
+
+      <div className="rounded-lg border border-hairline bg-surface-0 p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Log a trade</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div>
+            <Label htmlFor={`side-${position.holding.id}`}>Side</Label>
+            <div className="flex rounded-md border border-border bg-surface-0 p-0.5" role="group" aria-label="Trade side">
+              {(['buy', 'sell'] as const).map((side) => (
+                <button
+                  key={side}
+                  type="button"
+                  onClick={() => setTrade({ ...trade, side })}
+                  aria-pressed={trade.side === side}
+                  className={`flex-1 cursor-pointer rounded px-2 py-1 text-xs font-medium capitalize transition-colors duration-200 ${
+                    trade.side === side ? 'bg-accent/15 text-accent' : 'text-ink-muted hover:text-ink-secondary'
+                  }`}
+                >
+                  {side}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label htmlFor={`qty-${position.holding.id}`}>Quantity</Label>
+            <Input
+              id={`qty-${position.holding.id}`}
+              type="number"
+              min={0}
+              step="any"
+              value={trade.quantity}
+              onChange={(e) => setTrade({ ...trade, quantity: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor={`px-${position.holding.id}`}>Price / unit</Label>
+            <Input
+              id={`px-${position.holding.id}`}
+              type="number"
+              min={0}
+              step="any"
+              value={trade.price}
+              onChange={(e) => setTrade({ ...trade, price: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor={`fee-${position.holding.id}`}>Fees</Label>
+            <Input
+              id={`fee-${position.holding.id}`}
+              type="number"
+              min={0}
+              step="any"
+              value={trade.fees}
+              onChange={(e) => setTrade({ ...trade, fees: e.target.value })}
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <Label htmlFor={`date-${position.holding.id}`}>Date</Label>
+            <Input
+              id={`date-${position.holding.id}`}
+              type="date"
+              max={todayInputValue()}
+              value={trade.date}
+              onChange={(e) => setTrade({ ...trade, date: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="mt-2.5 flex items-center justify-between gap-3">
+          <p className="text-xs text-ink-muted">
+            {overselling ? (
+              <span className="text-critical-text">Only {position.quantity} units are held.</span>
+            ) : quantity > 0 && price > 0 ? (
+              <>
+                {trade.side === 'buy' ? 'Costs' : 'Returns'}{' '}
+                <span className="num-col text-ink-secondary">
+                  {formatMoney(quantity * price + (trade.side === 'buy' ? 1 : -1) * (Number(trade.fees) || 0))}
+                </span>
+              </>
+            ) : (
+              'Buying does not deduct from your balance — see the note below.'
+            )}
+          </p>
+          <Button onClick={submitTrade} disabled={!tradeValid}>
+            Add trade
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-hairline bg-surface-0 p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">Record a dividend</p>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="w-32">
+            <Label htmlFor={`div-${position.holding.id}`}>Amount</Label>
+            <Input
+              id={`div-${position.holding.id}`}
+              type="number"
+              min={0}
+              step="0.01"
+              value={dividend.amount}
+              onChange={(e) => setDividend({ ...dividend, amount: e.target.value })}
+            />
+          </div>
+          <div className="w-40">
+            <Label htmlFor={`divdate-${position.holding.id}`}>Date</Label>
+            <Input
+              id={`divdate-${position.holding.id}`}
+              type="date"
+              max={todayInputValue()}
+              value={dividend.date}
+              onChange={(e) => setDividend({ ...dividend, date: e.target.value })}
+            />
+          </div>
+          {/* Accumulating funds never pay out, and a broker may reinvest
+              automatically — so whether this was spendable cash is the user's
+              call, not something to infer. */}
+          <label className="flex cursor-pointer items-center gap-2 pb-1.5 text-xs text-ink-secondary">
+            <input
+              type="checkbox"
+              checked={dividend.asIncome}
+              onChange={(e) => setDividend({ ...dividend, asIncome: e.target.checked })}
+              className="accent-accent"
+            />
+            Also log as income
+          </label>
+          <Button variant="secondary" onClick={submitDividend} disabled={!(Number(dividend.amount) > 0)}>
+            Add
+          </Button>
+        </div>
+      </div>
+
+      {log.length > 0 && (
+        <div>
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">History</p>
+          <ul className="space-y-1">
+            {log.map((entry) => (
+              <li key={entry.id} className="flex items-center justify-between gap-3 rounded-md px-2 py-1 text-xs hover:bg-surface-2">
+                <span className="text-ink-secondary">
+                  <span className="text-ink-muted">{formatDate(entry.timestamp)}</span>{' '}
+                  {entry.type === 'trade' ? (
+                    <>
+                      <span className="capitalize">{entry.side}</span> <span className="num-col">{entry.quantity}</span> @{' '}
+                      <span className="num-col">{formatMoney(entry.price)}</span>
+                      {entry.fees ? <span className="text-ink-muted"> · {formatMoney(entry.fees)} fees</span> : null}
+                    </>
+                  ) : (
+                    <>
+                      Dividend <span className="num-col">{formatMoney(entry.amount)}</span>
+                    </>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeEvent(entry.id)}
+                  aria-label="Delete this entry"
+                  className="cursor-pointer text-ink-muted opacity-0 transition-opacity duration-200 hover:text-critical-text focus-visible:opacity-100 group-hover:opacity-100"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PositionRow({ position }: { position: Position }) {
   const upsert = useStore((s) => s.upsertHolding);
   const remove = useStore((s) => s.removeHolding);
-  const [price, setPrice] = useState(holding.lastPrice !== undefined ? String(holding.lastPrice) : '');
+  const [price, setPrice] = useState(position.holding.lastPrice !== undefined ? String(position.holding.lastPrice) : '');
+  const [open, setOpen] = useState(false);
 
-  const cost = holding.quantity * holding.avgCost;
-  const value = holding.lastPrice !== undefined ? holding.quantity * holding.lastPrice : cost;
-  const gain = value - cost;
-  const priced = holding.lastPrice !== undefined;
+  const { holding } = position;
 
   const savePrice = () => {
     const next = Number(price);
-    if (!Number.isFinite(next) || next <= 0) return;
-    if (next === holding.lastPrice) return;
+    if (!Number.isFinite(next) || next <= 0 || next === holding.lastPrice) return;
     upsert({ ...holding, lastPrice: next, lastPriceAt: new Date().toISOString() });
   };
 
   return (
-    <div className="rounded-lg border border-hairline p-3">
+    <div className="group rounded-lg border border-hairline p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-ink">
             {holding.label} <span className="text-ink-muted">{holding.symbol}</span>
           </p>
           <p className="mt-0.5 text-xs text-ink-muted">
-            <span className="num-col">{holding.quantity}</span> @ <span className="num-col">{formatMoney(holding.avgCost)}</span> ·
-            cost <span className="num-col">{formatMoney(cost)}</span>
+            <span className="num-col">{position.quantity}</span> @ <span className="num-col">{formatMoney(position.avgCost)}</span> ·
+            cost <span className="num-col">{formatMoney(position.cost)}</span>
+            {position.tradeCount > 0 && ` · ${position.tradeCount} trade${position.tradeCount === 1 ? '' : 's'}`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <div className="w-32">
+          <div className="w-28">
             <Label htmlFor={`price-${holding.id}`}>Price / unit</Label>
             <Input
               id={`price-${holding.id}`}
@@ -65,6 +298,9 @@ function HoldingRow({ holding }: { holding: Holding }) {
               onKeyDown={(e) => e.key === 'Enter' && savePrice()}
             />
           </div>
+          <Button variant="ghost" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+            {open ? 'Hide' : 'Trades'}
+          </Button>
           <Button variant="ghost" onClick={() => remove(holding.id)} aria-label={`Remove ${holding.label}`}>
             Remove
           </Button>
@@ -73,25 +309,47 @@ function HoldingRow({ holding }: { holding: Holding }) {
 
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-hairline pt-2 text-xs">
         <span className="text-ink-muted">
-          {priced ? (
+          {position.priced ? (
             <>
-              Worth <span className="num-col text-ink-secondary">{formatMoney(value)}</span>
+              Worth <span className="num-col text-ink-secondary">{formatMoney(position.value)}</span>
               {holding.lastPriceAt && ` · priced ${formatDate(holding.lastPriceAt)}`}
             </>
           ) : (
             'No price recorded — counted at cost'
           )}
         </span>
-        {priced && (
-          <span className="num-col font-medium" style={{ color: gain >= 0 ? PRIMARY : COMPLEMENT }}>
-            {gain >= 0 ? '+' : '−'}
-            {formatMoney(Math.abs(gain))}
-          </span>
-        )}
+        <span className="flex flex-wrap items-baseline gap-x-3">
+          {position.dividends > 0 && (
+            <span className="text-ink-muted">
+              dividends <span className="num-col text-ink-secondary">{formatMoney(position.dividends)}</span>
+            </span>
+          )}
+          {position.realized !== 0 && (
+            <span className="text-ink-muted">
+              realised <Signed value={position.realized} />
+            </span>
+          )}
+          {position.irr !== null && (
+            <Badge tone={position.irr >= 0 ? 'good' : 'bad'}>{(position.irr * 100).toFixed(1)}% a year</Badge>
+          )}
+          {position.priced && <Signed value={position.unrealized} />}
+        </span>
       </div>
+
+      {open && <PositionDetail position={position} />}
     </div>
   );
 }
+
+interface Draft {
+  symbol: string;
+  label: string;
+  quantity: string;
+  avgCost: string;
+  lastPrice: string;
+}
+
+const empty = (): Draft => ({ symbol: '', label: '', quantity: '', avgCost: '', lastPrice: '' });
 
 /**
  * What you actually own, as opposed to what you happen to be watching.
@@ -100,15 +358,24 @@ function HoldingRow({ holding }: { holding: Holding }) {
  * a third-party iframe whose data the page cannot read, and any real quote feed
  * needs a keyed API — so rather than imply live valuation, the figure states how
  * old the price behind it is.
+ *
+ * Buying does not debit the cash balance. With one undivided pot there is no
+ * brokerage account to move money out of, and deducting it would make Net worth
+ * count the same euros twice — so the portfolio sits alongside the ledger rather
+ * than inside it.
  */
 export function HoldingsManager() {
-  const holdings = useHoldings();
+  const events = useStore((s) => s.events);
+  const positions = usePositions();
   const upsert = useStore((s) => s.upsertHolding);
-  const { symbols } = useWatchlist();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Draft>(empty());
 
-  const summary = useMemo(() => portfolioSummary(holdings), [holdings]);
+  const summary = useMemo(
+    () => investmentSummary(positions, foldTrades(events), foldDividends(events)),
+    [positions, events]
+  );
+
   const valid = draft.symbol.trim() !== '' && Number(draft.quantity) > 0 && Number(draft.avgCost) > 0;
 
   const create = () => {
@@ -140,13 +407,28 @@ export function HoldingsManager() {
           <p className="text-xs text-ink-muted">Cost</p>
           <p className="num-col text-sm text-ink-secondary">{formatMoney(summary.cost)}</p>
         </div>
-        {summary.gainPct !== null && (
+        {summary.returnPct !== null && (
           <div>
-            <p className="text-xs text-ink-muted">Gain</p>
-            <p className="num-col text-sm font-medium" style={{ color: summary.gain >= 0 ? PRIMARY : COMPLEMENT }}>
-              {summary.gain >= 0 ? '+' : '−'}
-              {formatMoney(Math.abs(summary.gain))} ({summary.gainPct.toFixed(1)}%)
+            <p className="text-xs text-ink-muted">Total return</p>
+            <p className="text-sm">
+              <Signed value={summary.totalReturn} suffix={` (${summary.returnPct.toFixed(1)}%)`} />
             </p>
+          </div>
+        )}
+        {/* A plain gain percentage says the same thing whether the money went in
+            ten years ago or last week. This one accounts for when. */}
+        {summary.irr !== null && (
+          <div>
+            <p className="text-xs text-ink-muted">Annualised</p>
+            <p className="num-col text-sm font-medium" style={{ color: summary.irr >= 0 ? PRIMARY : COMPLEMENT }}>
+              {(summary.irr * 100).toFixed(1)}% a year
+            </p>
+          </div>
+        )}
+        {summary.dividends > 0 && (
+          <div>
+            <p className="text-xs text-ink-muted">Dividends</p>
+            <p className="num-col text-sm text-ink-secondary">{formatMoney(summary.dividends)}</p>
           </div>
         )}
       </div>
@@ -163,21 +445,13 @@ export function HoldingsManager() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="h-symbol">Symbol</Label>
-              <Input
+              <SymbolPicker
                 id="h-symbol"
-                list="watchlist-symbols"
                 value={draft.symbol}
-                onChange={(e) => setDraft({ ...draft, symbol: e.target.value })}
-                placeholder="BINANCE:BTCEUR"
+                onChange={(symbol) => setDraft({ ...draft, symbol })}
+                onPick={(hit) => setDraft((d) => ({ ...d, symbol: hit.id, label: d.label || hit.description || hit.label }))}
                 autoFocus
               />
-              <datalist id="watchlist-symbols">
-                {symbols.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </datalist>
             </div>
             <div>
               <Label htmlFor="h-label">Name (optional)</Label>
@@ -230,14 +504,15 @@ export function HoldingsManager() {
         </div>
       )}
 
-      {holdings.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-ink-muted">
-          Nothing recorded yet. Add what you own to make Net worth mean more than cash in the account.
-        </p>
+      {positions.length === 0 ? (
+        <EmptyState
+          title="Nothing recorded yet"
+          description="Add what you own to make Net worth mean more than cash in the account."
+        />
       ) : (
         <div className="space-y-2">
-          {holdings.map((h) => (
-            <HoldingRow key={h.id} holding={h} />
+          {positions.map((p) => (
+            <PositionRow key={p.holding.id} position={p} />
           ))}
         </div>
       )}

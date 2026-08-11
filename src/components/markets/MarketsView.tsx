@@ -4,6 +4,7 @@ import { Button, Card, Input, Label, SectionTitle, EmptyState } from '../ui/prim
 import { Reveal } from '../ui/Reveal';
 import { TradingViewChart, type Interval, type Style } from './TradingViewChart';
 import { HoldingsManager } from './HoldingsManager';
+import { SymbolPicker } from './SymbolPicker';
 
 const INTERVALS: { id: Interval; label: string }[] = [
   { id: '5', label: '5m' },
@@ -81,13 +82,18 @@ export function MarketsView() {
         {adding && (
           <div className="mb-3 grid grid-cols-1 gap-3 rounded-lg border border-hairline bg-surface-0 p-3 sm:grid-cols-[1fr_1fr_auto]">
             <div>
-              <Label htmlFor="tv-symbol">TradingView symbol</Label>
-              <Input
+              <Label htmlFor="tv-symbol">Search for a symbol</Label>
+              <SymbolPicker
                 id="tv-symbol"
                 value={draftId}
-                onChange={(e) => setDraftId(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && submit()}
-                placeholder="NASDAQ:TSLA"
+                onChange={setDraftId}
+                onPick={(hit) => {
+                  setDraftId(hit.id);
+                  // The ticker alone is not identification — "MC" is LVMH. Fill
+                  // the name in from the result so the chip is readable later.
+                  if (!draftLabel.trim()) setDraftLabel(hit.description || hit.label);
+                }}
+                label="TradingView symbol"
                 autoFocus
               />
             </div>

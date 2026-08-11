@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { useStore } from '../../lib/store';
+import { useStore, useCleared } from '../../lib/store';
 import { formatMoney, formatDate, formatDateTime } from '../../lib/format';
 import { formatForeign } from '../../lib/currency';
 import { categoryColorMap } from '../../lib/chartTheme';
@@ -29,6 +29,8 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
   const events = useStore((s) => s.events);
   const updateEntry = useStore((s) => s.updateEntry);
   const removeEntry = useStore((s) => s.removeEntry);
+  const setCleared = useStore((s) => s.setCleared);
+  const isCleared = useCleared().has(entry.id);
   const colors = categoryColorMap(events);
 
   const isIncome = entry.type === 'income';
@@ -159,6 +161,20 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
 
             <Field label="Recorded">
               <span className="text-ink-muted">{formatDateTime(entry.timestamp)}</span>
+            </Field>
+
+            <Field label="Cleared">
+              <label className="flex cursor-pointer items-center justify-end gap-2">
+                <input
+                  type="checkbox"
+                  checked={isCleared}
+                  onChange={(e) => setCleared(entry.id, e.target.checked)}
+                  className="h-4 w-4 cursor-pointer accent-accent"
+                />
+                <span className={isCleared ? 'text-positive' : 'text-ink-muted'}>
+                  {isCleared ? 'Checked against the bank' : 'Not verified yet'}
+                </span>
+              </label>
             </Field>
           </dl>
 

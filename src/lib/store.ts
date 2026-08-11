@@ -1,9 +1,22 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { LedgerEvent, ID, Recurring, RecurringKind, MoneyEvent, Holding, ForeignAmount } from './types';
+import type { LedgerEvent, ID, Recurring, RecurringKind, MoneyEvent, Holding, ForeignAmount, Goal, Debt } from './types';
 import { makeId } from './id';
-import { foldRecurring, foldCategories, foldBudgets, foldHoldings, foldPostedMonths, foldSkips, recurringIdOf } from './entities';
+import {
+  foldRecurring,
+  foldCategories,
+  foldBudgets,
+  foldHoldings,
+  foldPostedMonths,
+  foldSkips,
+  foldCleared,
+  renameCategoryIn,
+  recurringIdOf,
+} from './entities';
+import { foldGoals } from './goals';
+import { foldDebts } from './debt';
+import { foldTrades, foldDividends, positionFor, type Position } from './investments';
 import { occurrencesUpTo } from './recurrence';
 import { monthKey } from './derive';
 import { LEDGER_VERSION, normalizeEvents, mergeEvents } from './migrations';
@@ -14,6 +27,14 @@ export interface UndoSnapshot {
   events: LedgerEvent[];
   label: string;
   at: number;
+}
+
+/** What actually lands in localStorage — everything else on the state is
+ * either derived or session-only. */
+interface PersistedShape {
+  events?: LedgerEvent[];
+  lastExportedAt?: string | null;
+  lastBackupAt?: string | null;
 }
 
 /** Fields an entry can be corrected to. Amount and date apply to both kinds. */
@@ -28,8 +49,12 @@ export type EntryPatch = Partial<{
 
 interface MoneyLabState {
   events: LedgerEvent[];
-  /** ISO timestamp of the last export, or null if never backed up. */
+  /** ISO timestamp of the last manual export, or null if never backed up. */
   lastExportedAt: string | null;
+  /** ISO timestamp of the last automatic write to the backup folder. Tracked
+   * separately from the manual export so the nag can go quiet once backups are
+   * happening on their own. */
+  lastBackupAt: string | null;
   undoSnapshot: UndoSnapshot | null;
 
   addIncome: (input: { amount: number; label: string; recurringId?: ID; date?: string; foreign?: ForeignAmount }) => void;
@@ -44,9 +69,24 @@ interface MoneyLabState {
 
   upsertHolding: (holding: Omit<Holding, 'id'> & { id?: ID }) => void;
   removeHolding: (id: ID) => void;
+  addTrade: (input: { holdingId: ID; side: 'buy' | 'sell'; quantity: number; price: number; fees?: number; date?: string }) => void;
+  addDividend: (input: { holdingId: ID; amount: number; date?: string; alsoLogAsIncome?: boolean; label?: string }) => void;
+  removeInvestmentEvent: (id: ID) => void;
+
+  upsertGoal: (goal: Omit<Goal, 'id'> & { id?: ID }) => void;
+  removeGoal: (id: ID) => void;
+  contributeToGoal: (goalId: ID, amount: number, date?: string) => void;
+
+  upsertDebt: (debt: Omit<Debt, 'id'> & { id?: ID }) => void;
+  removeDebt: (id: ID) => void;
 
   addCategory: (name: string) => void;
   removeCategory: (name: string) => void;
+  /** Renames a category, or merges it into `to` when that already exists. */
+  renameCategory: (from: string, to: string) => void;
+
+  setCleared: (entryId: ID, cleared: boolean) => void;
+  setManyCleared: (entryIds: ID[], cleared: boolean) => void;
 
   updateEntry: (id: ID, patch: EntryPatch) => void;
   removeEntry: (id: ID) => void;
@@ -56,6 +96,7 @@ interface MoneyLabState {
 
   importEvents: (events: LedgerEvent[], mode: 'merge' | 'replace') => { added: number; duplicates: number };
   markExported: () => void;
+  markBackedUp: () => void;
   clearAll: () => void;
 }
 
@@ -69,6 +110,7 @@ export const useStore = create<MoneyLabState>()(
       return {
         events: [],
         lastExportedAt: null,
+        lastBackupAt: null,
         undoSnapshot: null,
 
         addIncome: ({ amount, label, recurringId, date, foreign }) => {
@@ -147,6 +189,112 @@ export const useStore = create<MoneyLabState>()(
           }));
         },
 
+        addTrade: ({ holdingId, side, quantity, price, fees, date }) => {
+          const events = get().events;
+          const extra: LedgerEvent[] = [];
+          const timestamp = date ?? new Date().toISOString();
+
+          // A holding entered by hand carries its position on the record. The
+          // first trade switches it to the trade log, and without seeding that
+          // starting position here the units already owned would simply vanish
+          // the moment a second purchase was logged.
+          const alreadyTraded = events.some((e) => e.type === 'trade' && e.holdingId === holdingId);
+          const holding = foldHoldings(events).find((h) => h.id === holdingId);
+          if (!alreadyTraded && holding && holding.quantity > 0) {
+            const opened = events.find((e) => e.type === 'holding_upsert' && e.holding.id === holdingId);
+            // The opening position must sort *before* whatever is being logged
+            // now. The holding record is stamped with the wall clock, while a
+            // trade dated from the date field is midnight — so on the day the
+            // holding is created, its own opening trade would otherwise sort
+            // after a same-day sale, which then applies to a position that has
+            // not been opened yet and is silently discarded.
+            const openedAt = opened?.timestamp ?? timestamp;
+            extra.push({
+              id: makeId(),
+              type: 'trade',
+              timestamp: openedAt < timestamp ? openedAt : new Date(new Date(timestamp).getTime() - 1000).toISOString(),
+              holdingId,
+              side: 'buy',
+              quantity: holding.quantity,
+              price: holding.avgCost,
+            });
+          }
+
+          extra.push({
+            id: makeId(),
+            type: 'trade',
+            timestamp,
+            holdingId,
+            side,
+            quantity,
+            price,
+            ...(fees ? { fees } : {}),
+          });
+
+          set((s) => ({ events: [...s.events, ...extra] }));
+        },
+
+        addDividend: ({ holdingId, amount, date, alsoLogAsIncome, label }) => {
+          const timestamp = date ?? new Date().toISOString();
+          const extra: LedgerEvent[] = [
+            { id: makeId(), type: 'dividend', timestamp, holdingId, amount },
+          ];
+          // Whether the cash actually landed somewhere spendable depends on the
+          // broker — accumulating funds never pay out at all — so this is the
+          // user's call rather than something inferred.
+          if (alsoLogAsIncome) {
+            extra.push({ id: makeId(), type: 'income', timestamp, amount, label: label ?? 'Dividend' });
+          }
+          set((s) => ({ events: [...s.events, ...extra] }));
+        },
+
+        removeInvestmentEvent: (id) => {
+          const target = get().events.find((e) => e.id === id);
+          if (!target || (target.type !== 'trade' && target.type !== 'dividend')) return;
+          snapshot(target.type === 'trade' ? 'Trade deleted' : 'Dividend deleted');
+          set((s) => ({ events: s.events.filter((e) => e.id !== id) }));
+        },
+
+        upsertGoal: (input) =>
+          set((s) => ({
+            events: [
+              ...s.events,
+              { id: makeId(), type: 'goal_upsert', timestamp: new Date().toISOString(), goal: { ...input, id: input.id ?? makeId() } },
+            ],
+          })),
+
+        removeGoal: (id) => {
+          snapshot('Goal removed');
+          set((s) => ({
+            events: [...s.events, { id: makeId(), type: 'goal_remove', timestamp: new Date().toISOString(), goalId: id }],
+          }));
+        },
+
+        contributeToGoal: (goalId, amount, date) => {
+          if (amount === 0) return;
+          set((s) => ({
+            events: [
+              ...s.events,
+              { id: makeId(), type: 'goal_contribution', timestamp: date ?? new Date().toISOString(), goalId, amount },
+            ],
+          }));
+        },
+
+        upsertDebt: (input) =>
+          set((s) => ({
+            events: [
+              ...s.events,
+              { id: makeId(), type: 'debt_upsert', timestamp: new Date().toISOString(), debt: { ...input, id: input.id ?? makeId() } },
+            ],
+          })),
+
+        removeDebt: (id) => {
+          snapshot('Debt removed');
+          set((s) => ({
+            events: [...s.events, { id: makeId(), type: 'debt_remove', timestamp: new Date().toISOString(), debtId: id }],
+          }));
+        },
+
         runRecurring: () => {
           const events = get().events;
           const posted = foldPostedMonths(events);
@@ -195,6 +343,31 @@ export const useStore = create<MoneyLabState>()(
         removeCategory: (name) => {
           snapshot(`Category “${name}” removed`);
           set((s) => ({ events: [...s.events, { id: makeId(), type: 'category_remove', timestamp: new Date().toISOString(), name }] }));
+        },
+
+        renameCategory: (from, to) => {
+          const { events, merged } = renameCategoryIn(get().events, from, to);
+          if (events === get().events) return; // no-op rename
+          snapshot(merged ? `“${from}” merged into “${to.trim()}”` : `“${from}” renamed to “${to.trim()}”`);
+          set({ events });
+        },
+
+        setCleared: (entryId, cleared) =>
+          set((s) => ({
+            events: [...s.events, { id: makeId(), type: 'entry_cleared', timestamp: new Date().toISOString(), entryId, cleared }],
+          })),
+
+        setManyCleared: (entryIds, cleared) => {
+          if (entryIds.length === 0) return;
+          // Reconciling a whole statement is one action to undo, not forty.
+          snapshot(cleared ? `${entryIds.length} entries marked cleared` : `${entryIds.length} entries unmarked`);
+          const timestamp = new Date().toISOString();
+          set((s) => ({
+            events: [
+              ...s.events,
+              ...entryIds.map((entryId): LedgerEvent => ({ id: makeId(), type: 'entry_cleared', timestamp, entryId, cleared })),
+            ],
+          }));
         },
 
         updateEntry: (id, patch) => {
@@ -260,6 +433,8 @@ export const useStore = create<MoneyLabState>()(
 
         markExported: () => set({ lastExportedAt: new Date().toISOString() }),
 
+        markBackedUp: () => set({ lastBackupAt: new Date().toISOString() }),
+
         clearAll: () => {
           snapshot('All data cleared');
           set({ events: [] });
@@ -271,7 +446,7 @@ export const useStore = create<MoneyLabState>()(
       version: LEDGER_VERSION,
       // The undo snapshot is deliberately session-only: persisting it would
       // double the stored payload and offer to "undo" something from last week.
-      partialize: (state) => ({ events: state.events, lastExportedAt: state.lastExportedAt }),
+      partialize: (state) => ({ events: state.events, lastExportedAt: state.lastExportedAt, lastBackupAt: state.lastBackupAt }),
 
       // Normalisation lives in `merge`, not only in `migrate`, because zustand
       // guards migrate with `typeof stored.version === "number"`. Ledgers written
@@ -280,22 +455,24 @@ export const useStore = create<MoneyLabState>()(
       // rehydrate regardless, and normalizeEvents is idempotent, so this is
       // correct for versioned and unversioned blobs alike.
       merge: (persisted, current) => {
-        const state = (persisted ?? {}) as { events?: LedgerEvent[]; lastExportedAt?: string | null };
+        const state = (persisted ?? {}) as PersistedShape;
         return {
           ...current,
           ...state,
           events: normalizeEvents(state.events ?? []),
           lastExportedAt: state.lastExportedAt ?? null,
+          lastBackupAt: state.lastBackupAt ?? null,
         };
       },
 
       // Kept for future numbered bumps; harmless alongside `merge` above.
       migrate: (persisted) => {
-        const state = persisted as { events?: LedgerEvent[]; lastExportedAt?: string | null };
+        const state = persisted as PersistedShape;
         return {
           ...state,
           events: normalizeEvents(state.events ?? []),
           lastExportedAt: state.lastExportedAt ?? null,
+          lastBackupAt: state.lastBackupAt ?? null,
         };
       },
     }
@@ -320,4 +497,35 @@ export const useBudgets = (): Map<string, number> => {
 export const useCategories = (): string[] => {
   const events = useStore((s) => s.events);
   return useMemo(() => foldCategories(events), [events]);
+};
+
+export const useCleared = (): Set<ID> => {
+  const events = useStore((s) => s.events);
+  return useMemo(() => foldCleared(events), [events]);
+};
+
+export const useGoals = (): Goal[] => {
+  const events = useStore((s) => s.events);
+  return useMemo(() => foldGoals(events), [events]);
+};
+
+export const useDebts = (): Debt[] => {
+  const events = useStore((s) => s.events);
+  return useMemo(() => foldDebts(events), [events]);
+};
+
+/**
+ * Holdings reconciled against their trade log.
+ *
+ * The single place the app asks "what do I own and what is it worth", so a
+ * holding's quantity can never be read straight off the record while a trade
+ * log exists that says otherwise.
+ */
+export const usePositions = (): Position[] => {
+  const events = useStore((s) => s.events);
+  return useMemo(() => {
+    const trades = foldTrades(events);
+    const dividends = foldDividends(events);
+    return foldHoldings(events).map((h) => positionFor(h, trades, dividends));
+  }, [events]);
 };

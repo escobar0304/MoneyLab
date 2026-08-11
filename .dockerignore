@@ -2,7 +2,14 @@ node_modules
 dist
 dist-ssr
 .git
+.github
 .claude
 *.local
 .DS_Store
 *.tsbuildinfo
+
+# Tests never ship in the image.
+e2e
+playwright.config.ts
+playwright-report
+test-results

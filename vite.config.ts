@@ -79,11 +79,27 @@ export default defineConfig({
   },
   server: {
     watch: usePolling ? { usePolling: true, interval: 300 } : undefined,
+    proxy: {
+      // TradingView's symbol search rejects any request whose Referer is not
+      // tradingview.com, and Referer is a forbidden header that page JS cannot
+      // set — so the typeahead cannot call it directly. Forwarding it here keeps
+      // the dev server behaving like the nginx image, which does the same thing.
+      '/tv-search': {
+        target: 'https://symbol-search.tradingview.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/tv-search/, '/symbol_search/v3/') + '&hl=0&lang=en&domain=production',
+        headers: { Referer: 'https://www.tradingview.com/' },
+      },
+    },
   },
   test: {
     // Logic tests run in node; component tests opt into jsdom with a
     // `@vitest-environment jsdom` docblock, so the fast majority stay fast.
     environment: 'node',
     setupFiles: ['./src/test/setup.ts'],
+    // Vitest owns src/, Playwright owns e2e/. Without this, Vitest's default
+    // glob collects the E2E specs too and each one fails on importing
+    // `@playwright/test` — six red files with nothing actually broken.
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
 });

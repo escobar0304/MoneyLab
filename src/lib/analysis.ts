@@ -1,4 +1,4 @@
-import type { LedgerEvent, ExpenseEvent, Holding } from './types';
+import type { LedgerEvent, ExpenseEvent } from './types';
 import { monthKey, totalIncomeForMonth, totalOutflowForMonth, monthsWithActivity, spendByCategoryForMonth } from './derive';
 import { foldRecurring, foldSkips, foldPostedMonths } from './entities';
 import { occurrencesUpTo } from './recurrence';
@@ -209,49 +209,7 @@ export function budgetStatuses(events: LedgerEvent[], budgets: Map<string, numbe
     .sort((a, b) => b.ratio - a.ratio);
 }
 
-export interface PortfolioSummary {
-  cost: number;
-  value: number;
-  gain: number;
-  /** Gain as a share of cost. Null when nothing has been bought. */
-  gainPct: number | null;
-  /** Holdings with no price recorded, so their value is counted as cost. */
-  unpriced: number;
-  /** Oldest price observation still being relied on, or null if none. */
-  stalestPriceAt: string | null;
-}
-
-/**
- * What the portfolio is worth against what it cost.
- *
- * Holdings without a recorded price fall back to cost rather than being counted
- * as zero — a missing price is unknown, not worthless — and the count is
- * reported so the figure can be qualified rather than quietly overstated.
- */
-export function portfolioSummary(holdings: Holding[]): PortfolioSummary {
-  let cost = 0;
-  let value = 0;
-  let unpriced = 0;
-  let stalest: string | null = null;
-
-  for (const h of holdings) {
-    const holdingCost = h.quantity * h.avgCost;
-    cost += holdingCost;
-    if (h.lastPrice === undefined) {
-      unpriced++;
-      value += holdingCost;
-    } else {
-      value += h.quantity * h.lastPrice;
-      if (h.lastPriceAt && (!stalest || h.lastPriceAt < stalest)) stalest = h.lastPriceAt;
-    }
-  }
-
-  return {
-    cost: roundCents(cost),
-    value: roundCents(value),
-    gain: roundCents(value - cost),
-    gainPct: cost > 0 ? roundCents(((value - cost) / cost) * 100) : null,
-    unpriced,
-    stalestPriceAt: stalest,
-  };
-}
+// Portfolio valuation lives in investments.ts: once a trade log exists, a
+// position's cost basis is a function of its trade history rather than of the
+// holding record, and having two places compute "what is this worth" is how the
+// two answers start to disagree.

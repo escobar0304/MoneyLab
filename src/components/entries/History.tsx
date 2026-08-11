@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useStore } from '../../lib/store';
+import { useStore, useCleared } from '../../lib/store';
 import { monthsWithActivity, monthKey, totalIncomeForMonth, totalOutflowForMonth } from '../../lib/derive';
-import { Card, EmptyState, SectionTitle, Select } from '../ui/primitives';
+import { searchEntries } from '../../lib/search';
+import { reconcile } from '../../lib/entities';
+import { Card, EmptyState, SectionTitle, Select, Input, Button } from '../ui/primitives';
 import { formatMoney, formatDate, monthLabel } from '../../lib/format';
 import { formatForeign } from '../../lib/currency';
 import { categoryColorMap } from '../../lib/chartTheme';
@@ -10,7 +12,7 @@ import { isMoneyEvent, type MoneyEvent } from '../../lib/types';
 import { EntryDetail } from './EntryDetail';
 
 /**
- * The full ledger, browsable by month.
+ * The full ledger, browsable by month and searchable across all of them.
  *
  * This replaces a "last 12 entries" list, which quietly hid everything older —
  * the data was always stored, but there was no way to reach it, so an earlier
@@ -20,6 +22,8 @@ import { EntryDetail } from './EntryDetail';
  */
 export function History() {
   const events = useStore((s) => s.events);
+  const cleared = useCleared();
+  const setManyCleared = useStore((s) => s.setManyCleared);
   const colors = useMemo(() => categoryColorMap(events), [events]);
 
   const currentMonth = monthKey(new Date().toISOString());
@@ -30,6 +34,9 @@ export function History() {
 
   const [month, setMonth] = useState(currentMonth);
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
+  const [query, setQuery] = useState('');
+  const [reconciling, setReconciling] = useState(false);
+  const [bankBalance, setBankBalance] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   const [withReceipts, setWithReceipts] = useState<Set<string>>(new Set());
 
@@ -40,26 +47,43 @@ export function History() {
       .catch(() => setWithReceipts(new Set()));
   }, [events, openId]);
 
-  const entries = useMemo(
-    () =>
-      events
-        .filter(isMoneyEvent)
-        .filter((e) => monthKey(e.timestamp) === month)
-        .filter((e) => filter === 'all' || e.type === filter)
-        .sort((a, b) => b.timestamp.localeCompare(a.timestamp)),
-    [events, month, filter]
-  );
+  const searching = query.trim() !== '';
+
+  // Searching leaves the month behind on purpose: the reason to search is that
+  // you do not remember when it happened.
+  const entries = useMemo(() => {
+    const base = searching
+      ? searchEntries(events, query)
+      : events
+          .filter(isMoneyEvent)
+          .filter((e) => monthKey(e.timestamp) === month)
+          .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    return base.filter((e) => filter === 'all' || e.type === filter);
+  }, [events, month, filter, query, searching]);
 
   const income = totalIncomeForMonth(events, month);
   const spend = totalOutflowForMonth(events, month);
   const open = entries.find((e) => e.id === openId) ?? null;
+
+  const shownIds = useMemo(() => new Set(entries.map((e) => e.id)), [entries]);
+  const balances = useMemo(() => reconcile(events, shownIds), [events, shownIds]);
+  const bank = Number(bankBalance.replace(',', '.'));
+  const difference = Number.isFinite(bank) && bankBalance.trim() !== '' ? Math.round((bank - balances.clearedBalance) * 100) / 100 : null;
+
+  const unclearedShown = entries.filter((e) => !cleared.has(e.id)).map((e) => e.id);
 
   return (
     <Card>
       <SectionTitle
         action={
           <div className="w-44">
-            <Select value={month} onChange={(e) => setMonth(e.target.value)} aria-label="Month">
+            <Select
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              aria-label="Month"
+              disabled={searching}
+              title={searching ? 'Search covers every month' : undefined}
+            >
               {months.map((m) => (
                 <option key={m} value={m}>
                   {monthLabel(m)}
@@ -72,31 +96,117 @@ export function History() {
         History
       </SectionTitle>
 
+      <div className="mb-3">
+        <Input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search every month — category, note, amount…"
+          aria-label="Search entries"
+        />
+      </div>
+
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-lg border border-hairline bg-surface-0 p-0.5">
-          {(['all', 'income', 'expense'] as const).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
-              aria-pressed={filter === f}
-              className={`cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-200 ${
-                filter === f ? 'bg-accent/15 text-accent' : 'text-ink-muted hover:text-ink-secondary'
-              }`}
-            >
-              {f}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-hairline bg-surface-0 p-0.5">
+            {(['all', 'income', 'expense'] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                aria-pressed={filter === f}
+                className={`cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-200 ${
+                  filter === f ? 'bg-accent/15 text-accent' : 'text-ink-muted hover:text-ink-secondary'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setReconciling((v) => !v)}
+            aria-pressed={reconciling}
+            className={`cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors duration-200 ${
+              reconciling ? 'border-accent/40 bg-accent/12 text-accent' : 'border-hairline text-ink-muted hover:border-border hover:text-ink-secondary'
+            }`}
+          >
+            Reconcile
+          </button>
         </div>
+
         <p className="text-xs text-ink-muted">
-          <span className="num-col text-positive">+{formatMoney(income)}</span> ·{' '}
-          <span className="num-col text-complement">−{formatMoney(spend)}</span> · {entries.length} entr
-          {entries.length === 1 ? 'y' : 'ies'}
+          {searching ? (
+            <>
+              {entries.length} match{entries.length === 1 ? '' : 'es'} across all months
+            </>
+          ) : (
+            <>
+              <span className="num-col text-positive">+{formatMoney(income)}</span> ·{' '}
+              <span className="num-col text-complement">−{formatMoney(spend)}</span> · {entries.length} entr
+              {entries.length === 1 ? 'y' : 'ies'}
+            </>
+          )}
         </p>
       </div>
 
+      {reconciling && (
+        <div className="mb-3 rounded-lg border border-hairline bg-surface-0 p-3">
+          <p className="text-xs text-ink-secondary">
+            Tick off each entry against your statement. When the cleared figure matches the bank, nothing is missing.
+          </p>
+          <div className="mt-2.5 flex flex-wrap items-end gap-x-5 gap-y-2">
+            <div>
+              <p className="text-xs text-ink-muted">Cleared</p>
+              <p className="num-col text-lg font-semibold text-ink">{formatMoney(balances.clearedBalance)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-ink-muted">Not yet</p>
+              <p className="num-col text-sm text-ink-secondary">
+                {formatMoney(balances.unclearedBalance)} · {balances.unclearedCount} left
+              </p>
+            </div>
+            <div className="w-32">
+              <label htmlFor="bank-balance" className="mb-1 block text-xs font-medium text-ink-muted">
+                Bank says
+              </label>
+              <Input
+                id="bank-balance"
+                type="text"
+                inputMode="decimal"
+                value={bankBalance}
+                onChange={(e) => setBankBalance(e.target.value)}
+                placeholder="0,00"
+              />
+            </div>
+            {difference !== null && (
+              // Zero is the whole point of the exercise, so it gets said plainly
+              // rather than shown as a "0,00 €" the eye slides past.
+              <p className={`pb-1.5 text-sm font-medium ${difference === 0 ? 'text-positive' : 'text-complement'}`}>
+                {difference === 0 ? (
+                  'Matches — nothing missing.'
+                ) : (
+                  <>
+                    Off by <span className="num-col">{formatMoney(Math.abs(difference))}</span>
+                    {difference > 0 ? ' — the bank has more than you logged.' : ' — you logged more than the bank has.'}
+                  </>
+                )}
+              </p>
+            )}
+            {unclearedShown.length > 0 && (
+              <Button variant="ghost" onClick={() => setManyCleared(unclearedShown, true)}>
+                Tick all {entries.length === unclearedShown.length ? '' : 'remaining '}shown
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {entries.length === 0 ? (
-        <EmptyState title={`Nothing logged in ${monthLabel(month)}`} />
+        <EmptyState
+          title={searching ? `Nothing matches “${query.trim()}”` : `Nothing logged in ${monthLabel(month)}`}
+          description={searching ? 'Search covers category, subcategory, note, amount and date.' : undefined}
+        />
       ) : (
         <ul className="divide-y divide-hairline">
           {entries.map((entry) => (
@@ -105,6 +215,9 @@ export function History() {
               entry={entry}
               color={entry.type === 'expense' ? colors.get(entry.category) : undefined}
               hasReceipt={withReceipts.has(entry.id)}
+              showDate={searching}
+              reconciling={reconciling}
+              cleared={cleared.has(entry.id)}
               onOpen={() => setOpenId(entry.id)}
             />
           ))}
@@ -120,13 +233,20 @@ function EntryRow({
   entry,
   color,
   hasReceipt,
+  showDate,
+  reconciling,
+  cleared,
   onOpen,
 }: {
   entry: MoneyEvent;
   color?: string;
   hasReceipt: boolean;
+  showDate: boolean;
+  reconciling: boolean;
+  cleared: boolean;
   onOpen: () => void;
 }) {
+  const setCleared = useStore((s) => s.setCleared);
   const isIncome = entry.type === 'income';
   const detail = [
     formatDate(entry.timestamp),
@@ -138,14 +258,25 @@ function EntryRow({
     .join(' · ');
 
   return (
-    <li>
+    <li className="flex items-center gap-2">
+      {reconciling && (
+        // Its own control, outside the row button: ticking forty entries against
+        // a statement should not open forty overlays on the way.
+        <input
+          type="checkbox"
+          checked={cleared}
+          onChange={(e) => setCleared(entry.id, e.target.checked)}
+          aria-label={`Cleared: ${isIncome ? entry.label : entry.category}, ${formatMoney(entry.amount)}`}
+          className="ml-1 h-4 w-4 shrink-0 cursor-pointer accent-accent"
+        />
+      )}
       {/* The whole row is the control. A detail view reached only by hunting for
           a small icon may as well not exist. */}
       <button
         type="button"
         onClick={onOpen}
         aria-label={`Open ${isIncome ? entry.label : entry.category}, ${formatMoney(entry.amount)}`}
-        className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-1 py-2.5 text-left transition-colors hover:bg-surface-2/60"
+        className="flex w-full min-w-0 cursor-pointer items-center justify-between gap-3 rounded-md px-1 py-2.5 text-left transition-colors hover:bg-surface-2/60"
       >
         <span className="flex min-w-0 items-center gap-2.5">
           <span
@@ -161,8 +292,17 @@ function EntryRow({
                   <path d="M4 1h8a1 1 0 0 1 1 1v13l-2.2-1.4L8.6 15 6.4 13.6 4.2 15 3 15V2a1 1 0 0 1 1-1Zm1.5 3.2a.7.7 0 0 0 0 1.4h5a.7.7 0 0 0 0-1.4h-5Zm0 3a.7.7 0 0 0 0 1.4h5a.7.7 0 0 0 0-1.4h-5Z" />
                 </svg>
               )}
+              {/* Outside reconcile mode the tick still shows, so a checked-off
+                  ledger looks different from one nobody has verified. */}
+              {!reconciling && cleared && (
+                <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0 text-positive" fill="currentColor" role="img" aria-label="Cleared">
+                  <path d="M6.2 11.8 2.6 8.2l1.2-1.2 2.4 2.4 5.9-5.9 1.3 1.2z" />
+                </svg>
+              )}
             </span>
-            <span className="block truncate text-xs text-ink-muted">{detail}</span>
+            <span className="block truncate text-xs text-ink-muted">
+              {showDate ? `${monthLabel(monthKey(entry.timestamp))} · ${detail}` : detail}
+            </span>
           </span>
         </span>
 

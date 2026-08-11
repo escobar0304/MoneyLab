@@ -65,6 +65,47 @@ export interface Holding {
   lastPriceAt?: string;
 }
 
+/**
+ * Money set aside for something specific — a deposit, a trip, an emergency fund.
+ *
+ * A goal is an *earmark*, not an account: contributing to it moves nothing, it
+ * only marks part of the existing balance as spoken for. Without accounts (there
+ * is one pot), modelling it any other way would mean inventing a transfer that
+ * never happened and making the balance disagree with the bank.
+ */
+export interface Goal {
+  id: ID;
+  label: string;
+  /** What the goal needs, in the base currency. */
+  target: number;
+  /** Optional deadline — the thing that turns "saving" into "on track". */
+  targetDate?: string; // ISO date
+  note?: string;
+}
+
+/**
+ * A loan being paid down on a fixed monthly schedule — mortgage, car, personal.
+ *
+ * `annualRate` is the nominal annual rate as a percentage (3.4 means 3.4%), the
+ * number the lender quotes, converted to a monthly rate at calculation time.
+ * Portuguese mortgages quote a variable rate; changing this field re-derives the
+ * whole schedule from today's rate, which is the honest reading of "what would
+ * happen if it stayed here".
+ */
+export interface Debt {
+  id: ID;
+  label: string;
+  /** Amount borrowed at the start, in the base currency. */
+  principal: number;
+  /** Nominal annual rate as a percentage. 0 is allowed (interest-free). */
+  annualRate: number;
+  termMonths: number;
+  startDate: string; // ISO date
+  /** Voluntary overpayment applied every month on top of the scheduled one. */
+  extraPayment?: number;
+  active: boolean;
+}
+
 interface LedgerEventBase {
   id: ID;
   timestamp: string; // ISO datetime
@@ -149,6 +190,77 @@ export interface HoldingRemoveEvent extends LedgerEventBase {
   holdingId: ID;
 }
 
+/**
+ * A buy or sell of a holding.
+ *
+ * Deliberately does *not* touch the cash ledger. Buying shares is a transfer,
+ * not spending, and with a single undivided pot there is no account to move the
+ * cash out of — pretending otherwise would make Net worth count the money twice.
+ * The trade log exists to compute cost basis and return, which a single
+ * `avgCost` field cannot do once you have bought the same thing twice.
+ */
+export interface TradeEvent extends LedgerEventBase {
+  type: 'trade';
+  holdingId: ID;
+  side: 'buy' | 'sell';
+  quantity: number;
+  /** Price per unit, in the base currency. */
+  price: number;
+  /** Commission and taxes, added to cost on a buy and deducted on a sell. */
+  fees?: number;
+}
+
+/** Cash paid out by a holding. Counted in return, and optionally logged as
+ * income too — that choice is the user's, because whether it actually reached a
+ * spendable account depends on the broker. */
+export interface DividendEvent extends LedgerEventBase {
+  type: 'dividend';
+  holdingId: ID;
+  /** Total received, net, in the base currency. */
+  amount: number;
+}
+
+export interface GoalUpsertEvent extends LedgerEventBase {
+  type: 'goal_upsert';
+  goal: Goal;
+}
+
+export interface GoalRemoveEvent extends LedgerEventBase {
+  type: 'goal_remove';
+  goalId: ID;
+}
+
+/** Earmarks (or, when negative, releases) part of the balance for a goal. */
+export interface GoalContributionEvent extends LedgerEventBase {
+  type: 'goal_contribution';
+  goalId: ID;
+  amount: number;
+}
+
+export interface DebtUpsertEvent extends LedgerEventBase {
+  type: 'debt_upsert';
+  debt: Debt;
+}
+
+export interface DebtRemoveEvent extends LedgerEventBase {
+  type: 'debt_remove';
+  debtId: ID;
+}
+
+/**
+ * Marks an entry as checked off against the bank.
+ *
+ * A separate event rather than a field on the entry, because it is not part of
+ * what happened — it is a later assertion *about* what happened. Keeping money
+ * events as untouched records of the transaction means reconciling can never
+ * corrupt the thing being reconciled.
+ */
+export interface EntryClearedEvent extends LedgerEventBase {
+  type: 'entry_cleared';
+  entryId: ID;
+  cleared: boolean;
+}
+
 export interface CategoryUpsertEvent extends LedgerEventBase {
   type: 'category_upsert';
   name: string;
@@ -189,6 +301,14 @@ export type LedgerEvent =
   | BudgetClearEvent
   | HoldingUpsertEvent
   | HoldingRemoveEvent
+  | TradeEvent
+  | DividendEvent
+  | GoalUpsertEvent
+  | GoalRemoveEvent
+  | GoalContributionEvent
+  | DebtUpsertEvent
+  | DebtRemoveEvent
+  | EntryClearedEvent
   | CategoryUpsertEvent
   | CategoryRemoveEvent
   | RecurringIncomeUpsertEvent

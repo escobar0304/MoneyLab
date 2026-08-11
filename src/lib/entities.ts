@@ -86,6 +86,112 @@ export function foldCategories(events: LedgerEvent[]): string[] {
     .sort((a, b) => a.localeCompare(b));
 }
 
+/**
+ * Rewrites a category name everywhere it appears, merging when `to` exists.
+ *
+ * The name is changed in place rather than recorded as a rename to resolve at
+ * read time. A read-time mapping would have to be applied by every derive,
+ * every chart and every table, and the first place it was forgotten would
+ * silently show the old name in one panel and the new one everywhere else. One
+ * pass here means nothing downstream has to know renaming exists.
+ */
+export function renameCategoryIn(
+  events: LedgerEvent[],
+  from: string,
+  to: string
+): { events: LedgerEvent[]; merged: boolean } {
+  const target = to.trim();
+  if (!target || target === from) return { events, merged: false };
+
+  // A pure case or accent fix ("groceries" → "Groceries") is a rename, not a
+  // merge of the category into itself.
+  const merged = foldCategories(events).some((c) => c.toLowerCase() === target.toLowerCase() && c !== from);
+
+  const next = events.flatMap((e): LedgerEvent[] => {
+    switch (e.type) {
+      case 'expense':
+        return e.category === from ? [{ ...e, category: target }] : [e];
+
+      case 'recurring_upsert':
+        return e.rule.category === from ? [{ ...e, rule: { ...e.rule, category: target } }] : [e];
+
+      // On a merge the target keeps its own limit and its own place in the
+      // picker; the source name ceases to exist entirely, so its configuration
+      // goes with it rather than overwriting the target's by being more recent.
+      case 'budget_set':
+      case 'budget_clear':
+        return e.category === from ? (merged ? [] : [{ ...e, category: target }]) : [e];
+
+      case 'category_upsert':
+      case 'category_remove':
+        return e.name === from ? (merged ? [] : [{ ...e, name: target }]) : [e];
+
+      default:
+        return [e];
+    }
+  });
+
+  return { events: next, merged };
+}
+
+/**
+ * Entries checked off against the bank. Last assertion per entry wins, so
+ * un-ticking something works and leaves the earlier tick in the history.
+ */
+export function foldCleared(events: LedgerEvent[]): Set<string> {
+  const cleared = new Set<string>();
+  for (const e of events) {
+    if (e.type !== 'entry_cleared') continue;
+    if (e.cleared) cleared.add(e.entryId);
+    else cleared.delete(e.entryId);
+  }
+  return cleared;
+}
+
+export interface Reconciliation {
+  /** Net of the entries ticked off — the figure to compare with the bank. */
+  clearedBalance: number;
+  /** Net of everything not yet ticked off. */
+  unclearedBalance: number;
+  clearedCount: number;
+  unclearedCount: number;
+}
+
+/**
+ * The two halves of the balance, split by whether they have been verified.
+ *
+ * The point of the exercise: if the cleared balance does not match the bank,
+ * something is missing or wrong — and that is the only way to find an expense
+ * you forgot to log, short of reading the statement line by line every month.
+ */
+export function reconcile(events: LedgerEvent[], onlyIds?: Set<string>): Reconciliation {
+  const cleared = foldCleared(events);
+  let clearedBalance = 0;
+  let unclearedBalance = 0;
+  let clearedCount = 0;
+  let unclearedCount = 0;
+
+  for (const e of events) {
+    if (e.type !== 'income' && e.type !== 'expense') continue;
+    if (onlyIds && !onlyIds.has(e.id)) continue;
+    const signed = e.type === 'income' ? e.amount : -e.amount;
+    if (cleared.has(e.id)) {
+      clearedBalance += signed;
+      clearedCount++;
+    } else {
+      unclearedBalance += signed;
+      unclearedCount++;
+    }
+  }
+
+  return {
+    clearedBalance: Math.round(clearedBalance * 100) / 100,
+    unclearedBalance: Math.round(unclearedBalance * 100) / 100,
+    clearedCount,
+    unclearedCount,
+  };
+}
+
 /** Monthly spending limits by category. */
 export function foldBudgets(events: LedgerEvent[]): Map<string, number> {
   const budgets = new Map<string, number>();

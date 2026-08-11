@@ -12,6 +12,7 @@ import { OverviewView } from './components/overview/OverviewView';
 // out. Markets in particular pulls in the TradingView embed, which most sessions
 // never open.
 const EntriesView = lazy(() => import('./components/entries/EntriesView').then((m) => ({ default: m.EntriesView })));
+const PlanView = lazy(() => import('./components/plan/PlanView').then((m) => ({ default: m.PlanView })));
 const MarketsView = lazy(() => import('./components/markets/MarketsView').then((m) => ({ default: m.MarketsView })));
 const SettingsView = lazy(() => import('./components/settings/SettingsView').then((m) => ({ default: m.SettingsView })));
 
@@ -84,6 +85,7 @@ export default function App() {
         <Suspense fallback={<ViewFallback />}>
           {tab === 'overview' && <OverviewView />}
           {tab === 'entries' && <EntriesView />}
+          {tab === 'plan' && <PlanView />}
           {tab === 'markets' && <MarketsView />}
           {tab === 'settings' && <SettingsView />}
         </Suspense>

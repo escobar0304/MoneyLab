@@ -3,8 +3,9 @@ import { useStore } from '../../lib/store';
 import type { LedgerEvent } from '../../lib/types';
 import { mergeEvents } from '../../lib/migrations';
 import { formatDateTime } from '../../lib/format';
-import { Button, Card, Modal, SectionTitle } from '../ui/primitives';
+import { Button, Card, Input, Label, Modal, SectionTitle } from '../ui/primitives';
 import { receiptsFootprint, formatBytes } from '../../lib/receipts';
+import { decryptJSON, encryptJSON, encryptionAvailable, isEncryptedEnvelope, passphraseAdvice, WrongPassphraseError } from '../../lib/crypto';
 
 /** Nag threshold. Long enough not to be noise, short enough that a browser
  * clearing site data can't cost more than a month of entries. */
@@ -28,9 +29,20 @@ function daysSince(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 }
 
+function download(contents: string, name: string) {
+  const blob = new Blob([contents], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ExportImport() {
   const events = useStore((s) => s.events);
   const lastExportedAt = useStore((s) => s.lastExportedAt);
+  const lastBackupAt = useStore((s) => s.lastBackupAt);
   const importEvents = useStore((s) => s.importEvents);
   const markExported = useStore((s) => s.markExported);
   const clearAll = useStore((s) => s.clearAll);
@@ -41,22 +53,55 @@ export function ExportImport() {
   const [result, setResult] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
-  const stale = events.length > 0 && (!lastExportedAt || daysSince(lastExportedAt) >= STALE_BACKUP_DAYS);
+  // Encryption flows. `locked` holds a file that parsed as an envelope and is
+  // waiting for its passphrase.
+  const [encrypting, setEncrypting] = useState(false);
+  const [locked, setLocked] = useState<unknown | null>(null);
+  const [passphrase, setPassphrase] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const canEncrypt = encryptionAvailable();
+  // The nag counts either kind of backup — an automatic folder write protects
+  // the data just as well as a manual download, and nagging through it would
+  // train the user to ignore the warning.
+  const lastAny = [lastExportedAt, lastBackupAt].filter(Boolean).sort().pop() ?? null;
+  const stale = events.length > 0 && (!lastAny || daysSince(lastAny) >= STALE_BACKUP_DAYS);
 
   const [receipts, setReceipts] = useState<{ count: number; bytes: number } | null>(null);
   useEffect(() => {
     receiptsFootprint().then(setReceipts).catch(() => setReceipts(null));
   }, [events]);
 
-  const exportData = () => {
-    const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `moneylab-export-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const stamp = new Date().toISOString().slice(0, 10);
+
+  const exportPlain = () => {
+    download(JSON.stringify(events, null, 2), `moneylab-export-${stamp}.json`);
     markExported();
+  };
+
+  const exportEncrypted = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const envelope = await encryptJSON(events, passphrase);
+      download(JSON.stringify(envelope, null, 2), `moneylab-export-${stamp}.encrypted.json`);
+      markExported();
+      setEncrypting(false);
+      setPassphrase('');
+      setResult('Encrypted backup saved. Without that passphrase the file cannot be recovered — not even here.');
+    } catch {
+      setError('Encryption failed in this browser.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const accept = (parsed: unknown) => {
+    if (!isLedgerEventArray(parsed)) {
+      setError('That file does not look like a MoneyLab export (expected an array of ledger events).');
+      return;
+    }
+    setPending(parsed);
   };
 
   const onFileChosen = async (file: File) => {
@@ -64,13 +109,29 @@ export function ExportImport() {
     setResult(null);
     try {
       const parsed: unknown = JSON.parse(await file.text());
-      if (!isLedgerEventArray(parsed)) {
-        setError('That file does not look like a MoneyLab export (expected an array of ledger events).');
+      if (isEncryptedEnvelope(parsed)) {
+        setLocked(parsed);
         return;
       }
-      setPending(parsed);
+      accept(parsed);
     } catch {
       setError('Could not parse that file as JSON.');
+    }
+  };
+
+  const unlock = async () => {
+    if (!locked) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const decrypted = await decryptJSON(locked as Parameters<typeof decryptJSON>[0], passphrase);
+      setLocked(null);
+      setPassphrase('');
+      accept(decrypted);
+    } catch (e) {
+      setError(e instanceof WrongPassphraseError ? e.message : 'Could not decrypt that file.');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -86,9 +147,23 @@ export function ExportImport() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const closeEncrypt = () => {
+    setEncrypting(false);
+    setPassphrase('');
+    setError(null);
+  };
+
+  const closeUnlock = () => {
+    setLocked(null);
+    setPassphrase('');
+    setError(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   // Previewed against the real ledger so the modal can state the actual outcome
   // rather than asking the user to guess what a merge will do.
   const preview = pending ? mergeEvents(events, pending) : null;
+  const advice = passphraseAdvice(passphrase);
 
   return (
     <Card>
@@ -100,17 +175,15 @@ export function ExportImport() {
             <path d="M8 1.5 15 14H1L8 1.5Zm0 4.2a.75.75 0 0 0-.75.75v2.6a.75.75 0 0 0 1.5 0v-2.6A.75.75 0 0 0 8 5.7Zm0 5.1a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Z" />
           </svg>
           <p className="text-sm text-ink-secondary">
-            {lastExportedAt
-              ? `Your last backup was ${daysSince(lastExportedAt)} days ago.`
-              : "You've never exported a backup."}{' '}
-            Everything lives in this browser's storage — clearing site data, or switching browser, loses all of it.
+            {lastAny ? `Your last backup was ${daysSince(lastAny)} days ago.` : "You've never backed anything up."} Everything lives
+            in this browser's storage — clearing site data, or switching browser, loses all of it.
           </p>
         </div>
       )}
 
       <p className="mb-4 text-sm text-ink-muted">
         {events.length} {events.length === 1 ? 'event' : 'events'} stored locally.{' '}
-        {lastExportedAt ? `Last backup ${formatDateTime(lastExportedAt)}.` : 'No backup taken yet.'}
+        {lastExportedAt ? `Last export ${formatDateTime(lastExportedAt)}.` : 'No export taken yet.'}
         {receipts && receipts.count > 0 && (
           <>
             {' '}
@@ -121,11 +194,14 @@ export function ExportImport() {
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={exportData} disabled={events.length === 0}>
+        <Button onClick={exportPlain} disabled={events.length === 0}>
           Export JSON
         </Button>
+        <Button variant="secondary" onClick={() => setEncrypting(true)} disabled={events.length === 0 || !canEncrypt}>
+          Export encrypted
+        </Button>
         <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-          Import JSON
+          Import
         </Button>
         <Button variant="danger" onClick={() => setConfirmClear(true)} disabled={events.length === 0}>
           Clear all data
@@ -142,8 +218,81 @@ export function ExportImport() {
         />
       </div>
 
-      {error && <p className="mt-2 text-sm text-critical-text">{error}</p>}
+      {!canEncrypt && (
+        // Not a bug worth hiding: WebCrypto is simply absent outside a secure
+        // context, which happens when this container is reached over plain HTTP
+        // from another machine.
+        <p className="mt-2 text-xs text-ink-muted">
+          Encrypted export needs a secure context (HTTPS, or localhost). Reached over plain HTTP from another machine, the
+          browser does not expose the crypto API at all.
+        </p>
+      )}
+
+      {error && !encrypting && !locked && <p className="mt-2 text-sm text-critical-text">{error}</p>}
       {result && <p className="mt-2 text-sm text-ink-secondary">{result}</p>}
+
+      {encrypting && (
+        <Modal title="Encrypt this backup" onClose={closeEncrypt}>
+          <p className="text-sm text-ink-secondary">
+            The file will be encrypted with AES-GCM using a key derived from your passphrase. It is safe to keep in cloud
+            storage afterwards.
+          </p>
+          <div className="mt-3">
+            <Label htmlFor="export-pass">Passphrase</Label>
+            <Input
+              id="export-pass"
+              type="password"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && advice.ok && exportEncrypted()}
+              autoFocus
+              autoComplete="new-password"
+            />
+            <p className={`mt-1 text-xs ${advice.ok ? 'text-ink-muted' : 'text-critical-text'}`}>{advice.message}</p>
+          </div>
+          {/* Stated before the file exists, not after. There is no recovery
+              path, and that is a property of doing the encryption properly. */}
+          <p className="mt-3 rounded-lg border border-complement/30 bg-complement/10 p-2.5 text-xs text-ink-secondary">
+            Write it down somewhere. Nothing in this app can open the file without it.
+          </p>
+          {error && <p className="mt-2 text-sm text-critical-text">{error}</p>}
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="ghost" onClick={closeEncrypt}>
+              Cancel
+            </Button>
+            <Button onClick={exportEncrypted} disabled={!advice.ok || busy}>
+              {busy ? 'Encrypting…' : 'Encrypt and download'}
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {locked !== null && (
+        <Modal title="This backup is encrypted" onClose={closeUnlock}>
+          <p className="text-sm text-ink-secondary">Enter the passphrase it was saved with.</p>
+          <div className="mt-3">
+            <Label htmlFor="import-pass">Passphrase</Label>
+            <Input
+              id="import-pass"
+              type="password"
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && unlock()}
+              autoFocus
+              autoComplete="current-password"
+            />
+          </div>
+          {error && <p className="mt-2 text-sm text-critical-text">{error}</p>}
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="ghost" onClick={closeUnlock}>
+              Cancel
+            </Button>
+            <Button onClick={unlock} disabled={passphrase.length === 0 || busy}>
+              {busy ? 'Decrypting…' : 'Unlock'}
+            </Button>
+          </div>
+        </Modal>
+      )}
 
       {pending && preview && (
         <Modal title="Import data" onClose={() => setPending(null)}>
