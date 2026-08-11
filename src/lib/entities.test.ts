@@ -205,7 +205,8 @@ describe('renameCategoryIn', () => {
   it('treats a case fix as a rename, not a merge into itself', () => {
     const { events, merged } = renameCategoryIn(base, 'Food', 'food');
     expect(merged).toBe(false);
-    expect(foldCategories(events)).toEqual(['Rent', 'food']);
+    // localeCompare collates case-insensitively, so "food" sorts before "Rent".
+    expect(foldCategories(events)).toEqual(['food', 'Rent']);
   });
 
   it('leaves the ledger untouched for an empty or identical name', () => {
