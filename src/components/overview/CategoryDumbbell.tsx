@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { useStore } from '../../lib/store';
+import { useVisibleEvents } from '../../lib/store';
 import { spendByCategoryForMonth, previousMonthKey } from '../../lib/derive';
 import { formatMoney, monthLabel } from '../../lib/format';
 import { PRIMARY, COMPLEMENT, CHART_INK } from '../../lib/chartTheme';
@@ -18,7 +18,7 @@ const BEFORE_SHADE = '#86b6ef'; // step 250 of the blue ramp — the "before" sh
  * backed by dot order and a signed number, so nothing depends on hue alone.
  */
 export function CategoryDumbbell({ month }: { month: string }) {
-  const events = useStore((s) => s.events);
+  const events = useVisibleEvents();
   const scope = useRef<HTMLDivElement>(null);
 
   const { rows, max } = useMemo(() => {

@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { useStore } from '../../lib/store';
+import { useVisibleEvents } from '../../lib/store';
 import { totalIncomeForMonth, totalOutflowForMonth } from '../../lib/derive';
 import { formatMoney } from '../../lib/format';
 import { PRIMARY, COMPLEMENT, STATUS } from '../../lib/chartTheme';
@@ -19,7 +19,7 @@ import { EmptyState } from '../ui/primitives';
  * never carries the state.
  */
 export function BudgetMeter({ month }: { month: string }) {
-  const events = useStore((s) => s.events);
+  const events = useVisibleEvents();
   const fillRef = useRef<HTMLDivElement>(null);
 
   const { income, spent, pct, over } = useMemo(() => {

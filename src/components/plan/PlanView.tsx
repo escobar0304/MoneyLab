@@ -1,6 +1,7 @@
 import { Reveal } from '../ui/Reveal';
 import { GoalsManager } from './GoalsManager';
 import { DebtManager } from './DebtManager';
+import { IrsPanel } from './IrsPanel';
 
 /**
  * The forward-looking page: what you are saving towards, and what you owe.
@@ -15,6 +16,7 @@ export function PlanView() {
     <Reveal className="space-y-3" from="start">
       <GoalsManager />
       <DebtManager />
+      <IrsPanel />
     </Reveal>
   );
 }

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useStore } from '../../lib/store';
+import { useVisibleEvents } from '../../lib/store';
 import { monthsWithActivity, spendByCategoryForMonth } from '../../lib/derive';
 import { monthLabel, formatMoney } from '../../lib/format';
 import { CHART_INK, MAX_CATEGORICAL_SERIES, OTHER_LABEL, categoryColorMap, rankedCategories } from '../../lib/chartTheme';
@@ -9,7 +9,7 @@ import { ChartLegend, Plot, barCursor, gridProps, niceScale, plotMargin, xAxisPr
 import { EmptyState } from '../ui/primitives';
 
 export function SpendByCategoryChart() {
-  const events = useStore((s) => s.events);
+  const events = useVisibleEvents();
   const colors = useMemo(() => categoryColorMap(events), [events]);
 
   const { data, categories } = useMemo(() => {

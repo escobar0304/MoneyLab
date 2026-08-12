@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { useStore, usePositions, useBudgets, useDebts } from '../../lib/store';
-import { foldTrades, foldDividends, investmentSummary } from '../../lib/investments';
-import { totalOwed } from '../../lib/debt';
+import { useVisibleEvents } from '../../lib/store';
+import { foldTrades, foldDividends, investmentSummary, positionFor } from '../../lib/investments';
+import { foldHoldings, foldBudgets } from '../../lib/entities';
+import { foldDebts, totalOwed } from '../../lib/debt';
 import {
   totalBalance,
   totalOutflowForMonth,
@@ -27,6 +28,8 @@ import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { Reveal } from '../ui/Reveal';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
 import { MonthFilter } from './MonthFilter';
+import { TimeTravel, TimeTravelBanner } from './TimeTravel';
+import { RunwayChart, RunwaySummary } from './RunwayChart';
 import { NetWorthChart } from './NetWorthChart';
 import { IncomeVsExpensesChart } from './IncomeVsExpensesChart';
 import { SpendByCategoryChart } from './SpendByCategoryChart';
@@ -79,10 +82,17 @@ function StatTile({
 }
 
 export function OverviewView() {
-  const events = useStore((s) => s.events);
-  const positions = usePositions();
-  const debts = useDebts();
-  const budgets = useBudgets();
+  // Everything on this page reads the ledger through this one list, so a date
+  // set in the time-travel control reaches the hero, the tiles and every chart
+  // without any of them knowing the feature exists.
+  const events = useVisibleEvents();
+  const positions = useMemo(() => {
+    const trades = foldTrades(events);
+    const dividends = foldDividends(events);
+    return foldHoldings(events).map((h) => positionFor(h, trades, dividends));
+  }, [events]);
+  const debts = useMemo(() => foldDebts(events), [events]);
+  const budgets = useMemo(() => foldBudgets(events), [events]);
   const heroRef = useRef<HTMLParagraphElement>(null);
 
   const currentMonth = monthKey(new Date().toISOString());
@@ -142,8 +152,11 @@ export function OverviewView() {
 
   return (
     <div className="space-y-6">
+      <TimeTravelBanner />
+
       {/* Hero figure — exactly one per view, and the only number at this size. */}
-      <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
         <p className="text-xs font-medium text-ink-muted">{composed ? 'Net worth' : 'Balance'}</p>
         <p ref={heroRef} className={`mt-1 text-5xl font-semibold tracking-tight ${netWorth < 0 ? 'text-critical-text' : 'text-ink'}`}>
           <AnimatedNumber value={netWorth} format={formatMoney} />
@@ -183,7 +196,21 @@ export function OverviewView() {
         ) : (
           <Delta delta={balanceDelta} goodWhen="up" />
         )}
+        </div>
+        <TimeTravel />
       </div>
+
+      {/* Placed directly under the hero: "do I make it to payday" is the most
+          immediate question on the page, and the one a month-end total cannot
+          answer because it nets the order of events away. */}
+      <Reveal className="grid grid-cols-1" from="start">
+        <ChartCard title="The next 60 days" subtitle="Balance day by day, if nothing changes">
+          <RunwaySummary />
+          <div className="mt-2">
+            <RunwayChart />
+          </div>
+        </ChartCard>
+      </Reveal>
 
       {/* Trends. One series over time is an area; two distinct series are lines.
           All three timeline charts share a crosshair through syncId. */}

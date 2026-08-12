@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
-import { useStore } from '../../lib/store';
+import { useVisibleEvents } from '../../lib/store';
 import { spendByCategoryForMonth } from '../../lib/derive';
 import { formatMoney } from '../../lib/format';
 import { CHART_INK, OTHER_LABEL, categoryColorMap } from '../../lib/chartTheme';
@@ -12,7 +12,7 @@ import { EmptyState } from '../ui/primitives';
 const MAX_SLICES = 6;
 
 export function SpendByCategoryPie({ month }: { month: string }) {
-  const events = useStore((s) => s.events);
+  const events = useVisibleEvents();
   const colors = useMemo(() => categoryColorMap(events), [events]);
 
   const { data, total } = useMemo(() => {

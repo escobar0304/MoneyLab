@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useStore } from '../../lib/store';
+import { useVisibleEvents } from '../../lib/store';
 import { balanceSeries } from '../../lib/derive';
 import { CHART_INK, PRIMARY } from '../../lib/chartTheme';
 import { formatMoney, formatDate } from '../../lib/format';
@@ -9,7 +9,7 @@ import { EndpointLabel, Plot, crosshair, gridProps, niceScale, plotMargin, xAxis
 import { EmptyState } from '../ui/primitives';
 
 export function NetWorthChart() {
-  const events = useStore((s) => s.events);
+  const events = useVisibleEvents();
   // Sliced to the same trailing window as the other two synced timeline charts
   // (IncomeVsExpensesChart, SpendByCategoryChart) so index-based syncId alignment
   // (Recharts syncs by data index, not by matching X value) points at the same month.

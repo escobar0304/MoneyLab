@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useStore } from '../../lib/store';
+import { useVisibleEvents } from '../../lib/store';
 import { findAnomalies } from '../../lib/analysis';
 import { formatMoney, formatDate } from '../../lib/format';
 import { categoryColorMap } from '../../lib/chartTheme';
@@ -13,7 +13,7 @@ import { categoryColorMap } from '../../lib/chartTheme';
  * always shown so the claim can be checked instead of trusted.
  */
 export function Anomalies({ month }: { month: string }) {
-  const events = useStore((s) => s.events);
+  const events = useVisibleEvents();
   const colors = useMemo(() => categoryColorMap(events), [events]);
   const anomalies = useMemo(() => findAnomalies(events, month).slice(0, 5), [events, month]);
 

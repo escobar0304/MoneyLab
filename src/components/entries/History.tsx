@@ -3,7 +3,8 @@ import { useStore, useCleared } from '../../lib/store';
 import { monthsWithActivity, monthKey, totalIncomeForMonth, totalOutflowForMonth } from '../../lib/derive';
 import { searchEntries } from '../../lib/search';
 import { reconcile } from '../../lib/entities';
-import { Card, EmptyState, SectionTitle, Select, Input, Button } from '../ui/primitives';
+import { Card, EmptyState, SectionTitle, Select, Input, Button, Modal } from '../ui/primitives';
+import { CategoryPicker } from './CategoryPicker';
 import { formatMoney, formatDate, monthLabel } from '../../lib/format';
 import { formatForeign } from '../../lib/currency';
 import { categoryColorMap } from '../../lib/chartTheme';
@@ -24,6 +25,8 @@ export function History() {
   const events = useStore((s) => s.events);
   const cleared = useCleared();
   const setManyCleared = useStore((s) => s.setManyCleared);
+  const recategorizeMany = useStore((s) => s.recategorizeMany);
+  const removeMany = useStore((s) => s.removeMany);
   const colors = useMemo(() => categoryColorMap(events), [events]);
 
   const currentMonth = monthKey(new Date().toISOString());
@@ -35,8 +38,12 @@ export function History() {
   const [month, setMonth] = useState(currentMonth);
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [query, setQuery] = useState('');
-  const [reconciling, setReconciling] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bankBalance, setBankBalance] = useState('');
+  const [recategorising, setRecategorising] = useState(false);
+  const [bulkCategory, setBulkCategory] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [withReceipts, setWithReceipts] = useState<Set<string>>(new Set());
 
@@ -70,7 +77,24 @@ export function History() {
   const bank = Number(bankBalance.replace(',', '.'));
   const difference = Number.isFinite(bank) && bankBalance.trim() !== '' ? Math.round((bank - balances.clearedBalance) * 100) / 100 : null;
 
-  const unclearedShown = entries.filter((e) => !cleared.has(e.id)).map((e) => e.id);
+  const selectedIds = useMemo(() => entries.filter((e) => selected.has(e.id)).map((e) => e.id), [entries, selected]);
+  const selectedExpenses = useMemo(
+    () => entries.filter((e) => selected.has(e.id) && e.type === 'expense').map((e) => e.id),
+    [entries, selected]
+  );
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const done = () => {
+    setSelected(new Set());
+    setSelecting(false);
+  };
 
   return (
     <Card>
@@ -125,13 +149,13 @@ export function History() {
           </div>
           <button
             type="button"
-            onClick={() => setReconciling((v) => !v)}
-            aria-pressed={reconciling}
+            onClick={() => (selecting ? done() : setSelecting(true))}
+            aria-pressed={selecting}
             className={`cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors duration-200 ${
-              reconciling ? 'border-accent/40 bg-accent/12 text-accent' : 'border-hairline text-ink-muted hover:border-border hover:text-ink-secondary'
+              selecting ? 'border-accent/40 bg-accent/12 text-accent' : 'border-hairline text-ink-muted hover:border-border hover:text-ink-secondary'
             }`}
           >
-            Reconcile
+            {selecting ? 'Done' : 'Select'}
           </button>
         </div>
 
@@ -150,9 +174,35 @@ export function History() {
         </p>
       </div>
 
-      {reconciling && (
-        <div className="mb-3 rounded-lg border border-hairline bg-surface-0 p-3">
-          <p className="text-xs text-ink-secondary">
+      {selecting && (
+        <div className="mb-3 space-y-3 rounded-lg border border-hairline bg-surface-0 p-3">
+          {/* Acting on a selection and reconciling are the same gesture — tick
+              rows, then do something to them — so they share one mode rather
+              than fighting over the checkbox column. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm text-ink-secondary">
+              {selectedIds.length === 0 ? 'Nothing selected' : `${selectedIds.length} selected`}
+            </p>
+            <span className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={() => setSelected(new Set(shownIds))} disabled={entries.length === 0}>
+                Select all shown
+              </Button>
+              <Button variant="secondary" onClick={() => setManyCleared(selectedIds, true)} disabled={selectedIds.length === 0}>
+                Mark cleared
+              </Button>
+              <Button variant="secondary" onClick={() => setManyCleared(selectedIds, false)} disabled={selectedIds.length === 0}>
+                Unmark
+              </Button>
+              <Button variant="secondary" onClick={() => setRecategorising(true)} disabled={selectedExpenses.length === 0}>
+                Recategorise
+              </Button>
+              <Button variant="danger" onClick={() => setConfirmDelete(true)} disabled={selectedIds.length === 0}>
+                Delete
+              </Button>
+            </span>
+          </div>
+
+          <p className="border-t border-hairline pt-3 text-xs text-ink-secondary">
             Tick off each entry against your statement. When the cleared figure matches the bank, nothing is missing.
           </p>
           <div className="mt-2.5 flex flex-wrap items-end gap-x-5 gap-y-2">
@@ -193,11 +243,6 @@ export function History() {
                 )}
               </p>
             )}
-            {unclearedShown.length > 0 && (
-              <Button variant="ghost" onClick={() => setManyCleared(unclearedShown, true)}>
-                Tick all {entries.length === unclearedShown.length ? '' : 'remaining '}shown
-              </Button>
-            )}
           </div>
         </div>
       )}
@@ -216,12 +261,64 @@ export function History() {
               color={entry.type === 'expense' ? colors.get(entry.category) : undefined}
               hasReceipt={withReceipts.has(entry.id)}
               showDate={searching}
-              reconciling={reconciling}
+              selecting={selecting}
+              selected={selected.has(entry.id)}
+              onSelect={() => toggle(entry.id)}
               cleared={cleared.has(entry.id)}
               onOpen={() => setOpenId(entry.id)}
             />
           ))}
         </ul>
+      )}
+
+      {recategorising && (
+        <Modal title={`Move ${selectedExpenses.length} ${selectedExpenses.length === 1 ? 'entry' : 'entries'}`} onClose={() => setRecategorising(false)}>
+          <p className="text-sm text-ink-secondary">
+            Pick the category they should have. Income entries in the selection are left alone — they have no category.
+          </p>
+          <div className="mt-3">
+            <CategoryPicker value={bulkCategory} onChange={setBulkCategory} id="bulk-category" />
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setRecategorising(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!bulkCategory.trim()}
+              onClick={() => {
+                recategorizeMany(selectedExpenses, bulkCategory);
+                setRecategorising(false);
+                setBulkCategory('');
+                done();
+              }}
+            >
+              Move them
+            </Button>
+          </div>
+        </Modal>
+      )}
+
+      {confirmDelete && (
+        <Modal title={`Delete ${selectedIds.length} ${selectedIds.length === 1 ? 'entry' : 'entries'}?`} onClose={() => setConfirmDelete(false)}>
+          <p className="text-sm text-ink-secondary">
+            This removes them from the ledger. You can undo it immediately afterwards, but not once you leave the page.
+          </p>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                removeMany(selectedIds);
+                setConfirmDelete(false);
+                done();
+              }}
+            >
+              Delete them
+            </Button>
+          </div>
+        </Modal>
       )}
 
       {open && <EntryDetail entry={open} onClose={() => setOpenId(null)} />}
@@ -234,7 +331,9 @@ function EntryRow({
   color,
   hasReceipt,
   showDate,
-  reconciling,
+  selecting,
+  selected,
+  onSelect,
   cleared,
   onOpen,
 }: {
@@ -242,11 +341,12 @@ function EntryRow({
   color?: string;
   hasReceipt: boolean;
   showDate: boolean;
-  reconciling: boolean;
+  selecting: boolean;
+  selected: boolean;
+  onSelect: () => void;
   cleared: boolean;
   onOpen: () => void;
 }) {
-  const setCleared = useStore((s) => s.setCleared);
   const isIncome = entry.type === 'income';
   const detail = [
     formatDate(entry.timestamp),
@@ -259,14 +359,14 @@ function EntryRow({
 
   return (
     <li className="flex items-center gap-2">
-      {reconciling && (
+      {selecting && (
         // Its own control, outside the row button: ticking forty entries against
         // a statement should not open forty overlays on the way.
         <input
           type="checkbox"
-          checked={cleared}
-          onChange={(e) => setCleared(entry.id, e.target.checked)}
-          aria-label={`Cleared: ${isIncome ? entry.label : entry.category}, ${formatMoney(entry.amount)}`}
+          checked={selected}
+          onChange={onSelect}
+          aria-label={`Select ${isIncome ? entry.label : entry.category}, ${formatMoney(entry.amount)}`}
           className="ml-1 h-4 w-4 shrink-0 cursor-pointer accent-accent"
         />
       )}
@@ -292,9 +392,9 @@ function EntryRow({
                   <path d="M4 1h8a1 1 0 0 1 1 1v13l-2.2-1.4L8.6 15 6.4 13.6 4.2 15 3 15V2a1 1 0 0 1 1-1Zm1.5 3.2a.7.7 0 0 0 0 1.4h5a.7.7 0 0 0 0-1.4h-5Zm0 3a.7.7 0 0 0 0 1.4h5a.7.7 0 0 0 0-1.4h-5Z" />
                 </svg>
               )}
-              {/* Outside reconcile mode the tick still shows, so a checked-off
-                  ledger looks different from one nobody has verified. */}
-              {!reconciling && cleared && (
+              {/* The tick stays visible outside selection mode, so a verified
+                  ledger looks different from one nobody has checked. */}
+              {cleared && (
                 <svg viewBox="0 0 16 16" className="h-3 w-3 shrink-0 text-positive" fill="currentColor" role="img" aria-label="Cleared">
                   <path d="M6.2 11.8 2.6 8.2l1.2-1.2 2.4 2.4 5.9-5.9 1.3 1.2z" />
                 </svg>

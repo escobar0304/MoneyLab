@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useStore } from '../../lib/store';
+import { useVisibleEvents } from '../../lib/store';
 import { savingsRateSeries } from '../../lib/analysis';
 import { monthLabel } from '../../lib/format';
 import { CHART_INK, PRIMARY } from '../../lib/chartTheme';
@@ -17,7 +17,7 @@ import { EmptyState } from '../ui/primitives';
  * threshold on this chart that means something on its own.
  */
 export function SavingsRateChart() {
-  const events = useStore((s) => s.events);
+  const events = useVisibleEvents();
 
   const data = useMemo(
     () =>

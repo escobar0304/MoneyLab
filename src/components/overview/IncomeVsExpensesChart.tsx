@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useStore } from '../../lib/store';
+import { useVisibleEvents } from '../../lib/store';
 import { monthsWithActivity, totalIncomeForMonth, totalOutflowForMonth } from '../../lib/derive';
 import { monthLabel, formatMoney } from '../../lib/format';
 import { PRIMARY, COMPLEMENT, CHART_INK } from '../../lib/chartTheme';
@@ -9,7 +9,7 @@ import { ChartLegend, EndpointLabel, Plot, crosshair, gridProps, niceScale, plot
 import { EmptyState } from '../ui/primitives';
 
 export function IncomeVsExpensesChart() {
-  const events = useStore((s) => s.events);
+  const events = useVisibleEvents();
 
   const data = useMemo(() => {
     const months = monthsWithActivity(events).slice(-6);

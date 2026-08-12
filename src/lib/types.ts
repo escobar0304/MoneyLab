@@ -261,6 +261,23 @@ export interface EntryClearedEvent extends LedgerEventBase {
   cleared: boolean;
 }
 
+/** Files one of your categories under an IRS deduction heading. A null rule
+ * unfiles it again. */
+export interface DeductionMapEvent extends LedgerEventBase {
+  type: 'deduction_map';
+  category: string;
+  ruleId: string | null;
+}
+
+/** Overrides a deduction's annual ceiling. The defaults shipped in the code are
+ * a starting point, not a source of truth — the ceilings move with each budget,
+ * so they have to be correctable without a new release. */
+export interface DeductionCapEvent extends LedgerEventBase {
+  type: 'deduction_cap';
+  ruleId: string;
+  cap: number;
+}
+
 export interface CategoryUpsertEvent extends LedgerEventBase {
   type: 'category_upsert';
   name: string;
@@ -309,6 +326,8 @@ export type LedgerEvent =
   | DebtUpsertEvent
   | DebtRemoveEvent
   | EntryClearedEvent
+  | DeductionMapEvent
+  | DeductionCapEvent
   | CategoryUpsertEvent
   | CategoryRemoveEvent
   | RecurringIncomeUpsertEvent

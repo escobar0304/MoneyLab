@@ -125,46 +125,99 @@ test.describe('reconciling against the bank', () => {
     await seed(page, base);
     await page.goto('/');
     await page.getByRole('button', { name: 'Entries', exact: true }).click();
-    await page.getByRole('button', { name: 'Reconcile' }).click();
+    await page.getByRole('button', { name: 'Select' }).click();
   });
 
   test('ticking entries moves them from uncleared to cleared', async ({ page }) => {
-    await page.getByLabel(/^Cleared: Salary/).check();
+    await page.getByLabel(/^Select Salary/).check();
+    await page.getByRole('button', { name: 'Mark cleared' }).click();
     await expect(page.getByText(money(1800)).first()).toBeVisible();
 
-    await page.getByLabel(/^Cleared: Alimentação/).check();
-    // 1800 in, 42.50 out.
-    await expect(page.getByText(money(1757.5)).first()).toBeVisible();
-
-    expect((await ledger(page)).filter((e) => e.type === 'entry_cleared' && e.cleared === true)).toHaveLength(2);
+    expect((await ledger(page)).filter((e) => e.type === 'entry_cleared' && e.cleared === true)).toHaveLength(1);
   });
 
   test('says plainly when the cleared figure matches the bank', async ({ page }) => {
-    await page.getByRole('button', { name: /^Tick all/ }).click();
+    await page.getByRole('button', { name: 'Select all shown' }).click();
+    await page.getByRole('button', { name: 'Mark cleared' }).click();
     // Everything in this month: 1800 − 35 − 42.50 = 1722.50.
     await page.locator('#bank-balance').fill('1722,50');
     await expect(page.getByText('Matches — nothing missing.')).toBeVisible();
   });
 
   test('names the size and the direction of a mismatch', async ({ page }) => {
-    await page.getByRole('button', { name: /^Tick all/ }).click();
+    await page.getByRole('button', { name: 'Select all shown' }).click();
+    await page.getByRole('button', { name: 'Mark cleared' }).click();
     await page.locator('#bank-balance').fill('1700');
     await expect(page.getByText(/Off by/)).toBeVisible();
     await expect(page.getByText(/you logged more than the bank has/)).toBeVisible();
   });
 
   test('un-ticking works and the tick survives a reload', async ({ page }) => {
-    const box = page.getByLabel(/^Cleared: Salary/);
-    await box.check();
+    await page.getByLabel(/^Select Salary/).check();
+    await page.getByRole('button', { name: 'Mark cleared' }).click();
     await page.reload();
     await page.getByRole('button', { name: 'Entries', exact: true }).click();
 
-    // Outside reconcile mode the tick still shows, so a verified ledger looks
+    // The tick stays visible outside selection mode, so a verified ledger looks
     // different from one nobody has checked.
     await expect(page.getByRole('img', { name: 'Cleared' })).toHaveCount(1);
 
-    await page.getByRole('button', { name: 'Reconcile' }).click();
-    await page.getByLabel(/^Cleared: Salary/).uncheck();
+    await page.getByRole('button', { name: 'Select' }).click();
+    await page.getByLabel(/^Select Salary/).check();
+    await page.getByRole('button', { name: 'Unmark' }).click();
     await expect(page.getByRole('img', { name: 'Cleared' })).toHaveCount(0);
+  });
+});
+
+test.describe('bulk editing', () => {
+  test.beforeEach(async ({ page }) => {
+    await seed(page, base);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await page.getByRole('button', { name: 'Select' }).click();
+  });
+
+  test('moves several entries to another category at once', async ({ page }) => {
+    // Correcting the category name is one thing; moving ten misfiled expenses
+    // is the other half, and it was only possible one row at a time.
+    await page.getByLabel(/^Select Saúde/).check();
+    await page.getByRole('button', { name: 'Recategorise' }).click();
+
+    // Scoped to the dialog: the expense form behind it has the same picker.
+    await page.getByRole('dialog').getByRole('radio', { name: 'Alimentação' }).click();
+    await page.getByRole('button', { name: 'Move them' }).click();
+
+    const events = await ledger(page);
+    expect(events.filter((e) => e.type === 'expense' && e.category === 'Alimentação')).toHaveLength(2);
+    expect(events.filter((e) => e.type === 'expense' && e.category === 'Saúde')).toHaveLength(1);
+  });
+
+  test('leaves income alone, because it has no category', async ({ page }) => {
+    await page.getByRole('button', { name: 'Select all shown' }).click();
+    await page.getByRole('button', { name: 'Recategorise' }).click();
+    await expect(page.getByText(/Income entries in the selection are left alone/)).toBeVisible();
+    await page.getByRole('dialog').getByRole('radio', { name: 'Alimentação' }).click();
+    await page.getByRole('button', { name: 'Move them' }).click();
+
+    const events = await ledger(page);
+    expect(events.filter((e) => e.type === 'income')).toHaveLength(1);
+    expect(events.filter((e) => e.type === 'income' && 'category' in e)).toHaveLength(0);
+  });
+
+  test('deletes a selection behind a confirmation, and it can be undone', async ({ page }) => {
+    await page.getByRole('button', { name: 'Select all shown' }).click();
+    await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.getByRole('button', { name: 'Delete them' }).click();
+
+    expect((await ledger(page)).filter((e) => e.type === 'expense' || e.type === 'income')).toHaveLength(1);
+
+    await page.keyboard.press('Control+z');
+    expect((await ledger(page)).filter((e) => e.type === 'expense' || e.type === 'income')).toHaveLength(4);
+  });
+
+  test('does nothing until something is selected', async ({ page }) => {
+    await expect(page.getByText('Nothing selected')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Recategorise' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Delete', exact: true })).toBeDisabled();
   });
 });

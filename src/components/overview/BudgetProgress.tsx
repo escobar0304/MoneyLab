@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { useStore, useBudgets } from '../../lib/store';
+import { useVisibleEvents, useBudgets } from '../../lib/store';
 import { budgetStatuses } from '../../lib/analysis';
 import { formatMoney } from '../../lib/format';
 import { PRIMARY, COMPLEMENT, STATUS } from '../../lib/chartTheme';
@@ -17,7 +17,7 @@ const WORD = { ok: 'on track', close: 'close to limit', over: 'over budget' } as
  * open this card at all.
  */
 export function BudgetProgress({ month }: { month: string }) {
-  const events = useStore((s) => s.events);
+  const events = useVisibleEvents();
   const budgets = useBudgets();
   const scope = useRef<HTMLDivElement>(null);
 

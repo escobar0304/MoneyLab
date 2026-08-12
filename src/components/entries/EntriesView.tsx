@@ -3,6 +3,7 @@ import { RecurringManager } from './RecurringManager';
 import { ExpenseEntryForm } from './ExpenseEntryForm';
 import { BudgetManager } from './BudgetManager';
 import { CategoryManager } from './CategoryManager';
+import { Subscriptions } from './Subscriptions';
 import { History } from './History';
 
 /**
@@ -17,6 +18,7 @@ export function EntriesView() {
         <ExpenseEntryForm />
         <RecurringManager kind="expense" />
         <BudgetManager />
+        <Subscriptions />
         <CategoryManager />
       </div>
       <History />

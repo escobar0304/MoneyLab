@@ -87,6 +87,19 @@ interface MoneyLabState {
 
   setCleared: (entryId: ID, cleared: boolean) => void;
   setManyCleared: (entryIds: ID[], cleared: boolean) => void;
+  recategorizeMany: (entryIds: ID[], category: string) => void;
+  removeMany: (entryIds: ID[]) => void;
+
+  mapDeduction: (category: string, ruleId: string | null) => void;
+  setDeductionCap: (ruleId: string, cap: number) => void;
+
+  /**
+   * Date the read-only views are rendered as of, or null for now. Session-only:
+   * a persisted one would silently show a stale dashboard on the next visit
+   * with no memory of having set it.
+   */
+  asOf: string | null;
+  setAsOf: (date: string | null) => void;
 
   updateEntry: (id: ID, patch: EntryPatch) => void;
   removeEntry: (id: ID) => void;
@@ -112,6 +125,7 @@ export const useStore = create<MoneyLabState>()(
         lastExportedAt: null,
         lastBackupAt: null,
         undoSnapshot: null,
+        asOf: null,
 
         addIncome: ({ amount, label, recurringId, date, foreign }) => {
           const event: LedgerEvent = {
@@ -357,6 +371,52 @@ export const useStore = create<MoneyLabState>()(
             events: [...s.events, { id: makeId(), type: 'entry_cleared', timestamp: new Date().toISOString(), entryId, cleared }],
           })),
 
+        recategorizeMany: (entryIds, category) => {
+          const clean = category.trim();
+          if (!clean || entryIds.length === 0) return;
+          const ids = new Set(entryIds);
+          snapshot(`${entryIds.length} ${entryIds.length === 1 ? 'entry' : 'entries'} moved to “${clean}”`);
+          set((s) => ({
+            events: s.events.map((e) => (e.type === 'expense' && ids.has(e.id) ? { ...e, category: clean } : e)),
+          }));
+        },
+
+        removeMany: (entryIds) => {
+          if (entryIds.length === 0) return;
+          const ids = new Set(entryIds);
+          snapshot(`${entryIds.length} ${entryIds.length === 1 ? 'entry' : 'entries'} deleted`);
+
+          // Generated entries need the same skip marker a single delete emits,
+          // or the generator quietly restores them on the next load.
+          const extra: LedgerEvent[] = [];
+          for (const e of get().events) {
+            if (!ids.has(e.id) || (e.type !== 'income' && e.type !== 'expense')) continue;
+            const recurringId = recurringIdOf(e);
+            if (recurringId) {
+              extra.push({
+                id: makeId(),
+                type: 'recurring_skip',
+                timestamp: new Date().toISOString(),
+                recurringId,
+                month: monthKey(e.timestamp),
+              });
+            }
+          }
+          set((s) => ({ events: [...s.events.filter((e) => !ids.has(e.id)), ...extra] }));
+        },
+
+        mapDeduction: (category, ruleId) =>
+          set((s) => ({
+            events: [...s.events, { id: makeId(), type: 'deduction_map', timestamp: new Date().toISOString(), category, ruleId }],
+          })),
+
+        setDeductionCap: (ruleId, cap) =>
+          set((s) => ({
+            events: [...s.events, { id: makeId(), type: 'deduction_cap', timestamp: new Date().toISOString(), ruleId, cap }],
+          })),
+
+        setAsOf: (date) => set({ asOf: date }),
+
         setManyCleared: (entryIds, cleared) => {
           if (entryIds.length === 0) return;
           // Reconciling a whole statement is one action to undo, not forty.
@@ -497,6 +557,23 @@ export const useBudgets = (): Map<string, number> => {
 export const useCategories = (): string[] => {
   const events = useStore((s) => s.events);
   return useMemo(() => foldCategories(events), [events]);
+};
+
+/**
+ * The ledger as the read-only views should see it.
+ *
+ * With `asOf` set this is every event up to the end of that day, which is all
+ * time travel needs to be: the ledger is append-only, so truncating it *is* the
+ * state of the app on that date. Nothing has to be replayed or stored twice.
+ */
+export const useVisibleEvents = (): LedgerEvent[] => {
+  const events = useStore((s) => s.events);
+  const asOf = useStore((s) => s.asOf);
+  return useMemo(() => {
+    if (!asOf) return events;
+    const cutoff = `${asOf}T23:59:59.999Z`;
+    return events.filter((e) => e.timestamp <= cutoff);
+  }, [events, asOf]);
 };
 
 export const useCleared = (): Set<ID> => {
