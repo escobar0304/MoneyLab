@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import type { ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -9,6 +10,40 @@ import { VitePWA } from 'vite-plugin-pwa';
 // it, but costs CPU — so it's opt-in via the env var the dev service sets,
 // leaving native `npm run dev` on efficient native events.
 const usePolling = process.env.VITE_USE_POLLING === 'true';
+
+/**
+ * Forwards the symbol picker's lookups to TradingView's search index.
+ *
+ * That endpoint answers 403 unless the request carries `Origin:
+ * https://www.tradingview.com` — verified by isolating one header at a time,
+ * and it is the Origin specifically, not the Referer. Both are forbidden
+ * headers that page JavaScript cannot set, so the browser can never call it
+ * directly; only a proxy can. Kept identical to the `location /tv-search` block
+ * in nginx.conf so dev, preview and the container all behave the same.
+ *
+ * Nothing from the ledger is involved: the only thing forwarded is the text
+ * typed into the search box.
+ */
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
+
+const tvSearchProxy: Record<string, ProxyOptions> = {
+  '/tv-search': {
+    target: 'https://symbol-search.tradingview.com',
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/tv-search/, '/symbol_search/v3/') + '&hl=0&lang=en&domain=production',
+    // Set on the outgoing request itself. The declarative `headers` option does
+    // not reach it here — the request still arrived without an Origin and came
+    // back 403 — and `changeOrigin` only rewrites Host, not Origin.
+    configure: (proxy) => {
+      proxy.on('proxyReq', (proxyReq) => {
+        proxyReq.setHeader('Origin', 'https://www.tradingview.com');
+        proxyReq.setHeader('Referer', 'https://www.tradingview.com/');
+        proxyReq.setHeader('User-Agent', BROWSER_UA);
+      });
+    },
+  },
+};
 
 export default defineConfig({
   plugins: [
@@ -79,18 +114,14 @@ export default defineConfig({
   },
   server: {
     watch: usePolling ? { usePolling: true, interval: 300 } : undefined,
-    proxy: {
-      // TradingView's symbol search rejects any request whose Referer is not
-      // tradingview.com, and Referer is a forbidden header that page JS cannot
-      // set — so the typeahead cannot call it directly. Forwarding it here keeps
-      // the dev server behaving like the nginx image, which does the same thing.
-      '/tv-search': {
-        target: 'https://symbol-search.tradingview.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/tv-search/, '/symbol_search/v3/') + '&hl=0&lang=en&domain=production',
-        headers: { Referer: 'https://www.tradingview.com/' },
-      },
-    },
+    proxy: tvSearchProxy,
+  },
+  // `preview` does not inherit `server.proxy`; without its own copy the built
+  // app serves a 404 for /tv-search and the symbol picker silently degrades to
+  // the built-in catalogue — which is exactly how "the dropdown is broken"
+  // looks from the outside.
+  preview: {
+    proxy: tvSearchProxy,
   },
   test: {
     // Logic tests run in node; component tests opt into jsdom with a

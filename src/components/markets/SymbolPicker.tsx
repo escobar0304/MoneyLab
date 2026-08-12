@@ -1,9 +1,22 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { searchCatalogue, searchRemote, type SymbolHit } from '../../lib/symbolSearch';
 import { Input } from '../ui/primitives';
 
 /** Long enough that typing "VWCE" is one request rather than four. */
 const DEBOUNCE_MS = 220;
+
+/** Preferred height of the list, and the threshold for flipping it above the
+ * field when the space below is smaller than this. */
+const MAX_LIST_H = 288;
+
+interface ListBox {
+  left: number;
+  width: number;
+  top?: number;
+  bottom?: number;
+  maxHeight: number;
+}
 
 /**
  * Type-ahead for instruments.
@@ -43,21 +56,30 @@ export function SymbolPicker({
   const [hits, setHits] = useState<SymbolHit[]>([]);
   const [active, setActive] = useState(0);
   const [remoteFailed, setRemoteFailed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [box, setBox] = useState<ListBox | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
     const local = searchCatalogue(value);
     setHits(local);
     setActive(0);
 
-    if (value.trim().length < 2) return;
+    if (value.trim().length < 2) {
+      setLoading(false);
+      return;
+    }
 
     const controller = new AbortController();
+    setLoading(true);
     const timer = setTimeout(() => {
       searchRemote(value, controller.signal)
         .then((remote) => {
-          if (controller.signal.aborted || remote.length === 0) return;
+          if (controller.signal.aborted) return;
           setRemoteFailed(false);
+          setLoading(false);
+          if (remote.length === 0) return;
           // Catalogue entries that the live index also returned would appear
           // twice, so the live result wins on id.
           const seen = new Set(remote.map((h) => h.id));
@@ -66,6 +88,7 @@ export function SymbolPicker({
         .catch((error: unknown) => {
           if (error instanceof DOMException && error.name === 'AbortError') return;
           setRemoteFailed(true);
+          setLoading(false);
         });
     }, DEBOUNCE_MS);
 
@@ -76,15 +99,56 @@ export function SymbolPicker({
   }, [value]);
 
   // Clicking away closes the list without stealing the click from whatever was
-  // clicked, which a blur handler on the input would do.
+  // clicked, which a blur handler on the input would do. The list itself lives
+  // in a portal, so it has to be checked separately from the field.
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (containerRef.current?.contains(target) || listRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
   }, [open]);
+
+  /**
+   * Anchors the list to the field from outside the layout.
+   *
+   * Every panel in this app is a `Card`, and `Card` is `overflow-hidden` for its
+   * spotlight — so an absolutely positioned dropdown gets sliced off at the card
+   * edge. The portal takes the list out of that subtree entirely and positions
+   * it against the viewport, which also lets it flip above the field when there
+   * is no room below.
+   */
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const place = () => {
+      const field = containerRef.current;
+      if (!field) return;
+      const r = field.getBoundingClientRect();
+      const below = window.innerHeight - r.bottom;
+      const flip = below < MAX_LIST_H && r.top > below;
+      setBox({
+        left: r.left,
+        width: r.width,
+        top: flip ? undefined : r.bottom + 4,
+        bottom: flip ? window.innerHeight - r.top + 4 : undefined,
+        maxHeight: Math.max((flip ? r.top : below) - 12, 120),
+      });
+    };
+
+    place();
+    // Capture, so a scroll inside any container moves the list with the field
+    // rather than leaving it stranded mid-page.
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [open, hits.length]);
 
   const choose = (hit: SymbolHit) => {
     onChange(hit.id);
@@ -114,6 +178,12 @@ export function SymbolPicker({
       // surrounding form's own submit-on-Enter must still work.
       e.preventDefault();
       choose(hits[active]);
+    } else if (e.key === 'Enter' && hits.length === 0 && value.trim()) {
+      // Nothing matched, so take the text as typed — TradingView accepts far
+      // more symbols than any search will surface, and refusing to accept what
+      // someone deliberately wrote is worse than offering a wrong suggestion.
+      e.preventDefault();
+      setOpen(false);
     }
   };
 
@@ -139,13 +209,38 @@ export function SymbolPicker({
         aria-label={label}
       />
 
-      {open && hits.length > 0 && (
+      {/* Rendered whenever the box is open with something typed — including with
+          no results. A dropdown that simply fails to appear is indistinguishable
+          from a feature that does not work. */}
+      {open && box && (hits.length > 0 || value.trim().length > 0) &&
+        createPortal(
         <ul
+          ref={listRef}
           id={listId}
           role="listbox"
           aria-label={`${label} suggestions`}
-          className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border bg-surface-2 py-1 shadow-xl shadow-black/50"
+          style={{
+            position: 'fixed',
+            left: box.left,
+            width: box.width,
+            top: box.top,
+            bottom: box.bottom,
+            maxHeight: Math.min(box.maxHeight, MAX_LIST_H),
+          }}
+          className="z-50 overflow-y-auto rounded-lg border border-border bg-surface-2 py-1 shadow-xl shadow-black/50"
         >
+          {hits.length === 0 && (
+            <li className="px-3 py-2 text-xs text-ink-muted">
+              {loading ? (
+                'Searching…'
+              ) : (
+                <>
+                  Nothing found for “{value.trim()}”. Press <kbd className="rounded bg-surface-0 px-1">Enter</kbd> to use it as
+                  typed, or try a ticker such as <span className="text-ink-secondary">VWCE</span>.
+                </>
+              )}
+            </li>
+          )}
           {hits.map((hit, i) => (
             <li
               key={`${hit.id}-${i}`}
@@ -166,14 +261,21 @@ export function SymbolPicker({
               {hit.description && <p className="truncate text-xs text-ink-muted">{hit.description}</p>}
             </li>
           ))}
-        </ul>
-      )}
 
-      {/* Said once, quietly, and only when it is actually true — the catalogue
-          still works, so this is a note about reach, not a failure. */}
-      {remoteFailed && open && (
-        <p className="absolute right-0 -bottom-4 text-[10px] text-ink-muted">Offline — showing the built-in list</p>
-      )}
+          {/* Footer notes live inside the list rather than under the field: the
+              card around this has `overflow-hidden`, so anything hanging below
+              the input is liable to be clipped away unseen. */}
+          {hits.length > 0 && loading && (
+            <li className="border-t border-hairline px-3 py-1.5 text-xs text-ink-muted">Still searching TradingView…</li>
+          )}
+          {hits.length > 0 && remoteFailed && (
+            <li className="border-t border-hairline px-3 py-1.5 text-xs text-ink-muted">
+              Search unavailable — showing the built-in list only.
+            </li>
+          )}
+        </ul>,
+          document.body
+        )}
     </div>
   );
 }

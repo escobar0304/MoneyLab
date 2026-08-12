@@ -37,12 +37,15 @@ export default function App() {
     setTab('entries');
     // Wait for the lazy chunk and the tab transition before reaching for the
     // field, otherwise focus lands on nothing.
+    // Five seconds, not one. The old budget assumed a warm cache; on a cold
+    // load, or a slow connection, the chunk arrives after the polling gives up
+    // and the keystroke silently does nothing.
     const focus = (attempt = 0) => {
       const el = document.getElementById('expense-amount');
       if (el instanceof HTMLInputElement) {
         el.focus();
         el.select();
-      } else if (attempt < 20) {
+      } else if (attempt < 100) {
         setTimeout(() => focus(attempt + 1), 50);
       }
     };

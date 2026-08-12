@@ -129,7 +129,23 @@ interface RemoteSymbol {
   exchange?: string;
   prefix?: string;
   source_id?: string;
+  country?: string;
+  is_primary_listing?: boolean;
 }
+
+/**
+ * What a person searching this app is plausibly looking for.
+ *
+ * Left out on purpose: warrants, depositary receipts and futures contracts. A
+ * search for "nvidia" otherwise opens with a Malaysian warrant on NVIDIA, which
+ * is a correct match and useless — the raw index is ordered for a trading
+ * terminal, not for someone recording what they own.
+ */
+const USEFUL_TYPES = new Set(['stock', 'fund', 'index', 'spot', 'forex', 'crypto', 'commodity']);
+
+/** Ordering within the useful types: what you can hold, before what you can
+ * only watch. */
+const TYPE_RANK: Record<string, number> = { fund: 0, stock: 1, spot: 2, crypto: 2, index: 3, commodity: 4, forex: 5 };
 
 /** Search results are HTML-highlighted by the API (`<em>VWCE</em>`); tags are
  * stripped rather than rendered, so nothing from a third party is ever inserted
@@ -157,23 +173,43 @@ export async function searchRemote(query: string, signal?: AbortSignal, limit = 
     ? (body as RemoteSymbol[])
     : ((body as { symbols?: RemoteSymbol[] })?.symbols ?? []);
 
-  const hits: SymbolHit[] = [];
+  const q = query.trim().toLowerCase();
+  const scored: { hit: SymbolHit; rank: number }[] = [];
+
   for (const row of rows) {
     const ticker = row.symbol ? stripTags(row.symbol) : '';
     const prefix = row.prefix ?? row.source_id ?? '';
-    // Futures contracts and anything without a resolvable prefix cannot be
-    // charted from an `EXCHANGE:TICKER` string, so they are dropped rather than
-    // offered as options that fail once selected.
+    // Anything without a resolvable prefix cannot be charted from an
+    // `EXCHANGE:TICKER` string, so it is dropped rather than offered as an
+    // option that fails the moment it is selected.
     if (!ticker || !prefix) continue;
-    hits.push({
-      id: `${prefix.toUpperCase()}:${ticker}`,
-      label: ticker,
-      description: stripTags(row.description ?? ''),
-      source: 'tradingview',
-      group: row.exchange,
-      type: row.type,
+    if (row.type && !USEFUL_TYPES.has(row.type)) continue;
+
+    const lower = ticker.toLowerCase();
+    const description = stripTags(row.description ?? '');
+    // A name typed in full ("apple") is a prefix of the *description*, not of
+    // the ticker — so both count for the same tier, otherwise every coin called
+    // APPLEUSD outranks Apple Inc. The primary listing and the instrument type
+    // then break the tie, which is what puts NASDAQ:AAPL at the top.
+    const tier = lower === q ? 0 : lower.startsWith(q) || description.toLowerCase().startsWith(q) ? 100 : 200;
+    const rank = tier + (row.is_primary_listing ? 0 : 10) + (TYPE_RANK[row.type ?? ''] ?? 6);
+
+    scored.push({
+      rank,
+      hit: {
+        id: `${prefix.toUpperCase()}:${ticker}`,
+        label: ticker,
+        description,
+        source: 'tradingview',
+        group: row.exchange,
+        type: row.type,
+      },
     });
-    if (hits.length >= limit) break;
   }
-  return hits;
+
+  // Stable within a rank, so the index's own relevance order still breaks ties.
+  return scored
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, limit)
+    .map((s) => s.hit);
 }
