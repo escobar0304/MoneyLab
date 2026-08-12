@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useStore, usePositions } from '../../lib/store';
-import { foldTrades, foldDividends, investmentSummary, type Position } from '../../lib/investments';
-import { formatMoney, formatDate, todayInputValue } from '../../lib/format';
+import { useStore, usePortfolio } from '../../lib/store';
+import { foldTrades, foldDividends, type Position } from '../../lib/investments';
+import { useLivePrices } from '../../lib/useLiveQuotes';
+import { formatMoney, formatDate, formatTime, todayInputValue } from '../../lib/format';
 import { PRIMARY, COMPLEMENT } from '../../lib/chartTheme';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 import { SymbolPicker } from './SymbolPicker';
@@ -259,10 +260,12 @@ function PositionDetail({ position }: { position: Position }) {
 function PositionRow({ position }: { position: Position }) {
   const upsert = useStore((s) => s.upsertHolding);
   const remove = useStore((s) => s.removeHolding);
+  const quote = useStore((s) => s.quotes[position.holding.symbol.toUpperCase()]);
   const [price, setPrice] = useState(position.holding.lastPrice !== undefined ? String(position.holding.lastPrice) : '');
   const [open, setOpen] = useState(false);
 
   const { holding } = position;
+  const dayChange = quote ? Math.round(position.quantity * quote.baseChangeAbs * 100) / 100 : null;
 
   const savePrice = () => {
     const next = Number(price);
@@ -284,20 +287,35 @@ function PositionRow({ position }: { position: Position }) {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <div className="w-28">
-            <Label htmlFor={`price-${holding.id}`}>Price / unit</Label>
-            <Input
-              id={`price-${holding.id}`}
-              type="number"
-              min={0}
-              step="any"
-              value={price}
-              placeholder="Not set"
-              onChange={(e) => setPrice(e.target.value)}
-              onBlur={savePrice}
-              onKeyDown={(e) => e.key === 'Enter' && savePrice()}
-            />
-          </div>
+          {/* With a live quote the manual field is not just unnecessary, it is
+              misleading — anything typed there is overwritten within a minute. */}
+          {quote ? (
+            <div className="text-right">
+              <p className="text-xs text-ink-muted">Price / unit</p>
+              <p className="num-col text-sm text-ink">
+                {formatMoney(quote.basePrice)}{' '}
+                <span style={{ color: quote.changePct >= 0 ? PRIMARY : COMPLEMENT }}>
+                  {quote.changePct >= 0 ? '+' : '−'}
+                  {Math.abs(quote.changePct).toFixed(2)}%
+                </span>
+              </p>
+            </div>
+          ) : (
+            <div className="w-28">
+              <Label htmlFor={`price-${holding.id}`}>Price / unit</Label>
+              <Input
+                id={`price-${holding.id}`}
+                type="number"
+                min={0}
+                step="any"
+                value={price}
+                placeholder="Not set"
+                onChange={(e) => setPrice(e.target.value)}
+                onBlur={savePrice}
+                onKeyDown={(e) => e.key === 'Enter' && savePrice()}
+              />
+            </div>
+          )}
           <Button variant="ghost" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
             {open ? 'Hide' : 'Trades'}
           </Button>
@@ -309,7 +327,23 @@ function PositionRow({ position }: { position: Position }) {
 
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-t border-hairline pt-2 text-xs">
         <span className="text-ink-muted">
-          {position.priced ? (
+          {quote ? (
+            <>
+              Worth <span className="num-col text-ink-secondary">{formatMoney(position.value)}</span>
+              {quote.currency !== 'EUR' && (
+                <>
+                  {' '}
+                  · quoted {quote.price.toFixed(2)} {quote.currency}
+                </>
+              )}
+              {dayChange !== null && dayChange !== 0 && (
+                <>
+                  {' · today '}
+                  <Signed value={dayChange} />
+                </>
+              )}
+            </>
+          ) : position.priced ? (
             <>
               Worth <span className="num-col text-ink-secondary">{formatMoney(position.value)}</span>
               {holding.lastPriceAt && ` · priced ${formatDate(holding.lastPriceAt)}`}
@@ -365,16 +399,11 @@ const empty = (): Draft => ({ symbol: '', label: '', quantity: '', avgCost: '', 
  * than inside it.
  */
 export function HoldingsManager() {
-  const events = useStore((s) => s.events);
-  const positions = usePositions();
+  const { positions, summary, dayChange, dayChangePct, delayed, liveCount } = usePortfolio();
   const upsert = useStore((s) => s.upsertHolding);
+  const live = useLivePrices();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Draft>(empty());
-
-  const summary = useMemo(
-    () => investmentSummary(positions, foldTrades(events), foldDividends(events)),
-    [positions, events]
-  );
 
   const valid = draft.symbol.trim() !== '' && Number(draft.quantity) > 0 && Number(draft.avgCost) > 0;
 
@@ -403,6 +432,16 @@ export function HoldingsManager() {
           <p className="text-xs text-ink-muted">Value</p>
           <p className="text-2xl font-semibold text-ink">{formatMoney(summary.value)}</p>
         </div>
+        {/* Today first among the derived figures: it is the only one that is new
+            since the last time this page was open. */}
+        {dayChange !== null && (
+          <div>
+            <p className="text-xs text-ink-muted">Today</p>
+            <p className="text-sm">
+              <Signed value={dayChange} suffix={dayChangePct !== null ? ` (${dayChangePct.toFixed(2)}%)` : undefined} />
+            </p>
+          </div>
+        )}
         <div>
           <p className="text-xs text-ink-muted">Cost</p>
           <p className="num-col text-sm text-ink-secondary">{formatMoney(summary.cost)}</p>
@@ -431,6 +470,45 @@ export function HoldingsManager() {
             <p className="num-col text-sm text-ink-secondary">{formatMoney(summary.dividends)}</p>
           </div>
         )}
+      </div>
+
+      {/* Prices come from a third party, so the terms are stated where the
+          feature is, not buried in settings: what is sent, how fresh it is, and
+          how to turn it off. */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hairline bg-surface-0 px-3 py-2">
+        <p className="text-xs text-ink-muted">
+          {!live.enabled ? (
+            'Live prices are off — holdings use the price you recorded.'
+          ) : live.error ? (
+            <span className="text-critical-text">{live.error}</span>
+          ) : live.loading && liveCount === 0 ? (
+            'Fetching prices…'
+          ) : liveCount > 0 ? (
+            <>
+              {liveCount} of {positions.length} priced live{delayed && ', 15 min delayed'}
+              {live.lastFetchedAt && ` · updated ${formatTime(live.lastFetchedAt)}`}
+              {' · only the ticker symbols leave your device'}
+            </>
+          ) : (
+            'No live prices for these symbols.'
+          )}
+        </p>
+        <span className="flex items-center gap-2">
+          {live.enabled && (
+            <Button variant="ghost" onClick={live.refresh} disabled={live.loading || positions.length === 0}>
+              {live.loading ? 'Refreshing…' : 'Refresh'}
+            </Button>
+          )}
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-ink-secondary">
+            <input
+              type="checkbox"
+              checked={live.enabled}
+              onChange={(e) => live.setEnabled(e.target.checked)}
+              className="h-3.5 w-3.5 cursor-pointer accent-accent"
+            />
+            Live prices
+          </label>
+        </span>
       </div>
 
       {(summary.unpriced > 0 || (summary.stalestPriceAt && daysOld(summary.stalestPriceAt) >= 7)) && (

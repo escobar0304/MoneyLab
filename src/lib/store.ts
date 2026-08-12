@@ -16,7 +16,8 @@ import {
 } from './entities';
 import { foldGoals } from './goals';
 import { foldDebts } from './debt';
-import { foldTrades, foldDividends, positionFor, type Position } from './investments';
+import { foldTrades, foldDividends, positionsFrom, investmentSummary, type Position, type InvestmentSummary } from './investments';
+import { fetchConvertedQuotes, type ConvertedQuote } from './quotes';
 import { occurrencesUpTo } from './recurrence';
 import { monthKey } from './derive';
 import { LEDGER_VERSION, normalizeEvents, mergeEvents } from './migrations';
@@ -101,6 +102,20 @@ interface MoneyLabState {
   asOf: string | null;
   setAsOf: (date: string | null) => void;
 
+  /**
+   * Live prices by symbol. Session-only and deliberately never written to the
+   * ledger: appending an event per refresh would add a thousand entries a day
+   * to an append-only log, to record something that is stale a minute later.
+   */
+  quotes: Record<string, ConvertedQuote>;
+  quoteStatus: { loading: boolean; error: string | null; lastFetchedAt: string | null };
+  /**
+   * Fetches prices for everything held. Lives on the store rather than in a
+   * hook so any panel can trigger a refresh, while only one scheduler decides
+   * when it happens on its own.
+   */
+  refreshQuotes: () => Promise<void>;
+
   updateEntry: (id: ID, patch: EntryPatch) => void;
   removeEntry: (id: ID) => void;
 
@@ -126,6 +141,8 @@ export const useStore = create<MoneyLabState>()(
         lastBackupAt: null,
         undoSnapshot: null,
         asOf: null,
+        quotes: {},
+        quoteStatus: { loading: false, error: null, lastFetchedAt: null },
 
         addIncome: ({ amount, label, recurringId, date, foreign }) => {
           const event: LedgerEvent = {
@@ -417,6 +434,33 @@ export const useStore = create<MoneyLabState>()(
 
         setAsOf: (date) => set({ asOf: date }),
 
+        refreshQuotes: async () => {
+          const symbols = foldHoldings(get().events).map((h) => h.symbol.toUpperCase());
+          if (symbols.length === 0) return;
+
+          set((s) => ({ quoteStatus: { ...s.quoteStatus, loading: true } }));
+          try {
+            const quotes = await fetchConvertedQuotes(symbols);
+            set((s) => ({
+              // Merged rather than replaced: a refresh that only answered for
+              // some symbols must not blank the others back to their stale
+              // recorded prices.
+              quotes: { ...s.quotes, ...Object.fromEntries(quotes.map((q) => [q.symbol, q])) },
+              quoteStatus: {
+                loading: false,
+                lastFetchedAt: new Date().toISOString(),
+                // Answering for nothing is a real failure — most often the proxy
+                // is absent, which is what plain static hosting looks like.
+                error: quotes.length === 0 ? 'No prices came back for these symbols.' : null,
+              },
+            }));
+          } catch {
+            set((s) => ({
+              quoteStatus: { ...s.quoteStatus, loading: false, error: 'Could not reach the price service.' },
+            }));
+          }
+        },
+
         setManyCleared: (entryIds, cleared) => {
           if (entryIds.length === 0) return;
           // Reconciling a whole statement is one action to undo, not forty.
@@ -600,9 +644,55 @@ export const useDebts = (): Debt[] => {
  */
 export const usePositions = (): Position[] => {
   const events = useStore((s) => s.events);
+  const quotes = useStore((s) => s.quotes);
+  // A live quote stands in for the recorded price, so value, unrealised gain
+  // and IRR all follow without any of them knowing where it came from.
+  return useMemo(() => positionsFrom(events, foldHoldings(events), quotes), [events, quotes]);
+};
+
+export interface Portfolio {
+  positions: Position[];
+  summary: InvestmentSummary;
+  /** Today's move across everything priced live, or null when nothing is. */
+  dayChange: number | null;
+  dayChangePct: number | null;
+  /** True when at least one live price is on a venue delay. */
+  delayed: boolean;
+  liveCount: number;
+}
+
+/** Everything the portfolio panels need, derived once. */
+export const usePortfolio = (): Portfolio => {
+  const events = useStore((s) => s.events);
+  const quotes = useStore((s) => s.quotes);
+  const positions = usePositions();
+
   return useMemo(() => {
-    const trades = foldTrades(events);
-    const dividends = foldDividends(events);
-    return foldHoldings(events).map((h) => positionFor(h, trades, dividends));
-  }, [events]);
+    const summary = investmentSummary(positions, foldTrades(events), foldDividends(events));
+
+    let dayChange = 0;
+    let liveCount = 0;
+    let delayed = false;
+    for (const p of positions) {
+      const quote = quotes[p.holding.symbol.toUpperCase()];
+      if (!quote) continue;
+      liveCount++;
+      delayed = delayed || quote.delayed;
+      dayChange += p.quantity * quote.baseChangeAbs;
+    }
+
+    const rounded = Math.round(dayChange * 100) / 100;
+    // Yesterday's close is today's value minus today's move — the denominator
+    // the percentage actually belongs over.
+    const previous = summary.value - rounded;
+
+    return {
+      positions,
+      summary,
+      dayChange: liveCount > 0 ? rounded : null,
+      dayChangePct: liveCount > 0 && previous > 0 ? Math.round((rounded / previous) * 1000) / 10 : null,
+      delayed,
+      liveCount,
+    };
+  }, [positions, events, quotes]);
 };

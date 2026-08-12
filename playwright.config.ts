@@ -22,6 +22,11 @@ export default defineConfig({
     // which resolves to ::1 first on Windows — the loopback IPv4 address is then
     // never listening and the server looks like it failed to start.
     baseURL: 'http://localhost:4173',
+    // `page.route` does not intercept requests a service worker makes, and this
+    // build ships one that caches exchange rates CacheFirst for a year. With the
+    // worker active, a stubbed rate was silently bypassed and the test talked to
+    // the real API — passing or failing depending on which got there first.
+    serviceWorkers: 'block',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

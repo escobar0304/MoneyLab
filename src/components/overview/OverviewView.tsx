@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
-import { useVisibleEvents } from '../../lib/store';
-import { foldTrades, foldDividends, investmentSummary, positionFor } from '../../lib/investments';
+import { useVisibleEvents, useStore } from '../../lib/store';
+import { foldTrades, foldDividends, investmentSummary, positionsFrom } from '../../lib/investments';
 import { foldHoldings, foldBudgets } from '../../lib/entities';
 import { foldDebts, totalOwed } from '../../lib/debt';
 import {
@@ -30,6 +30,7 @@ import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animat
 import { MonthFilter } from './MonthFilter';
 import { TimeTravel, TimeTravelBanner } from './TimeTravel';
 import { RunwayChart, RunwaySummary } from './RunwayChart';
+import { PortfolioCard } from './PortfolioCard';
 import { NetWorthChart } from './NetWorthChart';
 import { IncomeVsExpensesChart } from './IncomeVsExpensesChart';
 import { SpendByCategoryChart } from './SpendByCategoryChart';
@@ -86,11 +87,11 @@ export function OverviewView() {
   // set in the time-travel control reaches the hero, the tiles and every chart
   // without any of them knowing the feature exists.
   const events = useVisibleEvents();
-  const positions = useMemo(() => {
-    const trades = foldTrades(events);
-    const dividends = foldDividends(events);
-    return foldHoldings(events).map((h) => positionFor(h, trades, dividends));
-  }, [events]);
+  const quotes = useStore((s) => s.quotes);
+  // Live prices are applied here too. Building positions inline for time travel
+  // and forgetting the overlay is exactly how the hero ended up pricing a
+  // live-quoted portfolio at cost.
+  const positions = useMemo(() => positionsFrom(events, foldHoldings(events), quotes), [events, quotes]);
   const debts = useMemo(() => foldDebts(events), [events]);
   const budgets = useMemo(() => foldBudgets(events), [events]);
   const heroRef = useRef<HTMLParagraphElement>(null);
@@ -154,8 +155,10 @@ export function OverviewView() {
     <div className="space-y-6">
       <TimeTravelBanner />
 
-      {/* Hero figure — exactly one per view, and the only number at this size. */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      {/* Hero figure — exactly one per view, and the only number at this size.
+          Nothing sits beside it: a control parked next to the headline number
+          competes with the one thing this page exists to say. */}
+      <div>
         <div>
         <p className="text-xs font-medium text-ink-muted">{composed ? 'Net worth' : 'Balance'}</p>
         <p ref={heroRef} className={`mt-1 text-5xl font-semibold tracking-tight ${netWorth < 0 ? 'text-critical-text' : 'text-ink'}`}>
@@ -197,7 +200,6 @@ export function OverviewView() {
           <Delta delta={balanceDelta} goodWhen="up" />
         )}
         </div>
-        <TimeTravel />
       </div>
 
       {/* Placed directly under the hero: "do I make it to payday" is the most
@@ -211,6 +213,12 @@ export function OverviewView() {
           </div>
         </ChartCard>
       </Reveal>
+
+      {positions.length > 0 && (
+        <Reveal className="grid grid-cols-1" from="start">
+          <PortfolioCard />
+        </Reveal>
+      )}
 
       {/* Trends. One series over time is an area; two distinct series are lines.
           All three timeline charts share a crosshair through syncId. */}
@@ -308,6 +316,11 @@ export function OverviewView() {
           <SpendByCategoryChart />
         </ChartCard>
       </Reveal>
+
+      {/* Time travel lives at the foot of the page, out of the way. It is
+          something you go looking for once in a while, not a control that
+          earns permanent space beside the headline figure. */}
+      <TimeTravel />
     </div>
   );
 }

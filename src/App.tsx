@@ -4,6 +4,7 @@ import type { Tab } from './components/layout/Sidebar';
 import { useStore } from './lib/store';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from './lib/animation';
 import { useShortcuts } from './lib/shortcuts';
+import { useLiveQuoteScheduler } from './lib/useLiveQuotes';
 import { UndoToast } from './components/ui/UndoToast';
 import { ShortcutsHelp } from './components/ui/ShortcutsHelp';
 import { OverviewView } from './components/overview/OverviewView';
@@ -29,6 +30,11 @@ export default function App() {
   const runRecurring = useStore((s) => s.runRecurring);
   const undo = useStore((s) => s.undo);
 
+  // Mounted here, not inside Markets: Net worth on the Overview is only honest
+  // if the portfolio behind it is priced, and mounting it in both places would
+  // double every request.
+  useLiveQuoteScheduler();
+
   useEffect(() => {
     runRecurring();
   }, [runRecurring]);
@@ -40,14 +46,21 @@ export default function App() {
     // Five seconds, not one. The old budget assumed a warm cache; on a cold
     // load, or a slow connection, the chunk arrives after the polling gives up
     // and the keystroke silently does nothing.
+    //
+    // Being in the DOM is not enough to stop polling. Cards animate in with
+    // GSAP's `autoAlpha`, which sets `visibility: hidden` at the start — and
+    // focusing a hidden element silently does nothing. So the field is only
+    // considered found once the focus has actually landed on it.
     const focus = (attempt = 0) => {
       const el = document.getElementById('expense-amount');
       if (el instanceof HTMLInputElement) {
         el.focus();
-        el.select();
-      } else if (attempt < 100) {
-        setTimeout(() => focus(attempt + 1), 50);
+        if (document.activeElement === el) {
+          el.select();
+          return;
+        }
       }
+      if (attempt < 100) setTimeout(() => focus(attempt + 1), 50);
     };
     focus();
   }, []);

@@ -27,21 +27,31 @@ const usePolling = process.env.VITE_USE_POLLING === 'true';
 const BROWSER_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
 
+/** Set on the outgoing request itself. The declarative `headers` option does not
+ * reach it — the request still arrived without an Origin and came back 403 —
+ * and `changeOrigin` only rewrites Host, not Origin. */
+const asTradingView: ProxyOptions['configure'] = (proxy) => {
+  proxy.on('proxyReq', (proxyReq) => {
+    proxyReq.setHeader('Origin', 'https://www.tradingview.com');
+    proxyReq.setHeader('Referer', 'https://www.tradingview.com/');
+    proxyReq.setHeader('User-Agent', BROWSER_UA);
+  });
+};
+
 const tvSearchProxy: Record<string, ProxyOptions> = {
   '/tv-search': {
     target: 'https://symbol-search.tradingview.com',
     changeOrigin: true,
     rewrite: (path: string) => path.replace(/^\/tv-search/, '/symbol_search/v3/') + '&hl=0&lang=en&domain=production',
-    // Set on the outgoing request itself. The declarative `headers` option does
-    // not reach it here — the request still arrived without an Origin and came
-    // back 403 — and `changeOrigin` only rewrites Host, not Origin.
-    configure: (proxy) => {
-      proxy.on('proxyReq', (proxyReq) => {
-        proxyReq.setHeader('Origin', 'https://www.tradingview.com');
-        proxyReq.setHeader('Referer', 'https://www.tradingview.com/');
-        proxyReq.setHeader('User-Agent', BROWSER_UA);
-      });
-    },
+    configure: asTradingView,
+  },
+  // Quotes for the portfolio. One POST covers every holding at once, so the
+  // refresh is a single request no matter how much you own.
+  '/tv-quote': {
+    target: 'https://scanner.tradingview.com',
+    changeOrigin: true,
+    rewrite: () => '/global/scan',
+    configure: asTradingView,
   },
 };
 

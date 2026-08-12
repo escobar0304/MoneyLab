@@ -78,3 +78,21 @@ export function categoryColorMap(events: LedgerEvent[]): Map<string, string> {
   });
   return map;
 }
+
+/**
+ * A stable symbol -> colour mapping for the portfolio.
+ *
+ * Assigned from the sorted symbol list rather than by position size, on purpose:
+ * ranking by value would repaint every holding the moment prices moved, which is
+ * precisely what live prices do all day. Colour follows the instrument, never
+ * its current rank.
+ */
+export function symbolColorMap(symbols: string[]): Map<string, string> {
+  const map = new Map<string, string>();
+  Array.from(new Set(symbols))
+    .sort((a, b) => a.localeCompare(b))
+    .forEach((symbol, i) => {
+      map.set(symbol, i < CATEGORICAL.length ? CATEGORICAL[i] : CHART_INK.muted);
+    });
+  return map;
+}

@@ -134,6 +134,29 @@ export function positionFor(holding: Holding, trades: TradeEvent[], dividends: D
   };
 }
 
+/** A live price keyed by symbol. Structural, so investments.ts stays unaware of
+ * where quotes come from. */
+export interface PriceOverlay {
+  [symbol: string]: { basePrice: number; fetchedAt: string } | undefined;
+}
+
+/**
+ * Positions for a ledger, with live prices applied where there are any.
+ *
+ * The single place the overlay happens. It used to be done inside the store's
+ * hook, which left the Overview — which builds its own positions so that time
+ * travel can filter the events first — quietly pricing everything at cost.
+ */
+export function positionsFrom(events: LedgerEvent[], holdings: Holding[], prices: PriceOverlay = {}): Position[] {
+  const trades = foldTrades(events);
+  const dividends = foldDividends(events);
+  return holdings.map((h) => {
+    const quote = prices[h.symbol.toUpperCase()];
+    const priced = quote ? { ...h, lastPrice: quote.basePrice, lastPriceAt: quote.fetchedAt } : h;
+    return positionFor(priced, trades, dividends);
+  });
+}
+
 export interface Cashflow {
   date: Date;
   amount: number;

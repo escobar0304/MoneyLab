@@ -26,20 +26,29 @@ export interface SeedEvent {
  * idempotent generation are there to exercise, so they would have quietly
  * asserted nothing.
  */
-export async function seed(page: Page, events: SeedEvent[]): Promise<void> {
+export async function seed(page: Page, events: SeedEvent[], options: { livePrices?: boolean } = {}): Promise<void> {
   await page.addInitScript(
-    ({ key, version, seeded }) => {
+    ({ key, version, seeded, livePrices }) => {
       if (!localStorage.getItem(key)) {
         localStorage.setItem(
           key,
           JSON.stringify({ state: { events: seeded, lastExportedAt: null, lastBackupAt: null }, version })
         );
+        // Under the same first-run guard as the ledger, and for the same
+        // reason: this script runs again on every reload, so setting it
+        // unconditionally would undo a toggle the test just flipped.
+        //
+        // Off unless a test asks for it — the preview server proxies quotes for
+        // real, so leaving it on would let live market data overwrite the prices
+        // a test set, making every portfolio assertion depend on what Apple did
+        // this morning.
+        localStorage.setItem('moneylab-live-prices', livePrices ? '1' : '0');
       }
       // Keep the rail predictable across tests regardless of what a previous
       // run left behind.
       localStorage.setItem('moneylab-sidebar-collapsed', '0');
     },
-    { key: STORAGE_KEY, version: LEDGER_VERSION, seeded: events }
+    { key: STORAGE_KEY, version: LEDGER_VERSION, seeded: events, livePrices: options.livePrices === true }
   );
 }
 

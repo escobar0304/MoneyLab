@@ -57,3 +57,9 @@ export function monthLabel(monthKey: string): string {
   const [year, month] = monthKey.split('-').map(Number);
   return new Date(year, month - 1, 1).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
 }
+
+/** Clock time only. A price fetched four minutes ago needs the minute, not the
+ * date — and the date would be today in every case that matters. */
+export function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}

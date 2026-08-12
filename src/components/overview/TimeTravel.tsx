@@ -28,8 +28,9 @@ export function TimeTravel() {
   }, [events]);
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="w-40">
+    <div className="flex flex-wrap items-center gap-2 border-t border-hairline pt-4 text-xs text-ink-muted">
+      <span>See this page as it stood on</span>
+      <span className="w-40">
         <Input
           type="date"
           value={asOf ?? todayInputValue()}
@@ -38,7 +39,7 @@ export function TimeTravel() {
           onChange={(e) => setAsOf(e.target.value === todayInputValue() ? null : e.target.value || null)}
           aria-label="View the dashboard as of"
         />
-      </div>
+      </span>
       {asOf && (
         <Button variant="secondary" onClick={() => setAsOf(null)}>
           Back to now
