@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useVisibleEvents } from '../../lib/store';
+import { useVisibleEvents, useStore } from '../../lib/store';
 import { monthsWithActivity, totalIncomeForMonth, totalOutflowForMonth } from '../../lib/derive';
 import { monthLabel, formatMoney } from '../../lib/format';
 import { PRIMARY, COMPLEMENT, CHART_INK } from '../../lib/chartTheme';
@@ -10,6 +10,7 @@ import { EmptyState } from '../ui/primitives';
 
 export function IncomeVsExpensesChart() {
   const events = useVisibleEvents();
+  const openDrill = useStore((s) => s.openDrill);
 
   const data = useMemo(() => {
     const months = monthsWithActivity(events).slice(-6);
@@ -29,7 +30,21 @@ export function IncomeVsExpensesChart() {
   return (
     <Plot>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} syncId="home-timeline" margin={plotMargin}>
+        <LineChart
+          data={data}
+          syncId="home-timeline"
+          margin={plotMargin}
+          // Chart-level, not per-line: the two series share an X position, and
+          // asking whether the click landed nearer income or expenses would be
+          // guessing at something the reader did not intend to say.
+          onClick={(state) => {
+            const month = state?.activeLabel;
+            if (typeof month === 'string') {
+              openDrill({ title: monthLabel(month), subtitle: 'Everything in and out that month', filter: { month } });
+            }
+          }}
+          style={{ cursor: 'pointer' }}
+        >
           <CartesianGrid {...gridProps} />
           <XAxis dataKey="month" tickFormatter={(v: string) => monthLabel(v).split(' ')[0]} {...xAxisProps} />
           <YAxis {...yAxisProps} {...(scale ?? {})} />

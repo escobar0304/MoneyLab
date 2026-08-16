@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
-import { useVisibleEvents } from '../../lib/store';
+import { useVisibleEvents, useStore } from '../../lib/store';
 import { totalIncomeForMonth, totalOutflowForMonth } from '../../lib/derive';
-import { formatMoney } from '../../lib/format';
+import { formatMoney, monthLabel } from '../../lib/format';
 import { PRIMARY, COMPLEMENT, STATUS } from '../../lib/chartTheme';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
@@ -20,6 +20,7 @@ import { EmptyState } from '../ui/primitives';
  */
 export function BudgetMeter({ month }: { month: string }) {
   const events = useVisibleEvents();
+  const openDrill = useStore((s) => s.openDrill);
   const fillRef = useRef<HTMLDivElement>(null);
 
   const { income, spent, pct, over } = useMemo(() => {
@@ -59,10 +60,19 @@ export function BudgetMeter({ month }: { month: string }) {
 
   return (
     <div>
-      <p className="text-xs font-medium text-ink-muted">Spent of income</p>
-      <p className="mt-1 text-3xl font-semibold text-ink">
+      <p className="t-label">Spent of income</p>
+      {/* The figure is the drill target, so the meter reads as a number you can
+          open rather than a button wrapped around the whole tile. */}
+      <button
+        type="button"
+        onClick={() =>
+          openDrill({ title: `Spending in ${monthLabel(month)}`, subtitle: `Against ${formatMoney(income)} earned`, filter: { month, type: 'expense' } })
+        }
+        className="t-metric mt-1 cursor-pointer rounded-md text-ink transition-colors hover:text-accent"
+        aria-label="Show what makes up this month's spending"
+      >
         <AnimatedNumber value={spent} format={formatMoney} />
-      </p>
+      </button>
 
       {/* 10px track, fully rounded ends, no border — the track's own tint does
           the separating rather than a stroke around the fill. */}

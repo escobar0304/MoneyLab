@@ -80,19 +80,24 @@ export function categoryColorMap(events: LedgerEvent[]): Map<string, string> {
 }
 
 /**
- * A stable symbol -> colour mapping for the portfolio.
+ * Colour by identity, assigned from the sorted key list.
  *
- * Assigned from the sorted symbol list rather than by position size, on purpose:
- * ranking by value would repaint every holding the moment prices moved, which is
- * precisely what live prices do all day. Colour follows the instrument, never
- * its current rank.
+ * Deliberately not by size or rank: anything ranked by value repaints itself the
+ * moment a value moves, which for live prices is all day and for account
+ * balances is every transfer. Colour follows the thing, never its current
+ * position in a list.
  */
-export function symbolColorMap(symbols: string[]): Map<string, string> {
+export function stableColorMap(keys: string[]): Map<string, string> {
   const map = new Map<string, string>();
-  Array.from(new Set(symbols))
+  Array.from(new Set(keys))
     .sort((a, b) => a.localeCompare(b))
-    .forEach((symbol, i) => {
-      map.set(symbol, i < CATEGORICAL.length ? CATEGORICAL[i] : CHART_INK.muted);
+    .forEach((key, i) => {
+      map.set(key, i < CATEGORICAL.length ? CATEGORICAL[i] : CHART_INK.muted);
     });
   return map;
+}
+
+/** A stable symbol -> colour mapping for the portfolio. */
+export function symbolColorMap(symbols: string[]): Map<string, string> {
+  return stableColorMap(symbols);
 }

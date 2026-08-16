@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useVisibleEvents, useStore } from '../../lib/store';
 import { foldTrades, foldDividends, investmentSummary, positionsFrom } from '../../lib/investments';
 import { foldHoldings, foldBudgets } from '../../lib/entities';
+import { foldAccounts } from '../../lib/accounts';
 import { foldDebts, totalOwed } from '../../lib/debt';
 import {
   totalBalance,
@@ -13,7 +14,7 @@ import {
   endOfMonth,
 } from '../../lib/derive';
 import { Card, SectionTitle, EmptyState } from '../ui/primitives';
-import { ChartCard } from '../ui/ChartCard';
+import { ChartCard, DrillHint } from '../ui/ChartCard';
 import {
   netWorthTable,
   incomeVsExpensesTable,
@@ -31,6 +32,7 @@ import { MonthFilter } from './MonthFilter';
 import { TimeTravel, TimeTravelBanner } from './TimeTravel';
 import { RunwayChart, RunwaySummary } from './RunwayChart';
 import { PortfolioCard } from './PortfolioCard';
+import { AccountsCard } from './AccountsCard';
 import { NetWorthChart } from './NetWorthChart';
 import { IncomeVsExpensesChart } from './IncomeVsExpensesChart';
 import { SpendByCategoryChart } from './SpendByCategoryChart';
@@ -44,11 +46,13 @@ import { forecastMonth, sameMonthLastYear } from '../../lib/analysis';
 
 function Delta({ delta, goodWhen, period = 'last month' }: { delta?: number; goodWhen: 'up' | 'down'; period?: string }) {
   if (delta === undefined || delta === 0) {
-    return <p className="mt-1.5 text-xs text-ink-muted">No change vs {period}</p>;
+    return <p className="t-caption mt-1.5">No change vs {period}</p>;
   }
   const isGood = goodWhen === 'up' ? delta > 0 : delta < 0;
   return (
-    <p className={`mt-1.5 flex items-center gap-1 text-xs font-medium ${isGood ? 'text-positive' : 'text-complement'}`}>
+    // `money` marks it for privacy mode: it carries a figure without using the
+    // numeric or metric type classes the blur otherwise keys off.
+    <p className={`money mt-1.5 flex items-center gap-1 text-xs font-medium ${isGood ? 'text-positive' : 'text-complement'}`}>
       {/* Direction is an arrow as well as a colour — the sign never rides on hue alone. */}
       <svg viewBox="0 0 12 12" className={`h-3 w-3 ${delta > 0 ? '' : 'rotate-180'}`} fill="currentColor" aria-hidden="true">
         <path d="M6 2.2 10 7H2l4-4.8Z" />
@@ -64,19 +68,35 @@ function StatTile({
   label,
   value,
   tone = 'ink',
+  onDrill,
+  drillLabel,
   children,
 }: {
   label: string;
   value: number;
   tone?: 'ink' | 'critical';
+  onDrill?: () => void;
+  drillLabel?: string;
   children?: ReactNode;
 }) {
+  const toneClass = tone === 'critical' ? 'text-critical-text' : 'text-ink';
   return (
     <Card>
-      <p className="text-xs font-medium text-ink-muted">{label}</p>
-      <p className={`mt-1 text-3xl font-semibold ${tone === 'critical' ? 'text-critical-text' : 'text-ink'}`}>
-        <AnimatedNumber value={value} format={formatMoney} />
-      </p>
+      <p className="t-label">{label}</p>
+      {onDrill ? (
+        <button
+          type="button"
+          onClick={onDrill}
+          aria-label={drillLabel}
+          className={`t-metric mt-1 cursor-pointer rounded-md transition-colors hover:text-accent ${toneClass}`}
+        >
+          <AnimatedNumber value={value} format={formatMoney} />
+        </button>
+      ) : (
+        <p className={`t-metric mt-1 ${toneClass}`}>
+          <AnimatedNumber value={value} format={formatMoney} />
+        </p>
+      )}
       {children}
     </Card>
   );
@@ -88,6 +108,8 @@ export function OverviewView() {
   // without any of them knowing the feature exists.
   const events = useVisibleEvents();
   const quotes = useStore((s) => s.quotes);
+  const openDrill = useStore((s) => s.openDrill);
+  const accountCount = useMemo(() => foldAccounts(events).length, [events]);
   // Live prices are applied here too. Building positions inline for time travel
   // and forgetting the overlay is exactly how the hero ended up pricing a
   // live-quoted portfolio at cost.
@@ -152,22 +174,22 @@ export function OverviewView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="view-stack">
       <TimeTravelBanner />
 
-      {/* Hero figure — exactly one per view, and the only number at this size.
-          Nothing sits beside it: a control parked next to the headline number
-          competes with the one thing this page exists to say. */}
-      <div>
-        <div>
-        <p className="text-xs font-medium text-ink-muted">{composed ? 'Net worth' : 'Balance'}</p>
-        <p ref={heroRef} className={`mt-1 text-5xl font-semibold tracking-tight ${netWorth < 0 ? 'text-critical-text' : 'text-ink'}`}>
+      {/* The page's thesis, on one raised surface: where you stand, and where
+          that is heading. These were two separate panels of equal weight, which
+          is precisely how a dashboard ends up with fifteen cards and no answer —
+          the eye had nowhere to land first. */}
+      <Card level="primary">
+        <p className="t-label">{composed ? 'Net worth' : 'Balance'}</p>
+        <p ref={heroRef} className={`t-hero mt-1 ${netWorth < 0 ? 'text-critical-text' : 'text-ink'}`}>
           <AnimatedNumber value={netWorth} format={formatMoney} />
         </p>
         {composed ? (
           // The parts are spelled out because a single net figure hides which
           // side moved — a good month and a repriced portfolio look identical.
-          <p className="mt-1.5 text-xs text-ink-muted">
+          <p className="t-caption mt-1.5">
             <span className="num-col text-ink-secondary">{formatMoney(balance)}</span> cash
             {positions.length > 0 && (
               <>
@@ -199,24 +221,35 @@ export function OverviewView() {
         ) : (
           <Delta delta={balanceDelta} goodWhen="up" />
         )}
-        </div>
-      </div>
 
-      {/* Placed directly under the hero: "do I make it to payday" is the most
-          immediate question on the page, and the one a month-end total cannot
-          answer because it nets the order of events away. */}
-      <Reveal className="grid grid-cols-1" from="start">
-        <ChartCard title="The next 60 days" subtitle="Balance day by day, if nothing changes">
-          <RunwaySummary />
+        {/* Directly under the figure, inside the same surface: "do I make it to
+            payday" is the most immediate question on the page, and the one a
+            month-end total cannot answer because it nets the order away. */}
+        <div className="mt-4 border-t border-hairline pt-4">
+          <p className="t-title text-ink">The next 60 days</p>
+          <p className="t-caption mt-0.5">Balance day by day, if nothing changes</p>
+          <div className="mt-3">
+            <RunwaySummary />
+          </div>
           <div className="mt-2">
             <RunwayChart />
           </div>
-        </ChartCard>
-      </Reveal>
+        </div>
+      </Card>
 
-      {positions.length > 0 && (
-        <Reveal className="grid grid-cols-1" from="start">
-          <PortfolioCard />
+      <DrillHint />
+
+      {/* Where the money sits, and what it is invested in. Secondary weight:
+          they qualify the headline figure rather than restating it. */}
+      {(positions.length > 0 || accountCount > 1) && (
+        // Two columns only when there are two panels; one panel in a two-column
+        // grid is a card floating in half the page.
+        <Reveal
+          className={`grid grid-cols-1 gap-3 ${positions.length > 0 && accountCount > 1 ? 'lg:grid-cols-2' : ''}`}
+          from="start"
+        >
+          {accountCount > 1 && <AccountsCard />}
+          {positions.length > 0 && <PortfolioCard />}
         </Reveal>
       )}
 
@@ -242,13 +275,24 @@ export function OverviewView() {
           <Card className="xl:col-span-2">
             <BudgetMeter month={month} />
           </Card>
-          <StatTile label="Saved this month" value={saved} tone={saved < 0 ? 'critical' : 'ink'}>
-            <p className="mt-1.5 text-xs text-ink-muted">
+          <StatTile
+            label="Saved this month"
+            value={saved}
+            tone={saved < 0 ? 'critical' : 'ink'}
+            drillLabel="Show what makes up this month"
+            onDrill={() => openDrill({ title: monthLabel(month), subtitle: 'Everything in and out', filter: { month } })}
+          >
+            <p className="t-caption mt-1.5">
               <span className="num-col text-ink-secondary">{formatMoney(income)}</span> in ·{' '}
               <span className="num-col text-ink-secondary">{formatMoney(spend)}</span> out
             </p>
           </StatTile>
-          <StatTile label="Spent this month" value={spend}>
+          <StatTile
+            label="Spent this month"
+            value={spend}
+            drillLabel="Show what makes up this month's spending"
+            onDrill={() => openDrill({ title: `Spending in ${monthLabel(month)}`, subtitle: 'Every charge, newest first', filter: { month, type: 'expense' } })}
+          >
             <Delta delta={spendDelta} goodWhen="down" />
             {seasonalDelta !== undefined && <Delta delta={seasonalDelta} goodWhen="down" period={monthLabel(lastYearMonth)} />}
           </StatTile>
@@ -259,8 +303,8 @@ export function OverviewView() {
             <Card>
               <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
                 <div>
-                  <p className="text-xs font-medium text-ink-muted">Projected month end</p>
-                  <p className="mt-1 text-3xl font-semibold text-ink">
+                  <p className="t-label">Projected month end</p>
+                  <p className="t-metric mt-1 text-ink">
                     <AnimatedNumber value={forecast.total} format={formatMoney} />
                   </p>
                 </div>
@@ -281,7 +325,7 @@ export function OverviewView() {
                   </div>
                 </dl>
               </div>
-              <p className="mt-2 text-xs text-ink-muted">
+              <p className="t-caption mt-2">
                 {forecast.daysRemaining} {forecast.daysRemaining === 1 ? 'day' : 'days'} left
                 {!forecast.reliable && ' · too early in the month for the pace estimate to mean much'}
               </p>
@@ -290,29 +334,47 @@ export function OverviewView() {
         )}
 
         <Reveal key={`detail-${month}`} className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-5" from="start" stagger={0.06}>
-          <ChartCard title="Where it went" subtitle="Share of this month's spending" table={spendByCategoryTable(events, month)} className="xl:col-span-2">
+          <ChartCard
+            title="Where it went"
+            subtitle="Share of this month's spending"
+            table={spendByCategoryTable(events, month)}
+            className="xl:col-span-2"
+          >
             <SpendByCategoryPie month={month} />
           </ChartCard>
-          <ChartCard title="What changed" subtitle="Every category, last month to this" table={categoryChangeTable(events, month)} className="xl:col-span-3">
+          <ChartCard
+            title="What changed"
+            subtitle="Every category, last month to this"
+            table={categoryChangeTable(events, month)}
+            className="xl:col-span-3"
+          >
             <CategoryDumbbell month={month} />
+          </ChartCard>
+        </Reveal>
+
+        <Reveal key={`budgets-${month}`} className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2" from="start">
+          <ChartCard title="Budgets" subtitle="Against this month's limits" table={budgetsTable(events, budgets, month)}>
+            <BudgetProgress month={month} />
+          </ChartCard>
+          <ChartCard title="Worth a look" subtitle="Charges that are large for their category">
+            <Anomalies month={month} />
           </ChartCard>
         </Reveal>
       </div>
 
-      <Reveal key={`budgets-${month}`} className="grid grid-cols-1 gap-3 lg:grid-cols-2" from="start">
-        <ChartCard title="Budgets" subtitle="Against this month's limits" table={budgetsTable(events, budgets, month)}>
-          <BudgetProgress month={month} />
-        </ChartCard>
-        <ChartCard title="Worth a look" subtitle="Charges that are large for their category">
-          <Anomalies month={month} />
-        </ChartCard>
-      </Reveal>
-
+      {/* Quiet: history worth having, not worth competing for attention. These
+          two sat at the same weight as the headline panels, which is what made
+          the page read as a uniform wall rather than as an argument. */}
       <Reveal className="grid grid-cols-1 gap-3 lg:grid-cols-2" from="start">
-        <ChartCard title="Savings rate" subtitle="Share of income kept, per month" table={savingsRateTable(events)}>
+        <ChartCard title="Savings rate" subtitle="Share of income kept, per month" table={savingsRateTable(events)} level="quiet">
           <SavingsRateChart />
         </ChartCard>
-        <ChartCard title="Spend by category over time" subtitle="Stacked to the monthly total" table={spendOverTimeTable(events)}>
+        <ChartCard
+          title="Spend by category over time"
+          subtitle="Stacked to the monthly total"
+          table={spendOverTimeTable(events)}
+          level="quiet"
+        >
           <SpendByCategoryChart />
         </ChartCard>
       </Reveal>

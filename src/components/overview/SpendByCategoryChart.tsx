@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useVisibleEvents } from '../../lib/store';
+import { useVisibleEvents, useStore } from '../../lib/store';
 import { monthsWithActivity, spendByCategoryForMonth } from '../../lib/derive';
 import { monthLabel, formatMoney } from '../../lib/format';
 import { CHART_INK, MAX_CATEGORICAL_SERIES, OTHER_LABEL, categoryColorMap, rankedCategories } from '../../lib/chartTheme';
@@ -10,9 +10,10 @@ import { EmptyState } from '../ui/primitives';
 
 export function SpendByCategoryChart() {
   const events = useVisibleEvents();
+  const openDrill = useStore((s) => s.openDrill);
   const colors = useMemo(() => categoryColorMap(events), [events]);
 
-  const { data, categories } = useMemo(() => {
+  const { data, categories, otherMembers } = useMemo(() => {
     const months = monthsWithActivity(events).slice(-6); // last 6 active months
     const byMonth = months.map((m) => spendByCategoryForMonth(events, m));
 
@@ -38,8 +39,20 @@ export function SpendByCategoryChart() {
       return row;
     });
 
-    return { data: rows, categories: seenBeyondTop.size > 0 ? [...topCats, OTHER_LABEL] : topCats };
+    return {
+      data: rows,
+      categories: seenBeyondTop.size > 0 ? [...topCats, OTHER_LABEL] : topCats,
+      otherMembers: Array.from(seenBeyondTop),
+    };
   }, [events]);
+
+  /** Opens the month-and-category a stacked segment stands for. */
+  const drill = (category: string, month: string) =>
+    openDrill(
+      category === OTHER_LABEL
+        ? { title: 'Other categories', subtitle: `${otherMembers.join(', ')} · ${monthLabel(month)}`, filter: { month, categories: otherMembers } }
+        : { title: category, subtitle: monthLabel(month), filter: { month, category } }
+    );
 
   // Stacked, so the scale is driven by the column total, not any one series.
   const scale = useMemo(
@@ -77,6 +90,14 @@ export function SpendByCategoryChart() {
               stroke={CHART_INK.surface}
               strokeWidth={2}
               activeBar={{ fillOpacity: 0.75, stroke: CHART_INK.surface, strokeWidth: 2 }}
+              // Per-segment rather than on the chart: a stacked column knows
+              // which month was clicked, but only the segment knows which
+              // category, and the category is half the answer.
+              onClick={(segment: { payload?: { month?: string } }) => {
+                const month = segment?.payload?.month;
+                if (month) drill(cat, month);
+              }}
+              style={{ cursor: 'pointer' }}
             />
           ))}
         </BarChart>

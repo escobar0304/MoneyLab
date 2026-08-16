@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { useVisibleEvents } from '../../lib/store';
+import { useVisibleEvents, useStore } from '../../lib/store';
 import { spendByCategoryForMonth, previousMonthKey } from '../../lib/derive';
 import { formatMoney, monthLabel } from '../../lib/format';
 import { PRIMARY, COMPLEMENT, CHART_INK } from '../../lib/chartTheme';
@@ -19,6 +19,7 @@ const BEFORE_SHADE = '#86b6ef'; // step 250 of the blue ramp — the "before" sh
  */
 export function CategoryDumbbell({ month }: { month: string }) {
   const events = useVisibleEvents();
+  const openDrill = useStore((s) => s.openDrill);
   const scope = useRef<HTMLDivElement>(null);
 
   const { rows, max } = useMemo(() => {
@@ -68,7 +69,22 @@ export function CategoryDumbbell({ month }: { month: string }) {
           const span = Math.abs(pct(row.now) - pct(row.then));
           const rose = delta > 0;
           return (
-            <div key={row.name} className="grid grid-cols-[7.5rem_1fr_auto] items-center gap-3">
+            // The whole row opens the category. The subject of this chart is the
+            // gap between two months, and "which charges made the gap" is the
+            // only question it raises that it cannot itself answer.
+            <button
+              key={row.name}
+              type="button"
+              onClick={() =>
+                openDrill({
+                  title: row.name,
+                  subtitle: `${monthLabel(month)} — was ${formatMoney(row.then)} in ${monthLabel(previousMonthKey(month))}`,
+                  filter: { month, category: row.name },
+                })
+              }
+              aria-label={`Show what makes up ${row.name}`}
+              className="grid w-full cursor-pointer grid-cols-[7.5rem_1fr_auto] items-center gap-3 rounded-md px-1 text-left transition-colors hover:bg-surface-2/60"
+            >
               <span className="truncate text-xs font-medium text-ink-secondary">{row.name}</span>
 
               {/* Inset by the dot radius so a dot at 0% or 100% sits fully inside. */}
@@ -106,7 +122,7 @@ export function CategoryDumbbell({ month }: { month: string }) {
                 )}
                 <span className="num-col w-20 text-right font-semibold text-ink">{formatMoney(row.now)}</span>
               </span>
-            </div>
+            </button>
           );
         })}
       </div>

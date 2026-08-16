@@ -14,7 +14,7 @@ test.describe('encrypted backup', () => {
   test('round-trips a ledger through an encrypted file', async ({ page }, testInfo) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
 
     await page.getByRole('button', { name: 'Export encrypted' }).click();
     await page.locator('#export-pass').fill('a properly long passphrase');
@@ -52,7 +52,7 @@ test.describe('encrypted backup', () => {
   test('rejects the wrong passphrase instead of importing garbage', async ({ page }, testInfo) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
 
     await page.getByRole('button', { name: 'Export encrypted' }).click();
     await page.locator('#export-pass').fill('a properly long passphrase');
@@ -73,7 +73,7 @@ test.describe('encrypted backup', () => {
   test('a plain export still imports, so old backups keep working', async ({ page }, testInfo) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
 
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Export JSON' }).click();

@@ -118,7 +118,7 @@ export function CategoryManager() {
                   <>
                     <span className="min-w-0 flex-1">
                       <span className="truncate text-sm text-ink-secondary">{name}</span>
-                      <span className="ml-2 text-xs text-ink-muted">
+                      <span className={`ml-2 text-xs text-ink-muted${limit !== undefined ? ' money' : ''}`}>
                         {count} {count === 1 ? 'entry' : 'entries'}
                         {limit !== undefined && ` · ${formatMoney(limit)}/month`}
                       </span>

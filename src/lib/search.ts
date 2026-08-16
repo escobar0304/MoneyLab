@@ -8,7 +8,7 @@ import { isMoneyEvent } from './types';
  * Portuguese, so "alimentacao" typed quickly must find "Alimentação". Without
  * it, search fails exactly on the words that are hardest to type.
  */
-function fold(value: string): string {
+export function fold(value: string): string {
   return value
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')

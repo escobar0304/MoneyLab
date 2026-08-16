@@ -430,7 +430,7 @@ export function HoldingsManager() {
       <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
         <div>
           <p className="text-xs text-ink-muted">Value</p>
-          <p className="text-2xl font-semibold text-ink">{formatMoney(summary.value)}</p>
+          <p className="t-metric text-ink">{formatMoney(summary.value)}</p>
         </div>
         {/* Today first among the derived figures: it is the only one that is new
             since the last time this page was open. */}

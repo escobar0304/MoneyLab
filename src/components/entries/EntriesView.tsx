@@ -1,6 +1,9 @@
 import { Reveal } from '../ui/Reveal';
 import { RecurringManager } from './RecurringManager';
 import { ExpenseEntryForm } from './ExpenseEntryForm';
+import { AccountsManager } from './AccountsManager';
+import { RulesManager } from './RulesManager';
+import { StatementImport } from './StatementImport';
 import { BudgetManager } from './BudgetManager';
 import { CategoryManager } from './CategoryManager';
 import { Subscriptions } from './Subscriptions';
@@ -17,8 +20,11 @@ export function EntriesView() {
         <RecurringManager kind="income" />
         <ExpenseEntryForm />
         <RecurringManager kind="expense" />
+        <StatementImport />
+        <AccountsManager />
         <BudgetManager />
         <Subscriptions />
+        <RulesManager />
         <CategoryManager />
       </div>
       <History />

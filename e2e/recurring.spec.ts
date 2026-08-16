@@ -53,7 +53,7 @@ test.describe('recurring rules', () => {
     await page.goto('/');
     const before = (await ledger(page)).filter((e) => e.type === 'income').length;
 
-    await page.getByRole('button', { name: 'Entries' }).click();
+    await page.getByRole('button', { name: 'Entries', exact: true }).click();
     // The whole row is the control; the detail overlay is where deleting lives.
     await page.getByRole('button', { name: /^Open Monthly salary/ }).first().click();
     await page.getByRole('button', { name: 'Delete' }).click();

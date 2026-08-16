@@ -1,11 +1,13 @@
 import { ExportImport } from './ExportImport';
 import { BackupFolder } from './BackupFolder';
+import { Appearance } from './Appearance';
 
 export function SettingsView() {
   return (
-    <div className="space-y-6">
+    <div className="view-stack">
       <ExportImport />
       <BackupFolder />
+      <Appearance />
     </div>
   );
 }

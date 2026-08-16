@@ -1,15 +1,16 @@
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useVisibleEvents } from '../../lib/store';
-import { balanceSeries } from '../../lib/derive';
+import { useVisibleEvents, useStore } from '../../lib/store';
+import { balanceSeries, monthKey } from '../../lib/derive';
 import { CHART_INK, PRIMARY } from '../../lib/chartTheme';
-import { formatMoney, formatDate } from '../../lib/format';
+import { formatMoney, formatDate, monthLabel } from '../../lib/format';
 import { ChartTooltip } from '../ui/ChartTooltip';
 import { EndpointLabel, Plot, crosshair, gridProps, niceScale, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
 import { EmptyState } from '../ui/primitives';
 
 export function NetWorthChart() {
   const events = useVisibleEvents();
+  const openDrill = useStore((s) => s.openDrill);
   // Sliced to the same trailing window as the other two synced timeline charts
   // (IncomeVsExpensesChart, SpendByCategoryChart) so index-based syncId alignment
   // (Recharts syncs by data index, not by matching X value) points at the same month.
@@ -23,7 +24,7 @@ export function NetWorthChart() {
   if (data.length === 1) {
     return (
       <div className="py-6 text-center">
-        <p className="text-3xl font-semibold text-ink">{formatMoney(data[0].value)}</p>
+        <p className="t-metric text-ink">{formatMoney(data[0].value)}</p>
         <p className="mt-1 text-xs text-ink-muted">{formatDate(data[0].timestamp)} — keep logging to see a trend</p>
       </div>
     );
@@ -32,7 +33,20 @@ export function NetWorthChart() {
   return (
     <Plot>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} syncId="home-timeline" margin={plotMargin}>
+        <AreaChart
+          data={data}
+          syncId="home-timeline"
+          margin={plotMargin}
+          // Each point is a month end, so the entries behind it are that whole
+          // month — the balance moved by exactly that much and no more.
+          onClick={(state) => {
+            const stamp = state?.activeLabel;
+            if (typeof stamp !== 'string') return;
+            const month = monthKey(stamp);
+            openDrill({ title: monthLabel(month), subtitle: 'What moved the balance that month', filter: { month } });
+          }}
+          style={{ cursor: 'pointer' }}
+        >
           <defs>
             {/* Fades to nothing well before the baseline so the fill dissolves
                 into the card instead of ending on a visible edge. */}

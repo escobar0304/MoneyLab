@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
+import { usePrivacy } from '../../lib/privacy';
 import { LogoMark, LogoWordmark } from './Logo';
-import { IconOverview, IconEntries, IconPlan, IconMarkets, IconSettings, IconChevronsLeft } from './icons';
+import { IconOverview, IconEntries, IconPlan, IconMarkets, IconSettings, IconChevronsLeft, IconEye, IconEyeOff } from './icons';
 
 export type Tab = 'overview' | 'entries' | 'plan' | 'markets' | 'settings';
 
@@ -19,6 +20,7 @@ const COLLAPSED_W = 68;
 
 export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === '1');
+  const [hidden, setHidden] = usePrivacy();
   const asideRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
   const railRef = useRef<HTMLSpanElement>(null);
@@ -119,7 +121,22 @@ export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab
         ))}
       </nav>
 
-      <div className={`mt-auto flex h-14 shrink-0 items-center ${collapsed ? 'justify-center' : 'justify-end px-4'}`}>
+      <div className={`mt-auto flex h-14 shrink-0 items-center gap-1 ${collapsed ? 'justify-center' : 'justify-end px-4'}`}>
+        {/* In the shell rather than on a page: hiding the figures is something
+            you do *before* turning the screen round, and hunting through
+            Settings while someone watches rather defeats the point. */}
+        <button
+          type="button"
+          onClick={() => setHidden(!hidden)}
+          aria-pressed={hidden}
+          title={hidden ? 'Show amounts' : 'Hide amounts'}
+          aria-label={hidden ? 'Show amounts' : 'Hide amounts'}
+          className={`flex h-8 w-8 cursor-pointer items-center justify-center rounded-md transition-colors duration-200 ${
+            hidden ? 'bg-accent/12 text-accent' : 'text-ink-muted hover:bg-surface-2 hover:text-ink'
+          }`}
+        >
+          {hidden ? <IconEyeOff className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
+        </button>
         <button
           type="button"
           onClick={toggle}

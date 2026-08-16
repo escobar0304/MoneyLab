@@ -13,7 +13,7 @@ test.describe('logging entries', () => {
 
   test('logs an expense and it lands in the ledger and the history', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries' }).click();
+    await page.getByRole('button', { name: 'Entries', exact: true }).click();
 
     await page.locator('#expense-amount').fill('19.99');
     await page.getByRole('radio', { name: 'Groceries' }).click();
@@ -33,7 +33,7 @@ test.describe('logging entries', () => {
 
   test('refuses to log without a category', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries' }).click();
+    await page.getByRole('button', { name: 'Entries', exact: true }).click();
 
     await page.locator('#expense-amount').fill('12');
     await expect(page.getByRole('button', { name: 'Log expense' })).toBeDisabled();
@@ -42,7 +42,7 @@ test.describe('logging entries', () => {
 
   test('a new category becomes selectable and is reusable afterwards', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries' }).click();
+    await page.getByRole('button', { name: 'Entries', exact: true }).click();
 
     await page.getByRole('button', { name: '+ New', exact: true }).click();
     await page.getByLabel('New category name').fill('Transport');
@@ -53,7 +53,7 @@ test.describe('logging entries', () => {
     await expect(page.getByRole('radio', { name: 'Transport' })).toHaveAttribute('aria-checked', 'true');
 
     await page.reload();
-    await page.getByRole('button', { name: 'Entries' }).click();
+    await page.getByRole('button', { name: 'Entries', exact: true }).click();
     await expect(page.getByRole('radio', { name: 'Transport' })).toBeVisible();
   });
 

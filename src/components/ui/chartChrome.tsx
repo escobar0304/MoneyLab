@@ -127,7 +127,7 @@ export function ChartLegend({ payload }: { payload?: LegendEntry[] }) {
  * caption on the chart rather than a graphic drawn into it. */
 export function EndpointLabel({ x, y, children }: { x: number; y: number; children: ReactNode }) {
   return (
-    <text x={x - 9} y={y - 11} textAnchor="end" fontSize={11} fontFamily="inherit" fill={CHART_INK.muted}>
+    <text x={x - 9} y={y - 11} textAnchor="end" fontSize={11} fontFamily="inherit" fill={CHART_INK.muted} className="money">
       {children}
     </text>
   );

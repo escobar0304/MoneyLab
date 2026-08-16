@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { useVisibleEvents } from '../../lib/store';
+import { useVisibleEvents, useStore } from '../../lib/store';
 import { findAnomalies } from '../../lib/analysis';
-import { formatMoney, formatDate } from '../../lib/format';
+import { formatMoney, formatDate, monthLabel } from '../../lib/format';
 import { categoryColorMap } from '../../lib/chartTheme';
 
 /**
@@ -14,6 +14,7 @@ import { categoryColorMap } from '../../lib/chartTheme';
  */
 export function Anomalies({ month }: { month: string }) {
   const events = useVisibleEvents();
+  const openDrill = useStore((s) => s.openDrill);
   const colors = useMemo(() => categoryColorMap(events), [events]);
   const anomalies = useMemo(() => findAnomalies(events, month).slice(0, 5), [events, month]);
 
@@ -28,7 +29,22 @@ export function Anomalies({ month }: { month: string }) {
   return (
     <ul className="space-y-2">
       {anomalies.map(({ event, median }) => (
-        <li key={event.id} className="flex items-start justify-between gap-3 rounded-lg border border-hairline p-2.5">
+        <li key={event.id}>
+          {/* Opens the whole category for the month rather than this one charge:
+              "is this normal for me" is the question the card raises, and one
+              row on its own cannot answer it. */}
+          <button
+            type="button"
+            onClick={() =>
+              openDrill({
+                title: event.category,
+                subtitle: `${monthLabel(month)} — usually around ${formatMoney(median)} a charge`,
+                filter: { month, category: event.category },
+              })
+            }
+            aria-label={`Show what makes up ${event.category} this month`}
+            className="flex w-full cursor-pointer items-start justify-between gap-3 rounded-lg border border-hairline p-2.5 text-left transition-colors hover:border-border hover:bg-surface-2/60"
+          >
           <span className="flex min-w-0 items-start gap-2.5">
             <span
               aria-hidden="true"
@@ -46,6 +62,7 @@ export function Anomalies({ month }: { month: string }) {
             </span>
           </span>
           <span className="num-col shrink-0 text-sm font-semibold text-complement">{formatMoney(event.amount)}</span>
+          </button>
         </li>
       ))}
     </ul>

@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
-import { useStore, useCleared } from '../../lib/store';
+import { useStore, useCleared, useAccounts } from '../../lib/store';
+import { accountIdOf } from '../../lib/accounts';
 import { formatMoney, formatDate, formatDateTime } from '../../lib/format';
 import { formatForeign } from '../../lib/currency';
 import { categoryColorMap } from '../../lib/chartTheme';
-import { Button, Input, Label, Modal } from '../ui/primitives';
+import { Button, Input, Label, Modal, Select } from '../ui/primitives';
 import { CategoryPicker } from './CategoryPicker';
 import { ReceiptAttachment } from './ReceiptAttachment';
 import type { MoneyEvent } from '../../lib/types';
@@ -31,10 +32,13 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
   const removeEntry = useStore((s) => s.removeEntry);
   const setCleared = useStore((s) => s.setCleared);
   const isCleared = useCleared().has(entry.id);
+  const accounts = useAccounts();
   const colors = categoryColorMap(events);
 
   const isIncome = entry.type === 'income';
   const [editing, setEditing] = useState(false);
+  const [accountId, setAccountId] = useState(accountIdOf(entry));
+  const accountName = accounts.find((a) => a.id === accountIdOf(entry))?.label;
 
   const [amount, setAmount] = useState(String(entry.amount));
   const [date, setDate] = useState(entry.timestamp.slice(0, 10));
@@ -51,6 +55,7 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
     updateEntry(entry.id, {
       amount: amountNum,
       date: new Date(date).toISOString(),
+      accountId,
       ...(isIncome ? { label: label.trim() } : { category: category.trim(), subcategory: subcategory.trim(), note: note.trim() }),
     });
     setEditing(false);
@@ -81,6 +86,19 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
               <Input id={`d-date-${entry.id}`} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           </div>
+
+          {accounts.length > 1 && (
+            <div>
+              <Label htmlFor={`d-account-${entry.id}`}>Account</Label>
+              <Select id={`d-account-${entry.id}`} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
 
           {isIncome ? (
             <div>
@@ -115,7 +133,7 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
       ) : (
         <>
           <div className="mb-3 flex items-baseline gap-2">
-            <span className={`text-3xl font-semibold ${isIncome ? 'text-positive' : 'text-ink'}`}>
+            <span className={`t-metric ${isIncome ? 'text-positive' : 'text-ink'}`}>
               {isIncome ? '+' : '−'}
               {formatMoney(entry.amount)}
             </span>
@@ -151,6 +169,16 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
                 {entry.subcategory && <Field label="Subcategory">{entry.subcategory}</Field>}
                 {entry.note && <Field label="Note">{entry.note}</Field>}
               </>
+            )}
+
+            {accounts.length > 1 && accountName && <Field label="Account">{accountName}</Field>}
+            {accounts.length > 1 && !accountName && (
+              // The account is gone but the entry still names it. Saying so is
+              // better than silently showing Main, which is where the money in
+              // fact counts.
+              <Field label="Account">
+                <span className="text-ink-muted">A closed account — counted in {accounts[0].label}</span>
+              </Field>
             )}
 
             {entry.recurringId && (

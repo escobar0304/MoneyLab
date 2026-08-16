@@ -2,6 +2,21 @@ import { createPortal } from 'react-dom';
 import { useEffect, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type LabelHTMLAttributes, type MouseEvent, type ReactNode, type SelectHTMLAttributes } from 'react';
 
 /**
+ * How much a panel is meant to matter.
+ *
+ * `primary` for the one or two panels a page exists to show, `quiet` for
+ * supporting detail that should not compete, `default` for everything else — and
+ * most panels should stay default, or the levels stop meaning anything.
+ */
+export type CardLevel = 'primary' | 'default' | 'quiet';
+
+const LEVELS: Record<CardLevel, string> = {
+  primary: 'card-primary',
+  default: 'bg-surface-1 border-hairline hover:border-border',
+  quiet: 'card-quiet',
+};
+
+/**
  * Every panel in the app, on every page — so the spotlight is a property of the
  * design system rather than a dashboard-only flourish.
  *
@@ -9,7 +24,15 @@ import { useEffect, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes,
  * React state: a mousemove handler that called setState would re-render the
  * card's entire subtree (charts included) on every pointer sample.
  */
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = '',
+  level = 'default',
+}: {
+  children: ReactNode;
+  className?: string;
+  level?: CardLevel;
+}) {
   const ref = useRef<HTMLDivElement>(null);
 
   const track = (e: MouseEvent<HTMLDivElement>) => {
@@ -26,7 +49,7 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
       onMouseMove={track}
       onMouseEnter={() => ref.current?.style.setProperty('--spot-opacity', '1')}
       onMouseLeave={() => ref.current?.style.setProperty('--spot-opacity', '0')}
-      className={`spotlight relative overflow-hidden rounded-xl border border-hairline bg-surface-1 p-4 transition-colors duration-200 hover:border-border ${className}`}
+      className={`spotlight card-pad relative overflow-hidden rounded-xl border transition-colors duration-200 ${LEVELS[level]} ${className}`}
     >
       <div className="relative">{children}</div>
     </div>
@@ -67,7 +90,7 @@ export function Button({
 
 export function Label({ children, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
-    <label className="mb-1 block text-xs font-medium text-ink-muted" {...props}>
+    <label className="t-label mb-1 block" {...props}>
       {children}
     </label>
   );
@@ -102,6 +125,15 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
 }
 
 /**
+ * Which modals are open, innermost last.
+ *
+ * Needed the moment one overlay can open another — a drilled-down chart mark
+ * opening an entry. Without it, both modals hear the same Escape and both close,
+ * so backing out of the entry throws away the list you reached it from.
+ */
+const modalStack: symbol[] = [];
+
+/**
  * Rendered through a portal to document.body, deliberately.
  *
  * `position: fixed` resolves against the viewport only while no ancestor has a
@@ -111,11 +143,31 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
  * to a sliver. The portal takes the modal out of that subtree entirely, so it
  * cannot be re-broken by an animation added somewhere far away later.
  */
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  width = 'md',
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  width?: 'md' | 'lg';
+}) {
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const token = Symbol('modal');
+    modalStack.push(token);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (modalStack[modalStack.length - 1] !== token) return;
+      onClose();
+    };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      const at = modalStack.lastIndexOf(token);
+      if (at !== -1) modalStack.splice(at, 1);
+    };
   }, [onClose]);
 
   return createPortal(
@@ -126,7 +178,11 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-surface-0/80 p-4 pt-16 sm:pt-24"
       onMouseDown={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="w-full max-w-md rounded-xl border border-hairline bg-surface-1 p-5 shadow-2xl shadow-black/40">
+      <div
+        className={`w-full rounded-xl border border-hairline bg-surface-1 p-5 shadow-2xl shadow-black/40 ${
+          width === 'lg' ? 'max-w-2xl' : 'max-w-md'
+        }`}
+      >
         <div className="mb-4 flex items-center justify-between border-b border-hairline pb-3">
           <h3 className="text-sm font-semibold text-ink">{title}</h3>
           <button onClick={onClose} className="text-ink-muted hover:text-ink" aria-label="Close">

@@ -62,7 +62,7 @@ export function PortfolioCard() {
   if (positions.length === 0) {
     return (
       <Card>
-        <p className="text-sm font-semibold text-ink">Portfolio</p>
+        <p className="t-title text-ink">Portfolio</p>
         <div className="mt-3">
           <EmptyState title="Nothing held yet" description="Add a holding in Markets to see it here." />
         </div>
@@ -76,8 +76,8 @@ export function PortfolioCard() {
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-ink">Portfolio</p>
-          <p className="mt-0.5 text-xs text-ink-muted">
+          <p className="t-title text-ink">Portfolio</p>
+          <p className="t-caption mt-0.5">
             {liveCount > 0 ? (
               <>
                 Live prices{delayed && ', 15 min delayed'}

@@ -8,6 +8,7 @@ import { useLiveQuoteScheduler } from './lib/useLiveQuotes';
 import { UndoToast } from './components/ui/UndoToast';
 import { ShortcutsHelp } from './components/ui/ShortcutsHelp';
 import { OverviewView } from './components/overview/OverviewView';
+import { DrillPanel } from './components/entries/DrillPanel';
 
 // Overview is the landing tab so it ships in the main chunk; the rest are split
 // out. Markets in particular pulls in the TradingView embed, which most sessions
@@ -29,6 +30,17 @@ export default function App() {
   const viewRef = useRef<HTMLDivElement>(null);
   const runRecurring = useStore((s) => s.runRecurring);
   const undo = useStore((s) => s.undo);
+  const closeDrill = useStore((s) => s.closeDrill);
+
+  // Leaving the page a drilled slice came from has to close it, or the panel
+  // outlives the chart that opened it and describes a view no longer on screen.
+  const changeTab = useCallback(
+    (next: Tab) => {
+      closeDrill();
+      setTab(next);
+    },
+    [closeDrill]
+  );
 
   // Mounted here, not inside Markets: Net worth on the Overview is only honest
   // if the portfolio behind it is priced, and mounting it in both places would
@@ -40,7 +52,7 @@ export default function App() {
   }, [runRecurring]);
 
   const onNewExpense = useCallback(() => {
-    setTab('entries');
+    changeTab('entries');
     // Wait for the lazy chunk and the tab transition before reaching for the
     // field, otherwise focus lands on nothing.
     // Five seconds, not one. The old budget assumed a warm cache; on a cold
@@ -63,10 +75,10 @@ export default function App() {
       if (attempt < 100) setTimeout(() => focus(attempt + 1), 50);
     };
     focus();
-  }, []);
+  }, [changeTab]);
 
   useShortcuts({
-    onNavigate: setTab,
+    onNavigate: changeTab,
     onNewExpense,
     onUndo: undo,
     onHelp: () => setHelpOpen((v) => !v),
@@ -96,7 +108,7 @@ export default function App() {
   );
 
   return (
-    <AppShell active={tab} onChange={setTab}>
+    <AppShell active={tab} onChange={changeTab}>
       <div ref={viewRef} key={tab}>
         <Suspense fallback={<ViewFallback />}>
           {tab === 'overview' && <OverviewView />}
@@ -106,6 +118,9 @@ export default function App() {
           {tab === 'settings' && <SettingsView />}
         </Suspense>
       </div>
+      {/* Mounted once at the root rather than per view: any chart anywhere can
+          open it, and one owner is what stops two marks opening two panels. */}
+      <DrillPanel />
       <UndoToast />
       {helpOpen && <ShortcutsHelp onClose={() => setHelpOpen(false)} />}
     </AppShell>

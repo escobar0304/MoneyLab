@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useVisibleEvents } from '../../lib/store';
+import { useVisibleEvents, useStore } from '../../lib/store';
 import { savingsRateSeries } from '../../lib/analysis';
 import { monthLabel } from '../../lib/format';
 import { CHART_INK, PRIMARY } from '../../lib/chartTheme';
@@ -18,6 +18,7 @@ import { EmptyState } from '../ui/primitives';
  */
 export function SavingsRateChart() {
   const events = useVisibleEvents();
+  const openDrill = useStore((s) => s.openDrill);
 
   const data = useMemo(
     () =>
@@ -40,7 +41,17 @@ export function SavingsRateChart() {
   return (
     <Plot height={200}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={plotMargin}>
+        <AreaChart
+          data={data}
+          margin={plotMargin}
+          onClick={(state) => {
+            const month = state?.activeLabel;
+            if (typeof month === 'string') {
+              openDrill({ title: monthLabel(month), subtitle: 'The income and spending behind that rate', filter: { month } });
+            }
+          }}
+          style={{ cursor: 'pointer' }}
+        >
           <defs>
             <linearGradient id="savingsFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={PRIMARY} stopOpacity={0.22} />

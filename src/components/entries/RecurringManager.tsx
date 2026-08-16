@@ -202,7 +202,7 @@ export function RecurringManager({ kind }: { kind: RecurringKind }) {
       </SectionTitle>
 
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="text-2xl font-semibold text-ink">{formatMoney(monthlyTotal)}</span>
+        <span className="t-metric text-ink">{formatMoney(monthlyTotal)}</span>
         <span className="text-xs text-ink-muted">
           {copy.unit}
           {rules.length > 0 && ` · ${rules.filter((r) => r.active).length} active`}

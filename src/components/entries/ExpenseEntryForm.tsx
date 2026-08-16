@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useStore } from '../../lib/store';
-import { Button, Card, Input, Label, SectionTitle } from '../ui/primitives';
+import { useStore, useAccounts } from '../../lib/store';
+import { MAIN_ACCOUNT_ID } from '../../lib/accounts';
+import { Button, Card, Input, Label, SectionTitle, Select } from '../ui/primitives';
 import { todayInputValue } from '../../lib/format';
 import { CategoryPicker } from './CategoryPicker';
 import { AmountField, type AmountValue } from './AmountField';
@@ -22,6 +23,7 @@ function useKnownSubcategories(events: LedgerEvent[]): string[] {
 export function ExpenseEntryForm() {
   const events = useStore((s) => s.events);
   const addExpense = useStore((s) => s.addExpense);
+  const accounts = useAccounts();
   const knownSubcategories = useKnownSubcategories(events);
 
   const [amount, setAmount] = useState('');
@@ -30,6 +32,7 @@ export function ExpenseEntryForm() {
   const [subcategory, setSubcategory] = useState('');
   const [date, setDate] = useState(todayInputValue());
   const [note, setNote] = useState('');
+  const [accountId, setAccountId] = useState(MAIN_ACCOUNT_ID);
 
   const canSubmit = resolved !== null && category.trim() !== '';
 
@@ -42,12 +45,15 @@ export function ExpenseEntryForm() {
       subcategory: subcategory.trim() || undefined,
       note: note.trim() || undefined,
       date: new Date(date).toISOString(),
+      // Left off entirely when it is the main account, so an expense on a
+      // ledger with no accounts stays byte-for-byte what it always was.
+      accountId: accountId === MAIN_ACCOUNT_ID ? undefined : accountId,
     });
     setAmount('');
     setSubcategory('');
     setNote('');
-    // Category and date deliberately persist: logging several expenses in one
-    // sitting usually means the same day, and often the same category.
+    // Category, date and account deliberately persist: logging several expenses
+    // in one sitting usually means the same day, and often the same category.
   };
 
   return (
@@ -70,6 +76,21 @@ export function ExpenseEntryForm() {
         </div>
 
         <CategoryPicker value={category} onChange={setCategory} />
+
+        {/* Only once the balance is actually split. Until then the answer is
+            always Main, and a field with one answer is friction. */}
+        {accounts.length > 1 && (
+          <div>
+            <Label htmlFor="expense-account">Paid from</Label>
+            <Select id="expense-account" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>

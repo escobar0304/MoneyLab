@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
-import { useVisibleEvents, useBudgets } from '../../lib/store';
+import { useVisibleEvents, useBudgets, useStore } from '../../lib/store';
 import { budgetStatuses } from '../../lib/analysis';
-import { formatMoney } from '../../lib/format';
+import { formatMoney, monthLabel } from '../../lib/format';
 import { PRIMARY, COMPLEMENT, STATUS } from '../../lib/chartTheme';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
 import { EmptyState } from '../ui/primitives';
@@ -19,6 +19,7 @@ const WORD = { ok: 'on track', close: 'close to limit', over: 'over budget' } as
 export function BudgetProgress({ month }: { month: string }) {
   const events = useVisibleEvents();
   const budgets = useBudgets();
+  const openDrill = useStore((s) => s.openDrill);
   const scope = useRef<HTMLDivElement>(null);
 
   const statuses = useMemo(() => budgetStatuses(events, budgets, month), [events, budgets, month]);
@@ -50,7 +51,21 @@ export function BudgetProgress({ month }: { month: string }) {
       {statuses.map((s) => {
         const tone = TONE[s.state];
         return (
-          <div key={s.category}>
+          // "Over budget" is a claim, and the only useful next question is which
+          // charges made it so. Clicking the meter answers it.
+          <button
+            key={s.category}
+            type="button"
+            onClick={() =>
+              openDrill({
+                title: s.category,
+                subtitle: `${monthLabel(month)} — ${formatMoney(s.spent)} of a ${formatMoney(s.limit)} limit`,
+                filter: { month, category: s.category },
+              })
+            }
+            aria-label={`Show what makes up ${s.category}`}
+            className="block w-full cursor-pointer rounded-md px-1 py-0.5 text-left transition-colors hover:bg-surface-2/60"
+          >
             <div className="mb-1.5 flex items-baseline justify-between gap-3 text-xs">
               <span className="truncate font-medium text-ink-secondary">{s.category}</span>
               <span className="flex shrink-0 items-baseline gap-2">
@@ -76,7 +91,7 @@ export function BudgetProgress({ month }: { month: string }) {
                 {s.state === 'over' && ` by ${formatMoney(s.spent - s.limit)}`}
               </p>
             )}
-          </div>
+          </button>
         );
       })}
     </div>

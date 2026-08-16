@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { LedgerEvent, ID, Recurring, RecurringKind, MoneyEvent, Holding, ForeignAmount, Goal, Debt } from './types';
+import type { LedgerEvent, ID, Recurring, RecurringKind, MoneyEvent, Holding, ForeignAmount, Goal, Debt, Account, Rule, TransferEvent } from './types';
 import { makeId } from './id';
 import {
   foldRecurring,
@@ -14,6 +14,10 @@ import {
   renameCategoryIn,
   recurringIdOf,
 } from './entities';
+import { foldAccounts, accountBalances, foldTransfers, validateTransfer, MAIN_ACCOUNT_ID } from './accounts';
+import { foldRules, applyRules, ruleChanges } from './rules';
+import { rowsToEvents, type StatementRow } from './statements';
+import type { Drill } from './drill';
 import { foldGoals } from './goals';
 import { foldDebts } from './debt';
 import { foldTrades, foldDividends, positionsFrom, investmentSummary, type Position, type InvestmentSummary } from './investments';
@@ -46,6 +50,7 @@ export type EntryPatch = Partial<{
   category: string;
   subcategory: string;
   note: string;
+  accountId: string;
 }>;
 
 interface MoneyLabState {
@@ -58,8 +63,31 @@ interface MoneyLabState {
   lastBackupAt: string | null;
   undoSnapshot: UndoSnapshot | null;
 
-  addIncome: (input: { amount: number; label: string; recurringId?: ID; date?: string; foreign?: ForeignAmount }) => void;
-  addExpense: (input: { amount: number; category: string; subcategory?: string; note?: string; date?: string; foreign?: ForeignAmount }) => void;
+  addIncome: (input: { amount: number; label: string; recurringId?: ID; date?: string; foreign?: ForeignAmount; accountId?: ID }) => void;
+  addExpense: (input: {
+    amount: number;
+    category: string;
+    subcategory?: string;
+    note?: string;
+    date?: string;
+    foreign?: ForeignAmount;
+    accountId?: ID;
+  }) => void;
+
+  upsertAccount: (account: Omit<Account, 'id'> & { id?: ID }) => void;
+  /** Sweeps whatever is left back to Main before closing the account, so no
+   * money is stranded in a pot that no longer exists. */
+  removeAccount: (id: ID) => void;
+  /** Returns null on success, or why the transfer was refused. */
+  transfer: (input: { fromAccountId: ID; toAccountId: ID; amount: number; note?: string; date?: string }) => string | null;
+
+  /** Appends a parsed bank statement, rules applied. Returns how many landed. */
+  importStatement: (rows: StatementRow[], options: { accountId?: ID; defaultCategory: string }) => number;
+
+  upsertRule: (rule: Omit<Rule, 'id'> & { id?: ID }) => void;
+  removeRule: (id: ID) => void;
+  /** Runs every active rule over the whole ledger. Returns how many entries changed. */
+  applyRulesToExisting: () => number;
 
   upsertRecurring: (rule: Omit<Recurring, 'id' | 'cycle'> & { id?: ID }) => void;
   removeRecurring: (id: ID) => void;
@@ -103,6 +131,17 @@ interface MoneyLabState {
   setAsOf: (date: string | null) => void;
 
   /**
+   * The chart mark currently opened out into its underlying entries, or null.
+   *
+   * Session-only, and on the store rather than local to a page: any chart on any
+   * view can open one, and a single owner is what keeps two marks from opening
+   * two overlapping panels.
+   */
+  drill: Drill | null;
+  openDrill: (drill: Drill) => void;
+  closeDrill: () => void;
+
+  /**
    * Live prices by symbol. Session-only and deliberately never written to the
    * ledger: appending an event per refresh would add a thousand entries a day
    * to an append-only log, to record something that is stale a minute later.
@@ -141,11 +180,12 @@ export const useStore = create<MoneyLabState>()(
         lastBackupAt: null,
         undoSnapshot: null,
         asOf: null,
+        drill: null,
         quotes: {},
         quoteStatus: { loading: false, error: null, lastFetchedAt: null },
 
-        addIncome: ({ amount, label, recurringId, date, foreign }) => {
-          const event: LedgerEvent = {
+        addIncome: ({ amount, label, recurringId, date, foreign, accountId }) => {
+          const event: MoneyEvent = {
             id: makeId(),
             type: 'income',
             timestamp: date ?? new Date().toISOString(),
@@ -153,12 +193,15 @@ export const useStore = create<MoneyLabState>()(
             label,
             recurringId,
             foreign,
+            accountId,
           };
-          set((s) => ({ events: [...s.events, event] }));
+          // Rules file the entry on the way in, so the form stays about what
+          // happened rather than about where it should be put.
+          set((s) => ({ events: [...s.events, applyRules(event, foldRules(s.events))] }));
         },
 
-        addExpense: ({ amount, category, subcategory, note, date, foreign }) => {
-          const event: LedgerEvent = {
+        addExpense: ({ amount, category, subcategory, note, date, foreign, accountId }) => {
+          const event: MoneyEvent = {
             id: makeId(),
             type: 'expense',
             timestamp: date ?? new Date().toISOString(),
@@ -167,8 +210,124 @@ export const useStore = create<MoneyLabState>()(
             subcategory,
             note,
             foreign,
+            accountId,
           };
-          set((s) => ({ events: [...s.events, event] }));
+          set((s) => ({ events: [...s.events, applyRules(event, foldRules(s.events))] }));
+        },
+
+        upsertAccount: (input) => {
+          const clean = input.label.trim();
+          if (!clean) return;
+          set((s) => ({
+            events: [
+              ...s.events,
+              {
+                id: makeId(),
+                type: 'account_upsert',
+                timestamp: new Date().toISOString(),
+                account: { ...input, label: clean, id: input.id ?? makeId() },
+              },
+            ],
+          }));
+        },
+
+        removeAccount: (id) => {
+          if (id === MAIN_ACCOUNT_ID) return;
+          const events = get().events;
+          const accounts = foldAccounts(events);
+          const account = accounts.find((a) => a.id === id);
+          if (!account) return;
+
+          snapshot(`Account “${account.label}” closed`);
+          const timestamp = new Date().toISOString();
+          const left = accountBalances(events, accounts).get(id) ?? 0;
+          const extra: LedgerEvent[] = [];
+
+          // Closing a pot must not destroy what is in it. The sweep is a real
+          // transfer, recorded like any other, so the account history reads
+          // "moved back to Main" rather than the money simply reappearing there.
+          if (Math.abs(left) >= 0.005) {
+            extra.push({
+              id: makeId(),
+              type: 'transfer',
+              timestamp,
+              fromAccountId: left > 0 ? id : MAIN_ACCOUNT_ID,
+              toAccountId: left > 0 ? MAIN_ACCOUNT_ID : id,
+              amount: Math.abs(left),
+              note: `Closing ${account.label}`,
+            });
+          }
+          extra.push({ id: makeId(), type: 'account_remove', timestamp, accountId: id });
+          set((s) => ({ events: [...s.events, ...extra] }));
+        },
+
+        transfer: ({ fromAccountId, toAccountId, amount, note, date }) => {
+          const events = get().events;
+          const accounts = foldAccounts(events);
+          const problem = validateTransfer({ fromAccountId, toAccountId, amount }, accounts, accountBalances(events, accounts));
+          if (problem) return problem.message;
+
+          set((s) => ({
+            events: [
+              ...s.events,
+              {
+                id: makeId(),
+                type: 'transfer',
+                timestamp: date ?? new Date().toISOString(),
+                fromAccountId,
+                toAccountId,
+                amount: Math.round(amount * 100) / 100,
+                ...(note?.trim() ? { note: note.trim() } : {}),
+              },
+            ],
+          }));
+          return null;
+        },
+
+        importStatement: (rows, { accountId, defaultCategory }) => {
+          if (rows.length === 0) return 0;
+          const events = get().events;
+          const built = rowsToEvents(rows, { accountId, defaultCategory, rules: foldRules(events) });
+
+          // One snapshot for the whole file: an import is a single decision, and
+          // undoing it one entry at a time is not an undo.
+          snapshot(`${built.length} ${built.length === 1 ? 'entry' : 'entries'} imported`);
+          set((s) => ({ events: [...s.events, ...built] }));
+          return built.length;
+        },
+
+        upsertRule: (input) => {
+          const clean = input.label.trim();
+          if (!clean) return;
+          set((s) => ({
+            events: [
+              ...s.events,
+              {
+                id: makeId(),
+                type: 'rule_upsert',
+                timestamp: new Date().toISOString(),
+                rule: { ...input, label: clean, id: input.id ?? makeId() },
+              },
+            ],
+          }));
+        },
+
+        removeRule: (id) => {
+          snapshot('Rule removed');
+          set((s) => ({ events: [...s.events, { id: makeId(), type: 'rule_remove', timestamp: new Date().toISOString(), ruleId: id }] }));
+        },
+
+        applyRulesToExisting: () => {
+          const events = get().events;
+          const accounts = foldAccounts(events);
+          const label = (id: ID) => accounts.find((a) => a.id === id)?.label ?? id;
+          const changes = ruleChanges(events, foldRules(events), label);
+          if (changes.length === 0) return 0;
+
+          snapshot(`${changes.length} ${changes.length === 1 ? 'entry' : 'entries'} refiled by rules`);
+          const next = new Map(changes.map((c) => [c.entry.id, c.next]));
+          set((s) => ({ events: s.events.map((e) => next.get(e.id) ?? e) }));
+          return changes.length;
         },
 
         upsertRecurring: (input) => {
@@ -434,6 +593,9 @@ export const useStore = create<MoneyLabState>()(
 
         setAsOf: (date) => set({ asOf: date }),
 
+        openDrill: (drill) => set({ drill }),
+        closeDrill: () => set({ drill: null }),
+
         refreshQuotes: async () => {
           const symbols = foldHoldings(get().events).map((h) => h.symbol.toUpperCase());
           if (symbols.length === 0) return;
@@ -482,6 +644,11 @@ export const useStore = create<MoneyLabState>()(
               const next = { ...e } as MoneyEvent;
               if (patch.amount !== undefined) next.amount = patch.amount;
               if (patch.date !== undefined) next.timestamp = patch.date;
+              // Main is the absence of the field, not a value it holds — so
+              // moving an entry back to Main removes it rather than storing it.
+              if (patch.accountId !== undefined) {
+                next.accountId = patch.accountId === MAIN_ACCOUNT_ID ? undefined : patch.accountId;
+              }
               if (next.type === 'income' && patch.label !== undefined) next.label = patch.label;
               if (next.type === 'expense') {
                 if (patch.category !== undefined) next.category = patch.category;
@@ -618,6 +785,36 @@ export const useVisibleEvents = (): LedgerEvent[] => {
     const cutoff = `${asOf}T23:59:59.999Z`;
     return events.filter((e) => e.timestamp <= cutoff);
   }, [events, asOf]);
+};
+
+export const useAccounts = (): Account[] => {
+  const events = useStore((s) => s.events);
+  return useMemo(() => foldAccounts(events), [events]);
+};
+
+/**
+ * How much sits in each pot, right now.
+ *
+ * Reads the live ledger rather than the time-travelled one on purpose: this is
+ * what the transfer form validates against, and validating "can I move 200 out
+ * of Savings" against last March's balance would refuse transfers that are
+ * perfectly fine. Read-only surfaces that should follow time travel derive their
+ * own from `useVisibleEvents`.
+ */
+export const useAccountBalances = (): Map<ID, number> => {
+  const events = useStore((s) => s.events);
+  const accounts = useAccounts();
+  return useMemo(() => accountBalances(events, accounts), [events, accounts]);
+};
+
+export const useTransfers = (): TransferEvent[] => {
+  const events = useStore((s) => s.events);
+  return useMemo(() => foldTransfers(events), [events]);
+};
+
+export const useRules = (): Rule[] => {
+  const events = useStore((s) => s.events);
+  return useMemo(() => foldRules(events), [events]);
 };
 
 export const useCleared = (): Set<ID> => {

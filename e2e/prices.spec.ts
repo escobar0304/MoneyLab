@@ -49,7 +49,7 @@ test.describe('live prices', () => {
     await stubQuotes(page, [['NASDAQ:AAPL', 100, 1, 1, 'USD', 'delayed_streaming_900']]);
     await seed(page, [...base, holding('a', 'NASDAQ:AAPL', 'Apple', 10, 50)], { livePrices: true });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Markets' }).click();
+    await page.getByRole('button', { name: 'Markets', exact: true }).click();
 
     await expect(page.getByText(money(900)).first()).toBeVisible();
     await expect(page.getByText(/quoted 100.00 USD/)).toBeVisible();
@@ -75,7 +75,7 @@ test.describe('live prices', () => {
       },
     ], { livePrices: true });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Markets' }).click();
+    await page.getByRole('button', { name: 'Markets', exact: true }).click();
 
     // 10 × 150 from the recorded price, and the failure is stated rather than
     // shown as a suspiciously round number.
@@ -95,12 +95,12 @@ test.describe('live prices', () => {
       },
     ], { livePrices: true });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Markets' }).click();
+    await page.getByRole('button', { name: 'Markets', exact: true }).click();
     await expect(page.getByText(money(2000)).first()).toBeVisible();
 
     await page.getByLabel('Live prices').uncheck();
     await page.reload();
-    await page.getByRole('button', { name: 'Markets' }).click();
+    await page.getByRole('button', { name: 'Markets', exact: true }).click();
 
     await expect(page.getByText(/Live prices are off/)).toBeVisible();
     await expect(page.getByText(money(1500)).first()).toBeVisible();

@@ -177,7 +177,7 @@ export function GoalsManager() {
         <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
           <div>
             <p className="text-xs text-ink-muted">Unspoken for</p>
-            <p className={`text-2xl font-semibold ${free < 0 ? 'text-critical-text' : 'text-ink'}`}>{formatMoney(free)}</p>
+            <p className={`t-metric ${free < 0 ? 'text-critical-text' : 'text-ink'}`}>{formatMoney(free)}</p>
           </div>
           <div>
             <p className="text-xs text-ink-muted">Set aside</p>

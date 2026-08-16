@@ -208,7 +208,7 @@ export function DebtManager() {
         <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
           <div>
             <p className="text-xs text-ink-muted">Still owed</p>
-            <p className="text-2xl font-semibold text-ink">{formatMoney(owed)}</p>
+            <p className="t-metric text-ink">{formatMoney(owed)}</p>
           </div>
           <div>
             <p className="text-xs text-ink-muted">Per month</p>
