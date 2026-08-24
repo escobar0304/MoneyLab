@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seed, ledger, income, expense, category, dayIn, money } from './helpers';
+import { seed, ledger, income, expense, category, dayIn, money, openEntries } from './helpers';
 
 /** Two months apart, so a search that only looked at the visible month would
  * miss half of it — which is the point of searching at all. */
@@ -64,18 +64,22 @@ test.describe('renaming and merging categories', () => {
   test.beforeEach(async ({ page }) => {
     await seed(page, [...base, { id: 'b1', type: 'budget_set', timestamp: dayIn(-1), category: 'Saúde', amount: 100 }]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
   });
 
   test('renames everywhere at once — entries, picker and budget', async ({ page }) => {
+    await openEntries(page, 'manage');
     await page.getByRole('button', { name: 'Rename Saúde' }).click();
     await page.getByLabel('Rename Saúde').fill('Health');
     await page.getByRole('button', { name: 'Save' }).click();
 
-    // The picker in the expense form, the manager list, and the entries.
+    // The entries list stays on screen through the whole flow — it picks up
+    // the rename without needing Log/Manage to switch at all.
+    await expect(page.getByRole('button', { name: /^Open Health/ })).toHaveCount(1);
+
+    // The picker in the expense form is the other surface, on Log.
+    await openEntries(page, 'log');
     await expect(page.getByRole('radio', { name: 'Health' })).toBeVisible();
     await expect(page.getByRole('radio', { name: 'Saúde' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Open Health/ })).toHaveCount(1);
 
     const events = await ledger(page);
     expect(events.filter((e) => e.type === 'expense' && e.category === 'Saúde')).toHaveLength(0);
@@ -84,6 +88,7 @@ test.describe('renaming and merging categories', () => {
   });
 
   test('renaming onto an existing category merges, after saying what that means', async ({ page }) => {
+    await openEntries(page, 'manage');
     await page.getByRole('button', { name: 'Rename Saúde' }).click();
     await page.getByLabel('Rename Saúde').fill('Alimentação');
     await page.getByRole('button', { name: 'Save' }).click();
@@ -93,6 +98,7 @@ test.describe('renaming and merging categories', () => {
     await expect(page.getByText(/budget of.*is dropped/)).toBeVisible();
     await page.getByRole('button', { name: 'Merge', exact: true }).click();
 
+    await openEntries(page, 'log');
     await expect(page.getByRole('radio', { name: 'Saúde' })).toHaveCount(0);
     const events = await ledger(page);
     expect(events.filter((e) => e.type === 'expense' && e.category === 'Alimentação')).toHaveLength(3);
@@ -102,20 +108,26 @@ test.describe('renaming and merging categories', () => {
   });
 
   test('survives a reload, because it rewrote the ledger rather than the view', async ({ page }) => {
+    await openEntries(page, 'manage');
     await page.getByRole('button', { name: 'Rename Saúde' }).click();
     await page.getByLabel('Rename Saúde').fill('Health');
     await page.getByRole('button', { name: 'Save' }).click();
 
+    // A fresh load starts back on Log, same as any first visit.
     await page.reload();
     await page.getByRole('button', { name: 'Entries', exact: true }).click();
     await expect(page.getByRole('radio', { name: 'Health' })).toBeVisible();
   });
 
   test('points out two names that are the same word twice', async ({ page }) => {
+    // Creating a category happens on Log, through the expense form's picker —
+    // Manage's list has nothing to rename until one already exists.
+    await openEntries(page, 'log');
     await page.getByRole('button', { name: '+ New', exact: true }).click();
     await page.getByLabel('New category name').fill('saude');
     await page.getByRole('button', { name: 'Add', exact: true }).click();
 
+    await openEntries(page, 'manage');
     await expect(page.getByText('looks like a duplicate')).toHaveCount(2);
   });
 });

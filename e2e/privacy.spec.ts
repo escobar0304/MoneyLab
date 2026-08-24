@@ -84,6 +84,13 @@ test.describe('privacy mode', () => {
       await page.getByRole('button', { name: tab, exact: true }).click();
       await expect(page.getByRole('button', { name: 'Show amounts' })).toBeVisible();
       expect(await unblurredAmounts(page), `leaked on ${tab}`).toEqual([]);
+
+      // Entries splits into Log/Manage; Manage's budgets and account balances
+      // never mount under Log, so the default view alone would miss them.
+      if (tab === 'Entries') {
+        await page.getByRole('button', { name: 'Manage', exact: true }).click();
+        expect(await unblurredAmounts(page), 'leaked on Entries → Manage').toEqual([]);
+      }
     }
   });
 

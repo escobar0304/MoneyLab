@@ -10,7 +10,13 @@ No accounts, no server, no bank connections.
 
 ## Features
 
-**Income & expenses**
+**Income & expenses** — the Entries tab, split into **Log** and **Manage**
+(a `Segmented` control switches between them, History stays visible either
+way) so logging a coffee and merging two mistyped categories aren't presented
+as the same kind of task — one happens daily, the other happens once in a
+while to keep Log honest.
+
+*Log — what posts an entry:*
 - One-off income and expenses: amount, date, a free-text category (with
   autocomplete), optional subcategory, note, and multiple pots (accounts) to
   post against.
@@ -20,17 +26,26 @@ No accounts, no server, no bank connections.
 - **Multi-currency entries**: log in another currency and it's converted to the
   base currency (EUR) via ECB reference rates, with the original amount and rate
   kept alongside for the audit trail.
-- **Bank statement import** (CSV) plus **rules** that auto-categorize matching
-  entries by text, amount, or category — one primitive that also drives import
-  auto-categorization and manual tidy-up.
-- Mark an entry as reconciled against the bank, without touching the record of
-  what actually happened.
 
-**Planning**
-- **Budgets** — a monthly spending limit per category, shown as a meter against
-  this month's spend.
+*Manage — the setup that keeps Log honest:*
+- **Bank statement import** (CSV/OFX) previewed before anything is written,
+  plus **rules** that auto-categorize matching entries by text, amount, or
+  category — one primitive that drives both import auto-filing and manual
+  tidy-up.
 - **Accounts** — divide the balance into pots (main, savings, investment,
   other) and transfer between them; the sum is always the one true balance.
+- **Budgets** — a monthly spending limit per category, shown as a meter against
+  this month's spend.
+- **Subscriptions** — detected from repeating charges in your own history, with
+  a price-rise called out and a one-click way to turn one into a recurring rule.
+- **Categories** — rename or merge (accent/case-folded, so "Saúde" and "saude"
+  are caught), updating every entry, rule and budget at once.
+
+Always available regardless of section: marking an entry as reconciled against
+the bank, without touching the record of what actually happened — that lives
+in History, which stays on screen through both Log and Manage.
+
+**Planning**
 - **Goals** — earmark part of the balance toward a target, with a deadline and
   a required-pace-vs-actual-pace read on whether you're on track.
 - **Debt** — a loan's amortization schedule from principal/rate/term, plus a
@@ -162,7 +177,9 @@ src/
     layout/     AppShell + Sidebar (tab navigation, icons)
     ui/          Shared primitives (Card, Button, Modal, ChartCard, Segmented, StatTile, …)
     overview/    The dashboard: hero net worth, trend charts, the monthly snapshot
-    entries/     Every input: expenses, recurring, accounts, budgets, rules, statement import, categories
+    entries/     Every input, split into Log (EntriesView's default) and Manage
+                  via a Segmented control — recurring, expense form on Log;
+                  accounts, budgets, rules, statement import, categories on Manage
     plan/        Goals and debt
     irs/         IRS deduction tracking, its own tab
     portfolio/   Holdings, trades, dividends — what you own

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { seed, income, expense, category, dayIn, monthOffset, ledger, money, type SeedEvent } from './helpers';
+import { seed, income, expense, category, dayIn, monthOffset, ledger, money, openEntries, type SeedEvent } from './helpers';
 
 const base: SeedEvent[] = [category('Groceries'), category('Uncategorised'), income(2000, 'Salary', dayIn(0))];
 
@@ -23,15 +23,15 @@ async function upload(page: Page, name: string, contents: string) {
   await page.getByLabel('Statement file').setInputFiles({ name, mimeType: 'text/csv', buffer: Buffer.from(contents, 'utf-8') });
 }
 
-async function openEntries(page: Page) {
+async function openImport(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Entries', exact: true }).click();
+  await openEntries(page, 'manage');
 }
 
 test.describe('statement import', () => {
   test('reads a Portuguese bank CSV and previews it before writing anything', async ({ page }) => {
     await seed(page, base);
-    await openEntries(page);
+    await openImport(page);
     await upload(page, 'extrato.csv', statement(monthOffset(0)));
 
     const dialog = page.getByRole('dialog');
@@ -57,7 +57,7 @@ test.describe('statement import', () => {
 
   test('the rules file the import on the way in', async ({ page }) => {
     await seed(page, base);
-    await openEntries(page);
+    await openImport(page);
 
     await page.getByRole('button', { name: 'New rule' }).click();
     await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Supermarkets');
@@ -76,7 +76,7 @@ test.describe('statement import', () => {
 
   test('re-importing the same file adds nothing', async ({ page }) => {
     await seed(page, base);
-    await openEntries(page);
+    await openImport(page);
     await upload(page, 'extrato.csv', statement(monthOffset(0)));
     await page.getByRole('dialog').getByRole('button', { name: /^Import 3 entries$/ }).click();
     const after = (await ledger(page)).length;
@@ -94,7 +94,7 @@ test.describe('statement import', () => {
   test('a duplicate can be let through deliberately', async ({ page }) => {
     // Two identical charges on one day are real. The skip is a default, not a rule.
     await seed(page, base);
-    await openEntries(page);
+    await openImport(page);
     await upload(page, 'extrato.csv', statement(monthOffset(0)));
     await page.getByRole('dialog').getByRole('button', { name: /^Import 3 entries$/ }).click();
 
@@ -110,7 +110,7 @@ test.describe('statement import', () => {
     // Seeded by hand, not imported — the match is on date, amount and text, so
     // it still catches the entry you typed yourself last week.
     await seed(page, [...base, expense(32.4, 'Groceries', `${monthOffset(0)}-04T12:00:00.000Z`, 'LIDL PORTO')]);
-    await openEntries(page);
+    await openImport(page);
     await upload(page, 'extrato.csv', statement(monthOffset(0)));
 
     const dialog = page.getByRole('dialog');
@@ -120,7 +120,7 @@ test.describe('statement import', () => {
 
   test('the column mapping can be corrected by hand', async ({ page }) => {
     await seed(page, base);
-    await openEntries(page);
+    await openImport(page);
     await upload(page, 'extrato.csv', statement(monthOffset(0)));
 
     const dialog = page.getByRole('dialog');
@@ -143,7 +143,7 @@ test.describe('statement import', () => {
     ].join('\n');
 
     await seed(page, base);
-    await openEntries(page);
+    await openImport(page);
     await page.getByLabel('Statement file').setInputFiles({ name: 'extrato.ofx', mimeType: 'application/x-ofx', buffer: Buffer.from(ofx, 'utf-8') });
 
     const dialog = page.getByRole('dialog');
@@ -155,7 +155,7 @@ test.describe('statement import', () => {
 
   test('an import is one undo, not two hundred', async ({ page }) => {
     await seed(page, base);
-    await openEntries(page);
+    await openImport(page);
     await upload(page, 'extrato.csv', statement(monthOffset(0)));
     await page.getByRole('dialog').getByRole('button', { name: /^Import 3 entries$/ }).click();
     expect((await ledger(page)).filter((e) => e.note === 'LIDL PORTO')).toHaveLength(1);
@@ -168,7 +168,7 @@ test.describe('statement import', () => {
 
   test('refuses a file that is not a statement', async ({ page }) => {
     await seed(page, base);
-    await openEntries(page);
+    await openImport(page);
     await upload(page, 'notes.csv', 'these are just some notes\nnothing like a statement here\n');
 
     await expect(page.getByRole('dialog')).toHaveCount(0);

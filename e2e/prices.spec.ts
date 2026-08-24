@@ -115,7 +115,9 @@ test.describe('live prices', () => {
     await page.goto('/');
 
     // 2 000 + 1 000 = 3 000, so the split is two thirds / one third.
-    await expect(page.getByText('Portfolio', { exact: true })).toBeVisible();
+    // Scoped to the page content: the sidebar's Portfolio tab button has the
+    // same accessible text as the card's own heading.
+    await expect(page.getByRole('main').getByText('Portfolio', { exact: true })).toBeVisible();
     await expect(page.getByText(money(3000)).first()).toBeVisible();
     await expect(page.getByText('66.7%')).toBeVisible();
     await expect(page.getByText('33.3%')).toBeVisible();

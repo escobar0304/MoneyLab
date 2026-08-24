@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seed, ledger, income, expense, category, dayIn, monthOffset, money, type SeedEvent } from './helpers';
+import { seed, ledger, income, expense, category, dayIn, monthOffset, money, openEntries, type SeedEvent } from './helpers';
 
 /** A monthly rule that has been running for a while. */
 const salaryRule: SeedEvent = {
@@ -121,7 +121,7 @@ test.describe('repeating charges', () => {
   test('finds an undeclared subscription and offers to make it a rule', async ({ page }) => {
     await seed(page, [category('Subscriptions'), ...netflix]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await expect(page.getByRole('heading', { name: 'Repeating charges' })).toBeVisible();
     await expect(page.getByText(/without a rule/)).toBeVisible();
@@ -136,7 +136,7 @@ test.describe('repeating charges', () => {
   test('catches a price rise that no chart would ever show', async ({ page }) => {
     await seed(page, [category('Subscriptions'), ...netflix]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     // Both figures are individually plausible; only the comparison is news.
     await expect(page.getByText(/Was .*9,99.*now .*12,99/)).toBeVisible();
@@ -153,7 +153,7 @@ test.describe('repeating charges', () => {
     }));
     await seed(page, [category('Groceries'), ...groceries]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await expect(page.getByText('Nothing repeating yet')).toBeVisible();
   });
@@ -201,7 +201,7 @@ test.describe('IRS deductions', () => {
     // Getting this wrong in the user's favour would be worse than not showing it.
     await seed(page, [category('Saúde')]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Plan', exact: true }).click();
+    await page.getByRole('button', { name: 'IRS', exact: true }).click();
     await expect(page.getByText(/not an official simulation/)).toBeVisible();
   });
 });

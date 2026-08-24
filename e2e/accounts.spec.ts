@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seed, income, expense, category, dayIn, money, ledger, type SeedEvent } from './helpers';
+import { seed, income, expense, category, dayIn, money, ledger, openEntries, type SeedEvent } from './helpers';
 
 const account = (id: string, label: string, kind = 'savings'): SeedEvent => ({
   id: `acc-${id}`,
@@ -24,7 +24,7 @@ test.describe('accounts', () => {
   test('offers to split the balance when there is only one pot', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await expect(page.getByText('Everything sits in one pot.')).toBeVisible();
     await page.getByRole('button', { name: /Add .Savings./ }).click();
@@ -37,7 +37,7 @@ test.describe('accounts', () => {
   test('moving money between pots leaves the total untouched', async ({ page }) => {
     await seed(page, [...base, account('sav', 'Savings')]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await page.getByLabel('To', { exact: true }).selectOption('sav');
     await page.locator('#transfer-amount').fill('500');
@@ -55,7 +55,7 @@ test.describe('accounts', () => {
   test('refuses to overdraw a pot, and writes nothing when it does', async ({ page }) => {
     await seed(page, [...base, account('sav', 'Savings')]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await page.getByLabel('From', { exact: true }).selectOption('sav');
     await page.getByLabel('To', { exact: true }).selectOption('main');
@@ -69,13 +69,15 @@ test.describe('accounts', () => {
   test('an expense can be paid out of a sub-account', async ({ page }) => {
     await seed(page, [...base, account('sav', 'Savings'), transfer('main', 'sav', 500)]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'log');
 
     await page.locator('#expense-amount').fill('60');
     await page.getByRole('radio', { name: 'Groceries' }).click();
     await page.getByLabel('Paid from').selectOption('sav');
     await page.getByRole('button', { name: 'Log expense' }).click();
 
+    // The account balance lives in Manage, not on the form that just posted it.
+    await openEntries(page, 'manage');
     await expect(page.getByText(money(440)).first()).toBeVisible();
     const logged = (await ledger(page)).filter((e) => e.type === 'expense' && e.amount === 60);
     expect(logged[0].accountId).toBe('sav');
@@ -84,7 +86,7 @@ test.describe('accounts', () => {
   test('closing a pot sweeps what is in it back to the main account', async ({ page }) => {
     await seed(page, [...base, account('sav', 'Savings'), transfer('main', 'sav', 500)]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await page.getByRole('button', { name: 'Edit Savings' }).click();
     await page.getByRole('button', { name: 'Close account' }).click();
@@ -109,7 +111,7 @@ test.describe('accounts', () => {
   test('main can be renamed and stays the account everything falls back to', async ({ page }) => {
     await seed(page, [...base, account('sav', 'Savings')]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await page.getByRole('button', { name: 'Edit Main' }).click();
     await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Current account');

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seed, income, expense, category, dayIn, ledger, type SeedEvent } from './helpers';
+import { seed, income, expense, category, dayIn, ledger, openEntries, type SeedEvent } from './helpers';
 
 const base: SeedEvent[] = [
   category('Groceries'),
@@ -10,7 +10,7 @@ const base: SeedEvent[] = [
   expense(12, 'Groceries', dayIn(0), 'Bakery'),
 ];
 
-/** Fills in the rule form and saves it. */
+/** Fills in the rule form and saves it. Assumes Entries is already open on Manage. */
 async function makeRule(page: import('@playwright/test').Page, name: string, match: string, category: string) {
   await page.getByRole('button', { name: 'New rule' }).click();
   await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill(name);
@@ -23,10 +23,11 @@ test.describe('rules', () => {
   test('a rule files a newly logged expense on the way in', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await makeRule(page, 'Supermarkets', 'lidl', 'Groceries');
 
+    await openEntries(page, 'log');
     await page.locator('#expense-amount').fill('22');
     await page.getByRole('radio', { name: 'Uncategorised' }).click();
     await page.locator('#expense-note').fill('Lidl run');
@@ -41,7 +42,7 @@ test.describe('rules', () => {
   test('shows a rule’s reach before it is saved', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await page.getByRole('button', { name: 'New rule' }).click();
     await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Supermarkets');
@@ -54,7 +55,7 @@ test.describe('rules', () => {
   test('adding a condition narrows the match rather than widening it', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await page.getByRole('button', { name: 'New rule' }).click();
     await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Big supermarket runs');
@@ -72,7 +73,7 @@ test.describe('rules', () => {
   test('applying to older entries previews the change first, then makes it', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await makeRule(page, 'Supermarkets', 'lidl', 'Groceries');
 
@@ -94,7 +95,7 @@ test.describe('rules', () => {
       { id: 'acc-inv', type: 'account_upsert', timestamp: dayIn(-2), account: { id: 'inv', label: 'Investments', kind: 'investment' } },
     ]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await page.getByRole('button', { name: 'New rule' }).click();
     await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Broker top-ups');
@@ -102,6 +103,7 @@ test.describe('rules', () => {
     await page.getByRole('dialog').getByLabel('Account', { exact: true }).selectOption('inv');
     await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click();
 
+    await openEntries(page, 'log');
     await page.locator('#expense-amount').fill('300');
     await page.getByRole('radio', { name: 'Uncategorised' }).click();
     await page.locator('#expense-note').fill('Trading 212 top-up');
@@ -114,11 +116,12 @@ test.describe('rules', () => {
   test('an inactive rule stops filing without being deleted', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Entries', exact: true }).click();
+    await openEntries(page, 'manage');
 
     await makeRule(page, 'Supermarkets', 'lidl', 'Groceries');
     await page.getByLabel('Supermarkets active').uncheck();
 
+    await openEntries(page, 'log');
     await page.locator('#expense-amount').fill('18');
     await page.getByRole('radio', { name: 'Uncategorised' }).click();
     await page.locator('#expense-note').fill('Lidl paused');

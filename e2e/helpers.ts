@@ -53,6 +53,21 @@ export async function seed(page: Page, events: SeedEvent[], options: { livePrice
 }
 
 /**
+ * Opens the Entries tab and its Log or Manage sub-section.
+ *
+ * Entries splits into what posts an entry (Log: recurring income, the expense
+ * form, recurring expense) and what configures the ledger around it (Manage:
+ * statement import, accounts, budgets, subscriptions, rules, categories).
+ * Always clicks the target section explicitly rather than relying on Log
+ * being the default — the split is local component state, so re-clicking the
+ * Entries tab while already on it does not reset which section is showing.
+ */
+export async function openEntries(page: Page, section: 'log' | 'manage' = 'log'): Promise<void> {
+  await page.getByRole('button', { name: 'Entries', exact: true }).click();
+  await page.getByRole('button', { name: section === 'log' ? 'Log' : 'Manage', exact: true }).click();
+}
+
+/**
  * A matcher for an amount as the app actually renders it.
  *
  * pt-PT does not group four-digit numbers and separates the symbol with a
