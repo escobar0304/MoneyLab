@@ -71,6 +71,17 @@ export function IconPlan(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** IRS — a percent sign, the shape of a rate applied to a total. */
+export function IconIrs(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M6 18 18 6" />
+      <circle cx="7.5" cy="7.5" r="2.3" />
+      <circle cx="16.5" cy="16.5" r="2.3" />
+    </Icon>
+  );
+}
+
 export function IconChevronsLeft(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

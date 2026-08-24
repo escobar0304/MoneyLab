@@ -20,6 +20,7 @@ test.describe('navigation and shortcuts', () => {
     for (const [tab, heading] of [
       ['Entries', 'Log expense'],
       ['Plan', 'Savings goals'],
+      ['IRS', 'IRS deductions'],
       ['Markets', 'Portfolio'],
       ['Settings', 'Data'],
       ['Overview', 'Monthly snapshot'],
@@ -35,6 +36,10 @@ test.describe('navigation and shortcuts', () => {
     await page.keyboard.press('g');
     await page.keyboard.press('p');
     await expect(page.getByRole('heading', { name: 'Savings goals' })).toBeVisible();
+
+    await page.keyboard.press('g');
+    await page.keyboard.press('i');
+    await expect(page.getByRole('heading', { name: 'IRS deductions' })).toBeVisible();
 
     await page.keyboard.press('g');
     await page.keyboard.press('m');

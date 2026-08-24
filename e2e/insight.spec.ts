@@ -163,7 +163,7 @@ test.describe('IRS deductions', () => {
   test('files a category under a heading and tracks it against the ceiling', async ({ page }) => {
     await seed(page, [category('Saúde'), expense(1000, 'Saúde', dayIn(0))]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Plan', exact: true }).click();
+    await page.getByRole('button', { name: 'IRS', exact: true }).click();
 
     await expect(page.getByRole('heading', { name: 'IRS deductions' })).toBeVisible();
     await page.getByLabel('Deduction heading for Saúde').selectOption('saude');
@@ -177,7 +177,7 @@ test.describe('IRS deductions', () => {
   test('caps the deduction and says the ceiling was reached', async ({ page }) => {
     await seed(page, [category('Saúde'), expense(20_000, 'Saúde', dayIn(0))]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Plan', exact: true }).click();
+    await page.getByRole('button', { name: 'IRS', exact: true }).click();
     await page.getByLabel('Deduction heading for Saúde').selectOption('saude');
 
     await expect(page.getByText('Ceiling reached')).toBeVisible();
@@ -186,7 +186,7 @@ test.describe('IRS deductions', () => {
   test('lets a ceiling be corrected, because they move every budget', async ({ page }) => {
     await seed(page, [category('Saúde'), expense(20_000, 'Saúde', dayIn(0))]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Plan', exact: true }).click();
+    await page.getByRole('button', { name: 'IRS', exact: true }).click();
     await page.getByLabel('Deduction heading for Saúde').selectOption('saude');
 
     await page.getByRole('button', { name: 'Edit ceiling for Saúde' }).click();

@@ -1,38 +1,90 @@
 # MoneyLab
 
-A local-only personal money tracker: set your monthly salary, log expenses as they
-happen, and see two real charts of what's going on. Everything is stored as a
-permanent, append-only ledger entirely in your browser.
+A local-only personal finance tracker. Log income and expenses as they happen and
+everything else — budgets, recurring bills, savings goals, debt payoff, a stock
+and crypto portfolio, IRS (Portuguese tax) deductions — is derived from that one
+ledger. Everything is stored as a permanent, append-only event log entirely in
+your browser.
 
-No accounts, no server, no bank connections. Deliberately minimal — this isn't a
-full budgeting suite, it's "salary and expenses, that's it."
+No accounts, no server, no bank connections.
 
 ## Features
 
-- **Monthly salary** — set an amount once; it auto-pays itself into your balance
-  every month, even if you don't open the app for a while (elapsed months are
-  caught up on load, with their real historical dates).
-- **Extra income** — a quick one-off entry for anything that isn't your salary (a
-  bonus, a gift, a side gig payment).
-- **Expense tracking** — amount, date, a free-text category (with autocomplete
-  from what you've already typed), optional subcategory and note. A monthly
-  summary compares this month's spend per category against last month's.
-- **Balance** — the one headline number: everything you've earned minus everything
-  you've spent, computed live from the ledger, never entered by hand.
-- **Two charts on Home** — income vs. expenses over time, and spend by category —
-  both real Recharts charts, not sparklines.
-- **Export/import** — the entire ledger as a single JSON file, for backup or
-  moving to another device.
+**Income & expenses**
+- One-off income and expenses: amount, date, a free-text category (with
+  autocomplete), optional subcategory, note, and multiple pots (accounts) to
+  post against.
+- **Recurring rules** for anything monthly — salary, rent, a subscription —
+  income and expense alike. Elapsed cycles are caught up on load with their real
+  historical dates, and any single month can be skipped without deleting the rule.
+- **Multi-currency entries**: log in another currency and it's converted to the
+  base currency (EUR) via ECB reference rates, with the original amount and rate
+  kept alongside for the audit trail.
+- **Bank statement import** (CSV) plus **rules** that auto-categorize matching
+  entries by text, amount, or category — one primitive that also drives import
+  auto-categorization and manual tidy-up.
+- Mark an entry as reconciled against the bank, without touching the record of
+  what actually happened.
+
+**Planning**
+- **Budgets** — a monthly spending limit per category, shown as a meter against
+  this month's spend.
+- **Accounts** — divide the balance into pots (main, savings, investment,
+  other) and transfer between them; the sum is always the one true balance.
+- **Goals** — earmark part of the balance toward a target, with a deadline and
+  a required-pace-vs-actual-pace read on whether you're on track.
+- **Debt** — a loan's amortization schedule from principal/rate/term, plus a
+  "what if I overpaid" projection of months and interest saved.
+- **IRS deductions** — map your categories to Portuguese IRS deduction
+  headings and track spend against each heading's annual ceiling, with an
+  editable ceiling since the published rates move every state budget.
+
+**Portfolio & markets**
+- Holdings (shares, funds, crypto) with buy/sell trades and dividends, cost
+  basis and return computed from the trade log rather than a single average.
+- **Live prices**, polled periodically and merged into net worth and the
+  portfolio view; paused when the tab isn't visible.
+- A **TradingView chart embed** and a symbol watchlist for anything you're
+  tracking, priced or not.
+
+**Dashboard & insight**
+- Net worth (or balance, until there's a portfolio or debt to compose it from)
+  as the one headline figure, with a 60-day cash runway underneath it.
+- Trends: net worth and income-vs-expenses over time, savings rate, spend by
+  category over time.
+- A month-scoped snapshot: budget meter, saved/spent this month with deltas
+  against last month and the same month last year, a month-end forecast, where
+  the money went, what changed since last month, and outsized charges worth a
+  look.
+- **Drill-down** — click any chart mark to see the underlying entries.
+- **Time travel** — view the whole dashboard as it stood on a past date; free,
+  because the ledger is append-only and that view is just a filter over it.
+
+**Data & privacy**
+- **Privacy mode** — blur every figure instantly, for when the screen turns
+  around.
+- **Compact/comfortable density** — one panel-padding variable, swapped app-wide.
+- **Export/import** the entire ledger as JSON, and **encrypted backups**
+  (AES-GCM, a passphrase-stretched key) for anywhere less trusted than your own
+  disk.
+- **Silent folder backups** via the File System Access API — pick a folder once,
+  it's kept in sync with no further prompts (Chromium-based browsers only).
+- Optional **receipt photos**, stored in IndexedDB and exported separately so a
+  routine JSON export stays small.
+- **Keyboard shortcuts** (`g` then a letter to jump to a tab, `n` for a new
+  expense, `Ctrl`/`⌘Z` to undo, `?` for the full list).
 
 ## Tech stack
 
-- **Vite + React + TypeScript**
+- **Vite + React 19 + TypeScript**
 - **Zustand** (with the `persist` middleware) for state, backed by `localStorage`
 - **Tailwind CSS v4** for styling, dark-mode only
-- **Recharts** for the two Home charts
-- **Vitest** for the ledger-derivation math tests
+- **Recharts** for charts, **GSAP** for motion
+- **Vitest** + **Testing Library** for unit tests, **Playwright** for e2e
+- **vite-plugin-pwa** for installability/offline
 
-No backend, no database — everything lives in one browser's `localStorage`.
+No backend, no database — everything lives in one browser's `localStorage`
+(plus IndexedDB for receipts and the backup folder handle).
 
 ### Dark mode, one theme only
 
@@ -50,7 +102,8 @@ chart palette is the `dataviz` skill's validated dark-mode set.
 ```bash
 npm install
 npm run dev      # start the local dev server
-npm run test     # run the ledger-derivation test suite
+npm run test     # run the unit/derivation test suite
+npm run test:e2e # run the Playwright end-to-end suite
 npm run build    # type-check + production build
 ```
 
@@ -58,60 +111,70 @@ npm run build    # type-check + production build
 
 ### The ledger is the source of truth
 
-Nothing in this app is stored as mutable state. Every action — setting your
-salary, logging income, recording an expense — appends one `LedgerEvent` to a
-single `events: LedgerEvent[]` array. Your balance and every chart are **computed
-from that array on the fly**, never written down directly:
+Nothing in this app is stored as mutable state. Every action — logging an
+expense, filing a category under an IRS heading, buying a holding, moving money
+between accounts — appends one `LedgerEvent` to a single `events: LedgerEvent[]`
+array (`src/lib/types.ts`). Every figure and chart is **computed from that array
+on the fly**, never written down directly:
 
 - Nothing can silently drift out of sync with its history — recompute from
   `events` and you get the truth.
 - The entire app's data is one JSON array. That's literally what "export" writes
   to disk.
+- "As of a past date" (time travel) is just filtering that same array — no
+  second history to keep, and no replay needed.
 
-`events` is persisted to `localStorage` (key `moneylab-v1`) via Zustand's
-`persist` middleware, so it survives reloads without any extra plumbing.
+`events` is persisted to `localStorage` via Zustand's `persist` middleware, and
+brought up to the current shape on load by `src/lib/migrations.ts` — old event
+shapes (a v0 `salary_upsert`, a v1 `recurring_income_upsert`) migrate forward
+losslessly rather than being read-time-tolerated all over the codebase.
 
 ### Project structure
 
 ```
 src/
   lib/
-    types.ts        Domain types — Salary, LedgerEvent union (income/expense/salary_upsert)
-    store.ts         Zustand store: the events array, actions, persistence
-    entities.ts       Folds salary_upsert (+ matching income events) into current salary state
-    derive.ts         Pure functions: balance, balance-over-time, spend by category, monthly totals
-    recurrence.ts      Monthly-cycle date math + elapsed-cycle simulation (powers salary auto-pay)
-    chartTheme.ts      The validated dark-mode color palette used by the two charts
-    format.ts / id.ts  Small formatting/ID helpers
+    types.ts, store.ts        Domain types + the Zustand store (events, actions, persistence)
+    entities.ts, accounts.ts   Fold functions: current categories/budgets/accounts from the log
+    derive.ts, analysis.ts     Pure functions: balance, totals, forecasts, deltas
+    investments.ts, quotes.ts  Portfolio pricing; useLiveQuotes.ts polls and caches live prices
+    goals.ts, debt.ts, irs.ts  Domain math for each planning feature
+    rules.ts, statements.ts    Auto-categorization + bank statement CSV parsing
+    recurrence.ts               Monthly-cycle date math + elapsed-cycle simulation
+    migrations.ts                Brings old ledger shapes up to the current one
+    backup.ts, crypto.ts,       Silent folder auto-backup + AES-GCM encrypted exports
+    receipts.ts                  Receipt photo storage (IndexedDB)
+    chartTheme.ts, chartTables.ts, format.ts, currency.ts, drill.ts, search.ts, …
   components/
-    layout/           AppShell + tab navigation
-    ui/                Shared primitives (Card, Button, Modal, Badge, etc.)
-    home/              Balance, salary form, extra income, the two charts
-    expenses/          Expense entry + monthly category summary
-    settings/          Export / import / clear-all
+    layout/     AppShell + Sidebar (tab navigation, icons)
+    ui/          Shared primitives (Card, Button, Modal, ChartCard, Segmented, StatTile, …)
+    overview/    The dashboard: hero net worth, trend charts, the monthly snapshot
+    entries/     Every input: expenses, recurring, accounts, budgets, rules, statement import, categories
+    plan/        Goals and debt
+    irs/         IRS deduction tracking, its own tab
+    markets/     Holdings, watchlist, TradingView chart
+    settings/    Export/import, backup folder, appearance
 ```
 
-Three tabs: **Home**, **Expenses**, **Settings**. That's the whole app.
+Six tabs: **Overview**, **Entries**, **Plan**, **IRS**, **Markets**, **Settings**.
+Overview ships eagerly since it's the landing tab; every other tab is a separate
+lazy chunk, so a session that never opens Markets never downloads the TradingView
+embed.
 
-### Salary "simulates" monthly pay
+### Recurring events "simulate" monthly cycles
 
-Salary doesn't run on a timer. Every time the app loads, `runSalarySimulation()`
-works out how many monthly cycles have elapsed since your salary was last paid
-(`elapsedChargeDates` in `recurrence.ts`) and appends one `income` event per
+A recurring rule doesn't run on a timer. Every time the app loads,
+`runRecurring()` works out how many monthly cycles have elapsed since a rule was
+last charged (`elapsedChargeDates` in `recurrence.ts`) and appends one event per
 elapsed cycle — so if you don't open the app for two months, you'll see two
-catch-up payments land in the ledger with their original historical dates.
+catch-up entries land with their original historical dates. All the date math is
+done in UTC and anchored to the original start date rather than stepped
+month-by-month, which is what keeps a 31st-of-the-month rule from sliding to the
+28th after one short month.
 
-## Is it "optimized to the max"?
+---
 
-No, but at this scope it doesn't need to be:
-
-- No lazy-loading or code-splitting — Home (the default tab) is the only place
-  Recharts is used, so there's no other tab whose load time it could protect.
-  Single JS chunk, ~595 KB (~175 KB gzipped).
-- `derive.ts` does an O(n) scan over the full ledger, memoized per component with
-  `useMemo` keyed on the `events` array — a mutation triggers one recompute per
-  view, not per render. For a personal ledger (hundreds to low thousands of
-  entries over years) this is effectively instant.
-
-Given this runs once, locally, for one user, on data that grows slowly, that's a
-reasonable tradeoff, not a shortfall.
+*This file should be kept in step with the app. Update it whenever a change adds,
+removes, or meaningfully reshapes a feature or the project structure — not on
+every commit, but whenever a reader relying on this file would otherwise be
+misled.*

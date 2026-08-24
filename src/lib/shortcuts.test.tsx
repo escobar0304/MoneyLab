@@ -35,6 +35,8 @@ describe('useShortcuts', () => {
   it('supports every destination', async () => {
     for (const [keys, tab] of [
       ['go', 'overview'],
+      ['gp', 'plan'],
+      ['gi', 'irs'],
       ['gm', 'markets'],
       ['gs', 'settings'],
     ] as const) {

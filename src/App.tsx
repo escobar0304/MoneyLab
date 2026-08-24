@@ -15,6 +15,7 @@ import { DrillPanel } from './components/entries/DrillPanel';
 // never open.
 const EntriesView = lazy(() => import('./components/entries/EntriesView').then((m) => ({ default: m.EntriesView })));
 const PlanView = lazy(() => import('./components/plan/PlanView').then((m) => ({ default: m.PlanView })));
+const IrsView = lazy(() => import('./components/irs/IrsView').then((m) => ({ default: m.IrsView })));
 const MarketsView = lazy(() => import('./components/markets/MarketsView').then((m) => ({ default: m.MarketsView })));
 const SettingsView = lazy(() => import('./components/settings/SettingsView').then((m) => ({ default: m.SettingsView })));
 
@@ -114,6 +115,7 @@ export default function App() {
           {tab === 'overview' && <OverviewView />}
           {tab === 'entries' && <EntriesView />}
           {tab === 'plan' && <PlanView />}
+          {tab === 'irs' && <IrsView />}
           {tab === 'markets' && <MarketsView />}
           {tab === 'settings' && <SettingsView />}
         </Suspense>

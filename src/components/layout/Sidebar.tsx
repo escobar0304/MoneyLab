@@ -2,14 +2,15 @@ import { useRef, useState } from 'react';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
 import { usePrivacy } from '../../lib/privacy';
 import { LogoMark, LogoWordmark } from './Logo';
-import { IconOverview, IconEntries, IconPlan, IconMarkets, IconSettings, IconChevronsLeft, IconEye, IconEyeOff } from './icons';
+import { IconOverview, IconEntries, IconPlan, IconIrs, IconMarkets, IconSettings, IconChevronsLeft, IconEye, IconEyeOff } from './icons';
 
-export type Tab = 'overview' | 'entries' | 'plan' | 'markets' | 'settings';
+export type Tab = 'overview' | 'entries' | 'plan' | 'irs' | 'markets' | 'settings';
 
 const TABS: { id: Tab; label: string; Icon: typeof IconOverview }[] = [
   { id: 'overview', label: 'Overview', Icon: IconOverview },
   { id: 'entries', label: 'Entries', Icon: IconEntries },
   { id: 'plan', label: 'Plan', Icon: IconPlan },
+  { id: 'irs', label: 'IRS', Icon: IconIrs },
   { id: 'markets', label: 'Markets', Icon: IconMarkets },
   { id: 'settings', label: 'Settings', Icon: IconSettings },
 ];
