@@ -21,7 +21,8 @@ test.describe('navigation and shortcuts', () => {
       ['Entries', 'Log expense'],
       ['Plan', 'Savings goals'],
       ['IRS', 'IRS deductions'],
-      ['Markets', 'Portfolio'],
+      ['Portfolio', 'Portfolio'],
+      ['Markets', 'Watchlist'],
       ['Settings', 'Data'],
       ['Overview', 'Monthly snapshot'],
     ] as const) {
@@ -42,8 +43,12 @@ test.describe('navigation and shortcuts', () => {
     await expect(page.getByRole('heading', { name: 'IRS deductions' })).toBeVisible();
 
     await page.keyboard.press('g');
-    await page.keyboard.press('m');
+    await page.keyboard.press('h');
     await expect(page.getByRole('heading', { name: 'Portfolio' })).toBeVisible();
+
+    await page.keyboard.press('g');
+    await page.keyboard.press('m');
+    await expect(page.getByRole('heading', { name: 'Watchlist' })).toBeVisible();
   });
 
   test('n opens the expense form with the amount focused', async ({ page }) => {

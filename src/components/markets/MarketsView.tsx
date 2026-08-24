@@ -3,9 +3,9 @@ import { useWatchlist } from '../../lib/watchlist';
 import { Button, Card, Input, Label, SectionTitle, EmptyState } from '../ui/primitives';
 import { Reveal } from '../ui/Reveal';
 import { Segmented } from '../ui/Segmented';
+import { SymbolPicker } from '../ui/SymbolPicker';
 import { TradingViewChart, type Interval, type Style } from './TradingViewChart';
-import { HoldingsManager } from './HoldingsManager';
-import { SymbolPicker } from './SymbolPicker';
+import { TechnicalAnalysisWidget, SymbolInfoWidget, SymbolNewsWidget, MarketOverviewWidget } from './TradingViewWidgets';
 
 const INTERVALS: { id: Interval; label: string }[] = [
   { id: '5', label: '5m' },
@@ -42,8 +42,6 @@ export function MarketsView() {
 
   return (
     <Reveal className="space-y-3" from="start">
-      <HoldingsManager />
-
       <Card>
         <SectionTitle action={<Button variant="ghost" onClick={() => setAdding((v) => !v)}>{adding ? 'Cancel' : '+ Add symbol'}</Button>}>
           Watchlist
@@ -141,6 +139,37 @@ export function MarketsView() {
         <p className="mt-3 text-xs text-ink-muted">
           Charts by TradingView. Market data is fetched from TradingView in your browser — nothing from your ledger is sent anywhere.
         </p>
+      </Card>
+
+      {/* Scoped to the selected symbol, so it only appears once there is a
+          symbol for it to be about. Technical Analysis gets the full width
+          since its own tabs (1m/5m/1H/…) already make it wide; info and news
+          stack in the narrower column beside it. */}
+      {current && (
+        <Reveal className="grid grid-cols-1 gap-3 lg:grid-cols-[3fr_2fr]" from="start">
+          <Card>
+            <SectionTitle>Technical rating</SectionTitle>
+            <TechnicalAnalysisWidget symbol={current.id} />
+          </Card>
+          <div className="space-y-3">
+            <Card>
+              <SectionTitle>Symbol info</SectionTitle>
+              <SymbolInfoWidget symbol={current.id} />
+            </Card>
+            <Card>
+              <SectionTitle>News</SectionTitle>
+              <SymbolNewsWidget symbol={current.id} height={280} />
+            </Card>
+          </div>
+        </Reveal>
+      )}
+
+      {/* Not scoped to the watchlist on purpose — somewhere to look before you
+          know what you're looking for. */}
+      <Card level="quiet">
+        <SectionTitle>Explore markets</SectionTitle>
+        <p className="mb-3 text-xs text-ink-muted">Indices, crypto and forex, independent of your watchlist.</p>
+        <MarketOverviewWidget />
       </Card>
     </Reveal>
   );

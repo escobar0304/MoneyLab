@@ -82,6 +82,18 @@ export function IconIrs(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Portfolio — a briefcase. What you own carried in one case, distinct from
+ * the candlesticks of Markets, which is about what's out there to look at. */
+export function IconPortfolio(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="7.5" width="18" height="12" rx="1.8" />
+      <path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5" />
+      <path d="M3 12.5h18" />
+    </Icon>
+  );
+}
+
 export function IconChevronsLeft(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

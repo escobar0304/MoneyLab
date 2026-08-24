@@ -1,7 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { searchCatalogue, searchRemote, type SymbolHit } from '../../lib/symbolSearch';
-import { Input } from '../ui/primitives';
+import { Input } from './primitives';
 
 /** Long enough that typing "VWCE" is one request rather than four. */
 const DEBOUNCE_MS = 220;
@@ -29,6 +29,10 @@ interface ListBox {
  * description, cannot be styled to match anything, and renders differently in
  * every browser. Since a ticker is meaningless without its description ("MC" is
  * LVMH), that second line is the whole point.
+ *
+ * Lives in `ui/` rather than under one tab: Portfolio uses it to add a holding,
+ * Markets uses it to add a watchlist symbol, and both need the exact same
+ * lookup rather than two that could quietly drift apart.
  */
 export function SymbolPicker({
   value,

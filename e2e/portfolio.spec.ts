@@ -7,7 +7,7 @@ test.describe('portfolio', () => {
   test('the symbol picker offers real instruments and fills in the name', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Markets', exact: true }).click();
+    await page.getByRole('button', { name: 'Portfolio', exact: true }).click();
 
     await page.getByRole('button', { name: '+ Add holding' }).click();
     await page.locator('#h-symbol').fill('VWCE');
@@ -26,7 +26,7 @@ test.describe('portfolio', () => {
   test('finds an instrument by company name, not just by ticker', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Markets', exact: true }).click();
+    await page.getByRole('button', { name: 'Portfolio', exact: true }).click();
     await page.getByRole('button', { name: '+ Add holding' }).click();
 
     // Nobody remembers that Apple is AAPL and LVMH is MC. Typing the name has to
@@ -38,7 +38,7 @@ test.describe('portfolio', () => {
   test('the list escapes the card instead of being sliced off by it', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Markets', exact: true }).click();
+    await page.getByRole('button', { name: 'Portfolio', exact: true }).click();
     await page.getByRole('button', { name: '+ Add holding' }).click();
     await page.locator('#h-symbol').fill('Apple');
     await expect(page.getByRole('option').first()).toBeVisible();
@@ -67,7 +67,7 @@ test.describe('portfolio', () => {
   test('says so when nothing matches, rather than showing no list at all', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Markets', exact: true }).click();
+    await page.getByRole('button', { name: 'Portfolio', exact: true }).click();
     await page.getByRole('button', { name: '+ Add holding' }).click();
 
     // A dropdown that silently fails to render is indistinguishable from a
@@ -80,7 +80,7 @@ test.describe('portfolio', () => {
   test('a trade log takes over from a hand-entered position without losing it', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Markets', exact: true }).click();
+    await page.getByRole('button', { name: 'Portfolio', exact: true }).click();
 
     await page.getByRole('button', { name: '+ Add holding' }).click();
     await page.locator('#h-symbol').fill('XETR:VWCE');
@@ -110,7 +110,7 @@ test.describe('portfolio', () => {
   test('selling books a realised gain and leaves the average cost alone', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Markets', exact: true }).click();
+    await page.getByRole('button', { name: 'Portfolio', exact: true }).click();
 
     await page.getByRole('button', { name: '+ Add holding' }).click();
     await page.locator('#h-symbol').fill('XETR:VWCE');
@@ -136,7 +136,7 @@ test.describe('portfolio', () => {
   test('refuses to sell more than is held', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Markets', exact: true }).click();
+    await page.getByRole('button', { name: 'Portfolio', exact: true }).click();
 
     await page.getByRole('button', { name: '+ Add holding' }).click();
     await page.locator('#h-symbol').fill('XETR:VWCE');

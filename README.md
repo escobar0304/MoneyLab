@@ -39,13 +39,21 @@ No accounts, no server, no bank connections.
   headings and track spend against each heading's annual ceiling, with an
   editable ceiling since the published rates move every state budget.
 
-**Portfolio & markets**
+**Portfolio** — what you own
 - Holdings (shares, funds, crypto) with buy/sell trades and dividends, cost
   basis and return computed from the trade log rather than a single average.
 - **Live prices**, polled periodically and merged into net worth and the
   portfolio view; paused when the tab isn't visible.
+
+**Markets** — what's out there, on its own tab from Portfolio since owning
+something and watching it change on different rhythms
 - A **TradingView chart embed** and a symbol watchlist for anything you're
   tracking, priced or not.
+- For the selected symbol: a **technical rating** (TradingView's own buy/sell/
+  neutral read across its indicators), a **symbol info** strip, and recent
+  **news**.
+- A **market overview** widget (indices, crypto, forex) that isn't scoped to
+  your watchlist, for browsing before you know what you're looking for.
 
 **Dashboard & insight**
 - Net worth (or balance, until there's a portfolio or debt to compose it from)
@@ -152,14 +160,20 @@ src/
     entries/     Every input: expenses, recurring, accounts, budgets, rules, statement import, categories
     plan/        Goals and debt
     irs/         IRS deduction tracking, its own tab
-    markets/     Holdings, watchlist, TradingView chart
+    portfolio/   Holdings, trades, dividends — what you own
+    markets/     Watchlist, TradingView chart + technical/news/overview widgets
     settings/    Export/import, backup folder, appearance
 ```
 
-Six tabs: **Overview**, **Entries**, **Plan**, **IRS**, **Markets**, **Settings**.
-Overview ships eagerly since it's the landing tab; every other tab is a separate
-lazy chunk, so a session that never opens Markets never downloads the TradingView
-embed.
+Seven tabs: **Overview**, **Entries**, **Plan**, **IRS**, **Portfolio**,
+**Markets**, **Settings**. Portfolio and Markets used to be one "Markets" tab;
+they split because owning ten shares of something and watching a symbol you
+don't hold are different questions with different rhythms — one changes when
+you trade, the other when you're just looking around. `SymbolPicker`
+(`components/ui/`) is shared between them since both need to look up the same
+instruments. Overview ships eagerly since it's the landing tab; every other tab
+is a separate lazy chunk, so a session that never opens Markets never downloads
+the TradingView embeds.
 
 ### Recurring events "simulate" monthly cycles
 

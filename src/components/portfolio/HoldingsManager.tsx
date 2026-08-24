@@ -5,7 +5,7 @@ import { useLivePrices } from '../../lib/useLiveQuotes';
 import { formatMoney, formatDate, formatTime, todayInputValue } from '../../lib/format';
 import { PRIMARY, COMPLEMENT } from '../../lib/chartTheme';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
-import { SymbolPicker } from './SymbolPicker';
+import { SymbolPicker } from '../ui/SymbolPicker';
 
 function daysOld(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);

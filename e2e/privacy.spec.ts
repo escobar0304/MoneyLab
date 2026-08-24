@@ -75,12 +75,12 @@ test.describe('privacy mode', () => {
     expect(await unblurredAmounts(page)).toEqual([]);
   });
 
-  test('hides every amount on entries, plan and markets too', async ({ page }) => {
+  test('hides every amount on every other tab too', async ({ page }) => {
     await seed(page, base);
     await page.goto('/');
     await hideAmounts(page);
 
-    for (const tab of ['Entries', 'Plan', 'Markets'] as const) {
+    for (const tab of ['Entries', 'Plan', 'IRS', 'Portfolio', 'Markets'] as const) {
       await page.getByRole('button', { name: tab, exact: true }).click();
       await expect(page.getByRole('button', { name: 'Show amounts' })).toBeVisible();
       expect(await unblurredAmounts(page), `leaked on ${tab}`).toEqual([]);

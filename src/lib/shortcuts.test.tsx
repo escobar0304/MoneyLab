@@ -37,6 +37,7 @@ describe('useShortcuts', () => {
       ['go', 'overview'],
       ['gp', 'plan'],
       ['gi', 'irs'],
+      ['gh', 'portfolio'],
       ['gm', 'markets'],
       ['gs', 'settings'],
     ] as const) {
