@@ -8,13 +8,39 @@ const BASE = 'https://s3.tradingview.com/external-embedding/embed-widget-';
  * Same mechanics as `TradingViewChart`: a throwaway inner node the script owns
  * outright, torn down and rebuilt on every config change rather than patched,
  * because none of these widgets expose an update API once constructed.
+ *
+ * Mounting is deferred until the widget is nearly on screen. A page with five
+ * or six of these firing at once starves the browser's per-host connection
+ * limit — each one pulls in a dozen-plus chunk requests — and the widgets
+ * lower on the page simply never finish loading. Watching for the widget to
+ * scroll into view spreads that load out over time instead of all at once.
  */
 function Widget({ file, config, height = 400 }: { file: string; config: Record<string, unknown>; height?: number }) {
   const host = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [status, setStatus] = useState<'waiting' | 'loading' | 'ready' | 'error'>('waiting');
+  const [visible, setVisible] = useState(false);
   const configKey = JSON.stringify(config);
 
   useEffect(() => {
+    const el = host.current;
+    if (!el) return;
+    // 400px of runway so the widget is already loading by the time it's
+    // actually in frame, rather than popping in as the reader scrolls to it.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
     const el = host.current;
     if (!el) return;
     setStatus('loading');
@@ -43,7 +69,7 @@ function Widget({ file, config, height = 400 }: { file: string; config: Record<s
     return () => {
       el.replaceChildren();
     };
-  }, [file, configKey]);
+  }, [visible, file, configKey]);
 
   return (
     <div className="relative">
@@ -53,7 +79,7 @@ function Widget({ file, config, height = 400 }: { file: string; config: Record<s
           className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-surface-1/60 text-xs"
           aria-live="polite"
         >
-          {status === 'loading' ? (
+          {status === 'loading' || status === 'waiting' ? (
             <span className="text-ink-muted">Loading…</span>
           ) : (
             <span className="px-4 text-center text-critical-text">Couldn't reach TradingView.</span>
@@ -120,6 +146,30 @@ export function SymbolNewsWidget({ symbol, height = 425 }: { symbol: string; hei
         colorTheme: 'dark',
         isTransparent: false,
         displayMode: 'regular',
+        width: '100%',
+        height,
+        locale: 'en',
+      }}
+    />
+  );
+}
+
+/** Today's top gainers, losers and most active — the "what's moving" list a
+ * personal watchlist can't answer, because it only ever shows what you already
+ * thought to add. */
+export function HotlistsWidget({ height = 460 }: { height?: number }) {
+  return (
+    <Widget
+      file="hotlists"
+      height={height}
+      config={{
+        colorTheme: 'dark',
+        dateRange: '12M',
+        exchange: 'US',
+        showChart: true,
+        showSymbolLogo: true,
+        showFloatingTooltip: false,
+        isTransparent: false,
         width: '100%',
         height,
         locale: 'en',

@@ -52,8 +52,13 @@ something and watching it change on different rhythms
 - For the selected symbol: a **technical rating** (TradingView's own buy/sell/
   neutral read across its indicators), a **symbol info** strip, and recent
   **news**.
-- A **market overview** widget (indices, crypto, forex) that isn't scoped to
-  your watchlist, for browsing before you know what you're looking for.
+- **Explore markets** — a market overview (indices, crypto, forex) and a
+  **trending** list (today's top gainers/losers/most active), both independent
+  of your watchlist, for browsing before you know what you're looking for.
+- Every TradingView embed on this tab mounts only once it scrolls near the
+  viewport (an `IntersectionObserver`, not a timer) — with five or six of them
+  on one page, loading them all at once starves the browser's per-host
+  connection limit and the lower ones simply never finish.
 
 **Dashboard & insight**
 - Net worth (or balance, until there's a portfolio or debt to compose it from)

@@ -5,7 +5,7 @@ import { Reveal } from '../ui/Reveal';
 import { Segmented } from '../ui/Segmented';
 import { SymbolPicker } from '../ui/SymbolPicker';
 import { TradingViewChart, type Interval, type Style } from './TradingViewChart';
-import { TechnicalAnalysisWidget, SymbolInfoWidget, SymbolNewsWidget, MarketOverviewWidget } from './TradingViewWidgets';
+import { TechnicalAnalysisWidget, SymbolInfoWidget, SymbolNewsWidget, MarketOverviewWidget, HotlistsWidget } from './TradingViewWidgets';
 
 const INTERVALS: { id: Interval; label: string }[] = [
   { id: '5', label: '5m' },
@@ -42,6 +42,22 @@ export function MarketsView() {
 
   return (
     <Reveal className="space-y-3" from="start">
+      {/* Not scoped to the watchlist on purpose — somewhere to look before you
+          know what you're looking for, so it leads the page rather than
+          following it. */}
+      <Reveal className="grid grid-cols-1 gap-3 lg:grid-cols-2" from="start">
+        <Card level="quiet">
+          <SectionTitle>Explore markets</SectionTitle>
+          <p className="mb-3 text-xs text-ink-muted">Indices, crypto and forex, independent of your watchlist.</p>
+          <MarketOverviewWidget />
+        </Card>
+        <Card level="quiet">
+          <SectionTitle>Trending today</SectionTitle>
+          <p className="mb-3 text-xs text-ink-muted">Top gainers, losers and most active — U.S. markets.</p>
+          <HotlistsWidget />
+        </Card>
+      </Reveal>
+
       <Card>
         <SectionTitle action={<Button variant="ghost" onClick={() => setAdding((v) => !v)}>{adding ? 'Cancel' : '+ Add symbol'}</Button>}>
           Watchlist
@@ -163,14 +179,6 @@ export function MarketsView() {
           </div>
         </Reveal>
       )}
-
-      {/* Not scoped to the watchlist on purpose — somewhere to look before you
-          know what you're looking for. */}
-      <Card level="quiet">
-        <SectionTitle>Explore markets</SectionTitle>
-        <p className="mb-3 text-xs text-ink-muted">Indices, crypto and forex, independent of your watchlist.</p>
-        <MarketOverviewWidget />
-      </Card>
     </Reveal>
   );
 }
