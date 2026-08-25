@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { forecastMonth, savingsRateSeries, sameMonthLastYear, findAnomalies, budgetStatuses } from './analysis';
+import { forecastMonth, savingsRateSeries, sameMonthLastYear, findAnomalies, budgetStatuses, categoryNovelty } from './analysis';
 import type { LedgerEvent } from './types';
 
 const expense = (id: string, day: number, amount: number, category = 'Food', recurringId?: string): LedgerEvent => ({
@@ -9,6 +9,15 @@ const expense = (id: string, day: number, amount: number, category = 'Food', rec
   amount,
   category,
   recurringId,
+});
+
+/** An expense in an arbitrary month, for cross-month novelty tests. */
+const expenseIn = (id: string, month: string, amount: number, category: string): LedgerEvent => ({
+  id,
+  type: 'expense',
+  timestamp: `${month}-10T00:00:00.000Z`,
+  amount,
+  category,
 });
 
 describe('forecastMonth', () => {
@@ -169,5 +178,64 @@ describe('budgetStatuses', () => {
       ['Food', 100],
     ]);
     expect(budgetStatuses(events, budgets, '2026-06').map((s) => s.category)).toEqual(['Food', 'Fun']);
+  });
+});
+
+describe('categoryNovelty', () => {
+  const midMonth = new Date('2026-06-20T00:00:00.000Z'); // 20 of 30 days elapsed
+
+  describe('firstTime', () => {
+    it('flags a category with no expense before this month', () => {
+      const events = [expenseIn('a', '2026-06', 200, 'NewThing')];
+      expect(categoryNovelty(events, '2026-06', midMonth).firstTime).toEqual([{ category: 'NewThing', amount: 200 }]);
+    });
+
+    it('leaves alone a category that has been spent in before', () => {
+      const events = [expenseIn('a', '2026-03', 50, 'Coffee'), expenseIn('b', '2026-06', 30, 'Coffee')];
+      expect(categoryNovelty(events, '2026-06', midMonth).firstTime).toEqual([]);
+    });
+
+    it('sorts several first-time categories by amount, largest first', () => {
+      const events = [expenseIn('a', '2026-06', 80, 'SmallNew'), expenseIn('b', '2026-06', 200, 'BigNew')];
+      expect(categoryNovelty(events, '2026-06', midMonth).firstTime.map((f) => f.category)).toEqual(['BigNew', 'SmallNew']);
+    });
+  });
+
+  describe('wentQuiet', () => {
+    const habitual: LedgerEvent[] = [
+      expenseIn('r1', '2026-03', 100, 'Rent'),
+      expenseIn('r2', '2026-04', 100, 'Rent'),
+      expenseIn('r3', '2026-05', 100, 'Rent'),
+    ];
+
+    it('flags a category spent every month for three months running that is silent this month', () => {
+      expect(categoryNovelty(habitual, '2026-06', midMonth).wentQuiet).toEqual([{ category: 'Rent', usualAmount: 100 }]);
+    });
+
+    it('says nothing once enough of the month has not yet passed to tell "not yet" from "not this time"', () => {
+      const earlyMonth = new Date('2026-06-05T00:00:00.000Z');
+      expect(categoryNovelty(habitual, '2026-06', earlyMonth).wentQuiet).toEqual([]);
+    });
+
+    it('does not flag a category that is still spending', () => {
+      const events = [...habitual, expenseIn('r4', '2026-06', 100, 'Rent')];
+      expect(categoryNovelty(events, '2026-06', midMonth).wentQuiet).toEqual([]);
+    });
+
+    it('does not call two-out-of-three months a habit', () => {
+      const events = [expenseIn('g1', '2026-04', 40, 'Gym'), expenseIn('g2', '2026-05', 40, 'Gym')];
+      expect(categoryNovelty(events, '2026-06', midMonth).wentQuiet).toEqual([]);
+    });
+
+    it('treats a past month as fully elapsed, regardless of what day it is now', () => {
+      const events: LedgerEvent[] = [
+        expenseIn('r1', '2026-02', 100, 'Rent'),
+        expenseIn('r2', '2026-03', 100, 'Rent'),
+        expenseIn('r3', '2026-04', 100, 'Rent'),
+      ];
+      expect(categoryNovelty(events, '2026-05', new Date('2026-07-01T00:00:00.000Z')).wentQuiet).toEqual([
+        { category: 'Rent', usualAmount: 100 },
+      ]);
+    });
   });
 });

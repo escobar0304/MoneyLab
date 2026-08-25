@@ -159,6 +159,64 @@ test.describe('repeating charges', () => {
   });
 });
 
+test.describe('subscription alert on Overview', () => {
+  const netflix: SeedEvent[] = [9.99, 9.99, 9.99, 12.99].map((amount, i) => ({
+    id: `nf-${i}`,
+    type: 'expense',
+    timestamp: `${monthOffset(i - 3)}-05T10:00:00.000Z`,
+    amount,
+    category: 'Subscriptions',
+    note: 'Netflix',
+  }));
+
+  test('flags an undeclared, repriced subscription and jumps straight to it', async ({ page }) => {
+    await seed(page, [category('Subscriptions'), income(2500, 'Salary', dayIn(0)), ...netflix]);
+    await page.goto('/');
+
+    await expect(page.getByText('Repeating charges worth a look')).toBeVisible();
+    await expect(page.getByText(money(155.88)).first()).toBeVisible();
+    await expect(page.getByText('Netflix')).toBeVisible();
+    await expect(page.getByText('↑ 30%')).toBeVisible();
+    await expect(page.getByText('No rule')).toBeVisible();
+
+    // The whole point: one click, straight to the panel that can fix it —
+    // not just the Entries tab, but Manage specifically. Exact: a substring
+    // match also catches the unrelated "Year & month in review" button.
+    await page.getByRole('button', { name: 'Review', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Repeating charges' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Manage', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('says nothing once the subscription has a rule and hasn’t moved in price', async ({ page }) => {
+    const steady: SeedEvent[] = [9.99, 9.99, 9.99, 9.99].map((amount, i) => ({
+      id: `nf-${i}`,
+      type: 'expense',
+      timestamp: `${monthOffset(i - 3)}-05T10:00:00.000Z`,
+      amount,
+      category: 'Subscriptions',
+      note: 'Netflix',
+    }));
+    await seed(page, [
+      category('Subscriptions'),
+      income(2500, 'Salary', dayIn(0)),
+      ...steady,
+      {
+        id: 'rule-nf',
+        type: 'recurring_upsert',
+        timestamp: dayIn(-3),
+        // Started next month, deliberately: a past startDate would have
+        // runRecurring() catch up and post its own charges on load, which
+        // would fight with the ones seeded by hand above.
+        rule: { id: 'nf', kind: 'expense', label: 'Netflix', amount: 9.99, category: 'Subscriptions', cycle: 'monthly', startDate: `${monthOffset(1)}-05`, active: true },
+      },
+    ]);
+    await page.goto('/');
+
+    await expect(page.getByRole('heading', { name: 'Monthly snapshot' })).toBeVisible();
+    await expect(page.getByText('Repeating charges worth a look')).toHaveCount(0);
+  });
+});
+
 test.describe('IRS deductions', () => {
   test('files a category under a heading and tracks it against the ceiling', async ({ page }) => {
     await seed(page, [category('Saúde'), expense(1000, 'Saúde', dayIn(0))]);
@@ -203,5 +261,26 @@ test.describe('IRS deductions', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'IRS', exact: true }).click();
     await expect(page.getByText(/not an official simulation/)).toBeVisible();
+  });
+
+  test('exports a CSV with the line items behind a heading, ready for the accountant', async ({ page }) => {
+    await seed(page, [category('Saúde'), expense(1000, 'Saúde', dayIn(0))]);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'IRS', exact: true }).click();
+    await page.getByLabel('Deduction heading for Saúde').selectOption('saude');
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      page.getByRole('button', { name: 'Export for accountant' }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/^moneylab-irs-\d{4}\.csv$/);
+  });
+
+  test('disables the export while nothing has been filed under a heading', async ({ page }) => {
+    await seed(page, [category('Saúde'), expense(1000, 'Saúde', dayIn(0))]);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'IRS', exact: true }).click();
+
+    await expect(page.getByRole('button', { name: 'Export for accountant' })).toBeDisabled();
   });
 });

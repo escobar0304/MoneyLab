@@ -1,5 +1,6 @@
 import { Reveal } from '../ui/Reveal';
 import { HoldingsManager } from './HoldingsManager';
+import { CapitalGainsPanel } from './CapitalGainsPanel';
 
 /**
  * What you own, on its own tab.
@@ -14,6 +15,7 @@ export function PortfolioView() {
   return (
     <Reveal className="space-y-3" from="start">
       <HoldingsManager />
+      <CapitalGainsPanel />
     </Reveal>
   );
 }

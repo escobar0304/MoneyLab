@@ -94,6 +94,18 @@ export function IconPortfolio(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** Taxes — a calendar with one date marked. The page is a list of dates that
+ * matter, so the icon is the thing itself rather than a symbol for it. */
+export function IconTaxes(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4.5" width="18" height="16" rx="2" />
+      <path d="M3 9.5h18M8 3v3M16 3v3" />
+      <circle cx="12" cy="15" r="1.5" fill="currentColor" stroke="none" />
+    </Icon>
+  );
+}
+
 export function IconChevronsLeft(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

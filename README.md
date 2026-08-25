@@ -50,15 +50,50 @@ in History, which stays on screen through both Log and Manage.
   a required-pace-vs-actual-pace read on whether you're on track.
 - **Debt** — a loan's amortization schedule from principal/rate/term, plus a
   "what if I overpaid" projection of months and interest saved.
+- **No-spend challenges** — a self-imposed window ("no takeaway for 30
+  days") over categories you pick by hand. Purely a tracker, never an
+  enforcement: nothing stops an expense from posting in a challenged
+  category, it only reports afterwards which days in the window stayed
+  clean — a blocked expense would just get logged a day late or under a
+  different category, which teaches nothing; a visible day-by-day pattern
+  does.
 - **IRS deductions** — map your categories to Portuguese IRS deduction
   headings and track spend against each heading's annual ceiling, with an
   editable ceiling since the published rates move every state budget.
+  **Export for accountant** turns a year into one CSV: every deductible
+  entry (date, heading, category, note, amount) followed by the per-heading
+  totals — so handing it over is one file, not a screenshot and a promise to
+  double-check later.
+
+**Taxes** — dates that happen on a fixed day whether you look or not, kept
+apart from Plan and IRS for that reason
+- **Fiscal calendar** — the IRS (Modelo 3) filing deadline and every
+  vehicle's IUC payment(s), merged into one sorted list with days-until.
+- **Vehicles**, tracked only for their IUC due date. The amount is typed in
+  from your own notice rather than computed: the real formula depends on
+  cylinder capacity, CO2 and a table that moves every state budget, and a
+  tax *liability* is the one place in this app where a plausible-looking
+  wrong number is worse than no number at all. What the app does reliably is
+  the date arithmetic. **Installments** are optional and off by default (one
+  payment, the full amount, in the registration month) — there for the
+  announced rule that splits IUC into more than one payment depending on how
+  much is owed, once that actually applies.
 
 **Portfolio** — what you own
 - Holdings (shares, funds, crypto) with buy/sell trades and dividends, cost
   basis and return computed from the trade log rather than a single average.
 - **Live prices**, polled periodically and merged into net worth and the
   portfolio view; paused when the tab isn't visible.
+- **Capital gains**, year by year, matched FIFO (oldest lot sold first) —
+  a second, independent pass over the trade log from the average-cost figures
+  shown against each position, because "was this lot held over a year"
+  is a question average cost has already blended away. **Export for
+  accountant** turns a year into a CSV: every closed lot (symbol, quantity,
+  acquired, disposed, days held, gain/loss) plus the totals. Portuguese
+  securities are taxed at a flat rate regardless of holding period; crypto
+  held over 365 days is currently exempt — this file has no reliable way to
+  tell a stock from a crypto-asset by its symbol, so "days held" is left for
+  the reader to apply that split by hand.
 
 **Markets** — what's out there, on its own tab from Portfolio since owning
 something and watching it change on different rhythms
@@ -87,6 +122,31 @@ something and watching it change on different rhythms
 - **Drill-down** — click any chart mark to see the underlying entries.
 - **Time travel** — view the whole dashboard as it stood on a past date; free,
   because the ledger is append-only and that view is just a filter over it.
+- **Subscription alerts** — an undeclared or repriced repeating charge gets a
+  card of its own on the dashboard (nothing shows when there's nothing to
+  flag), with a one-click jump straight to Entries → Manage → Subscriptions.
+- **What's different this month** — purely informative, no action attached:
+  a category with no expense before this month, and a category that had
+  spend every month for a while and has gone quiet. Neither is judged good or
+  bad — a cancelled subscription and a forgotten one look identical here, and
+  a first-time category has no "usual" size to compare against. The quiet
+  check only speaks once enough of the month has passed to tell "not yet"
+  from "not this time" apart.
+- **Coming up** — the next scheduled recurring charges and income, with their
+  due dates, for the next 30 days. Reuses the same projection the 60-day
+  runway is built from, so the list and the balance line can never disagree.
+- **Year & month in review** — a recap on request: saved, savings rate, where
+  it went, net worth change, the biggest single surprise, and — for a year —
+  the best and toughest months. A year costs nothing extra to compute; it's
+  the same per-month figures summed, which is also why Time Travel works.
+- **What if?** — try a raise, a new bill, or cancelling a subscription against
+  the real ledger without logging anything: add a hypothetical change and see
+  its effect on next month and on the projected balance for the next 180
+  days, next to the real projection for comparison. Nothing is written to the
+  store; it's the same `projectRunway()` the 60-day runway card uses, run a
+  second time on a throwaway copy of `events` with a few synthetic events
+  appended — the same trick Time Travel uses, pointed at a future the ledger
+  doesn't contain yet instead of a past date it does.
 
 **Data & privacy**
 - **Privacy mode** — blur every figure instantly, for when the screen turns
@@ -165,13 +225,23 @@ src/
     types.ts, store.ts        Domain types + the Zustand store (events, actions, persistence)
     entities.ts, accounts.ts   Fold functions: current categories/budgets/accounts from the log
     derive.ts, analysis.ts     Pure functions: balance, totals, forecasts, deltas
+    runway.ts, review.ts        60-day cash projection; month/year recap (sums
+                                  the same per-month figures runway.ts's peers derive)
+    whatif.ts                    Hypothetical events on a throwaway copy of the ledger,
+                                  fed straight back into runway.ts's own projection
     investments.ts, quotes.ts  Portfolio pricing; useLiveQuotes.ts polls and caches live prices
     goals.ts, debt.ts, irs.ts  Domain math for each planning feature
+    challenges.ts                 No-spend challenges: day-by-day clean/broken tracking
+    irsExport.ts                 IRS line items + per-heading summary as one CSV, for the accountant
+    capitalGains.ts               FIFO lot-matching for realised gains, year by year
+    vehicles.ts, fiscalCalendar.ts  Vehicle fold + IUC/IRS deadline dates, merged and sorted
     rules.ts, statements.ts    Auto-categorization + bank statement CSV parsing
     recurrence.ts               Monthly-cycle date math + elapsed-cycle simulation
     migrations.ts                Brings old ledger shapes up to the current one
     backup.ts, crypto.ts,       Silent folder auto-backup + AES-GCM encrypted exports
     receipts.ts                  Receipt photo storage (IndexedDB)
+    subscriptions.ts (repeating-charge detection), navigate.ts (a lazy tab
+                       asking another lazy tab to switch to it — see below)
     chartTheme.ts, chartTables.ts, format.ts, currency.ts, drill.ts, search.ts, …
   components/
     layout/     AppShell + Sidebar (tab navigation, icons)
@@ -180,15 +250,20 @@ src/
     entries/     Every input, split into Log (EntriesView's default) and Manage
                   via a Segmented control — recurring, expense form on Log;
                   accounts, budgets, rules, statement import, categories on Manage
-    plan/        Goals and debt
+    plan/        Goals, debt, no-spend challenges
     irs/         IRS deduction tracking, its own tab
-    portfolio/   Holdings, trades, dividends — what you own
+    taxes/       Fiscal calendar (IRS deadline + vehicle IUC dates) and vehicles
+    portfolio/   Holdings, trades, dividends, capital gains — what you own
     markets/     Watchlist, TradingView chart + technical/news/overview widgets
     settings/    Export/import, backup folder, appearance
 ```
 
-Seven tabs: **Overview**, **Entries**, **Plan**, **IRS**, **Portfolio**,
-**Markets**, **Settings**. Portfolio and Markets used to be one "Markets" tab;
+Eight tabs: **Overview**, **Entries**, **Plan**, **IRS**, **Taxes**,
+**Portfolio**, **Markets**, **Settings**. Taxes sits apart from IRS and Plan
+on purpose — a filing deadline or a vehicle's IUC happens on a fixed day
+regardless of anything you decide, which is a different kind of thing from a
+goal you're steering or a deduction you're filing. Portfolio and Markets
+used to be one "Markets" tab;
 they split because owning ten shares of something and watching a symbol you
 don't hold are different questions with different rhythms — one changes when
 you trade, the other when you're just looking around. `SymbolPicker`
@@ -196,6 +271,13 @@ you trade, the other when you're just looking around. `SymbolPicker`
 instruments. Overview ships eagerly since it's the landing tab; every other tab
 is a separate lazy chunk, so a session that never opens Markets never downloads
 the TradingView embeds.
+
+Every tab past Overview is a lazy chunk, so a card on one tab that needs to
+send the reader to another (Overview's subscription alert linking to Entries →
+Manage) can't just call a callback — the target likely isn't mounted yet.
+`lib/navigate.ts` covers it with a `window` event plus a one-shot "pending
+request" that a freshly-mounting tab reads in its own `useState` initializer,
+so the request survives even when it arrives before anything is listening.
 
 ### Recurring events "simulate" monthly cycles
 

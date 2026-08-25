@@ -128,9 +128,55 @@ export interface Debt {
   active: boolean;
 }
 
+/** One of a vehicle's IUC payments, recurring every year on the same day —
+ * `monthDay` rather than a fixed date, since the due date is an anniversary,
+ * not a one-off. */
+export interface IucInstallment {
+  monthDay: string; // MM-DD
+  amount: number;
+}
+
+/**
+ * A vehicle, tracked only for its IUC due date(s).
+ *
+ * `amount` is typed in from the owner's own notice rather than computed: the
+ * real formula depends on cylinder capacity, CO2 and a table that moves every
+ * state budget, and a tax *liability* is the one place in this app where a
+ * plausible-looking wrong number is worse than no number. What this app can
+ * do reliably is the date arithmetic — when the next payment falls, and how
+ * many days away that is — so that's what it does.
+ */
+export interface Vehicle {
+  id: ID;
+  plate: string;
+  registrationDate: string; // ISO date — the anniversary IUC is due on
+  amount: number;
+  /** Splits the total across more than one payment a year, each on its own
+   * anniversary — left empty for the common case of one payment covering the
+   * full amount, in the registration month. */
+  installments?: IucInstallment[];
+  note?: string;
+}
+
 interface LedgerEventBase {
   id: ID;
   timestamp: string; // ISO datetime
+}
+
+/**
+ * A self-imposed no-spend window over a hand-picked set of categories — "no
+ * takeaway for 30 days", not a system-wide budget freeze.
+ *
+ * Purely a tracker, never an enforcement: nothing here stops an expense from
+ * posting in a challenged category. It only reports, afterwards, whether each
+ * day in the window stayed clean.
+ */
+export interface SpendChallenge {
+  id: ID;
+  label: string;
+  categories: string[];
+  startDate: string; // ISO date
+  endDate: string; // ISO date
 }
 
 /**
@@ -391,6 +437,26 @@ export interface CategoryRemoveEvent extends LedgerEventBase {
   name: string;
 }
 
+export interface ChallengeUpsertEvent extends LedgerEventBase {
+  type: 'challenge_upsert';
+  challenge: SpendChallenge;
+}
+
+export interface ChallengeRemoveEvent extends LedgerEventBase {
+  type: 'challenge_remove';
+  challengeId: ID;
+}
+
+export interface VehicleUpsertEvent extends LedgerEventBase {
+  type: 'vehicle_upsert';
+  vehicle: Vehicle;
+}
+
+export interface VehicleRemoveEvent extends LedgerEventBase {
+  type: 'vehicle_remove';
+  vehicleId: ID;
+}
+
 /** @deprecated v1 events, folded on load. */
 export interface RecurringIncomeUpsertEvent extends LedgerEventBase {
   type: 'recurring_income_upsert';
@@ -438,6 +504,10 @@ export type LedgerEvent =
   | RuleRemoveEvent
   | CategoryUpsertEvent
   | CategoryRemoveEvent
+  | ChallengeUpsertEvent
+  | ChallengeRemoveEvent
+  | VehicleUpsertEvent
+  | VehicleRemoveEvent
   | RecurringIncomeUpsertEvent
   | RecurringIncomeRemoveEvent
   | RecurringIncomeSkipEvent

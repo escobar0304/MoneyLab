@@ -1,5 +1,5 @@
 import type { LedgerEvent, ExpenseEvent } from './types';
-import { monthKey, totalIncomeForMonth, totalOutflowForMonth, monthsWithActivity, spendByCategoryForMonth } from './derive';
+import { monthKey, previousMonthKey, totalIncomeForMonth, totalOutflowForMonth, monthsWithActivity, spendByCategoryForMonth } from './derive';
 import { foldRecurring, foldSkips, foldPostedMonths } from './entities';
 import { occurrencesUpTo } from './recurrence';
 
@@ -207,6 +207,82 @@ export function budgetStatuses(events: LedgerEvent[], budgets: Map<string, numbe
       };
     })
     .sort((a, b) => b.ratio - a.ratio);
+}
+
+export interface FirstTimeCategory {
+  category: string;
+  /** What was spent this month — its first month ever. */
+  amount: number;
+}
+
+export interface QuietCategory {
+  category: string;
+  /** Average monthly spend over the months it was habitual. */
+  usualAmount: number;
+}
+
+export interface CategoryNovelty {
+  firstTime: FirstTimeCategory[];
+  wentQuiet: QuietCategory[];
+}
+
+/** Consecutive months of spend before this one that make a category "habitual"
+ * enough for its silence to be worth mentioning. */
+const HABIT_WINDOW = 3;
+/** How much of the current month has to have passed before a habitual
+ * category's absence means anything — early on, "not yet" and "not this
+ * time" look identical, since plenty of habits land in the second half. */
+const QUIET_MIN_ELAPSED_DAYS = 15;
+
+/**
+ * Two kinds of surprise `findAnomalies` cannot see, because both are about
+ * whether a category showed up at all rather than how big any one charge was:
+ * a category with no history before this month, and a category that had
+ * spend every month for a while and suddenly has none.
+ *
+ * Purely informative — there is no "usual" size to compare a first-time
+ * category against, and a category going quiet is not necessarily a problem
+ * (a subscription cancelled on purpose looks identical to one forgotten).
+ * This only ever says what changed, never whether that's good or bad.
+ */
+export function categoryNovelty(events: LedgerEvent[], month: string, now: Date = new Date()): CategoryNovelty {
+  const [year, m] = month.split('-').map(Number);
+  const isCurrent = monthKey(now.toISOString()) === month;
+  const elapsed = isCurrent ? now.getUTCDate() : new Date(Date.UTC(year, m, 0)).getUTCDate();
+
+  const thisMonth = spendByCategoryForMonth(events, month);
+
+  const firstSeen = new Map<string, string>();
+  for (const e of events) {
+    if (e.type !== 'expense') continue;
+    const seen = firstSeen.get(e.category);
+    const at = monthKey(e.timestamp);
+    if (!seen || at < seen) firstSeen.set(e.category, at);
+  }
+  const firstTime: FirstTimeCategory[] = Object.entries(thisMonth)
+    .filter(([category]) => firstSeen.get(category) === month)
+    .map(([category, amount]) => ({ category, amount: roundCents(amount) }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const wentQuiet: QuietCategory[] = [];
+  if (elapsed >= QUIET_MIN_ELAPSED_DAYS) {
+    const priorMonths: string[] = [];
+    for (let i = 0, cursor = month; i < HABIT_WINDOW; i++) {
+      cursor = previousMonthKey(cursor);
+      priorMonths.push(cursor);
+    }
+    const priorSpend = priorMonths.map((mo) => spendByCategoryForMonth(events, mo));
+    const habitual = Object.keys(priorSpend[0] ?? {}).filter((category) => priorSpend.every((s) => (s[category] ?? 0) > 0));
+
+    for (const category of habitual) {
+      if ((thisMonth[category] ?? 0) > 0) continue;
+      const usualAmount = roundCents(priorSpend.reduce((sum, s) => sum + (s[category] ?? 0), 0) / HABIT_WINDOW);
+      wentQuiet.push({ category, usualAmount });
+    }
+    wentQuiet.sort((a, b) => b.usualAmount - a.usualAmount);
+  }
+
+  return { firstTime, wentQuiet };
 }
 
 // Portfolio valuation lives in investments.ts: once a trade log exists, a

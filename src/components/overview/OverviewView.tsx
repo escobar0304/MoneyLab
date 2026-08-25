@@ -22,6 +22,11 @@ import { IncomeVsExpensesChart } from './IncomeVsExpensesChart';
 import { SpendByCategoryChart } from './SpendByCategoryChart';
 import { SavingsRateChart } from './SavingsRateChart';
 import { MonthlySnapshot } from './MonthlySnapshot';
+import { SubscriptionAlerts } from './SubscriptionAlerts';
+import { UpcomingPayments } from './UpcomingPayments';
+import { CategoryChanges } from './CategoryChanges';
+import { PeriodReview } from './PeriodReview';
+import { WhatIfLab } from './WhatIfLab';
 
 export function OverviewView() {
   // Everything on this page reads the ledger through this one list, so a date
@@ -141,6 +146,13 @@ export function OverviewView() {
 
       <DrillHint />
 
+      {/* All three render nothing when there's nothing to say, so a clean
+          ledger with no recurring rules and no odd months never sees any of
+          them. */}
+      <SubscriptionAlerts />
+      <UpcomingPayments />
+      <CategoryChanges />
+
       {/* Where the money sits, and what it is invested in. Secondary weight:
           they qualify the headline figure rather than restating it. */}
       {(positions.length > 0 || accountCount > 1) && (
@@ -185,9 +197,13 @@ export function OverviewView() {
         </ChartCard>
       </Reveal>
 
-      {/* Time travel lives at the foot of the page, out of the way. It is
-          something you go looking for once in a while, not a control that
-          earns permanent space beside the headline figure. */}
+      {/* Time travel and the period review both live at the foot, out of the
+          way. Both are things you go looking for once in a while, not
+          controls that earn permanent space beside the headline figure. */}
+      <div className="flex justify-end gap-2">
+        <WhatIfLab />
+        <PeriodReview />
+      </div>
       <TimeTravel />
     </div>
   );

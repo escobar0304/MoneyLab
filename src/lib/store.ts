@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { LedgerEvent, ID, Recurring, RecurringKind, MoneyEvent, Holding, ForeignAmount, Goal, Debt, Account, Rule, TransferEvent } from './types';
+import type { LedgerEvent, ID, Recurring, RecurringKind, MoneyEvent, Holding, ForeignAmount, Goal, Debt, Account, Rule, TransferEvent, SpendChallenge, Vehicle } from './types';
 import { makeId } from './id';
 import {
   foldRecurring,
@@ -20,6 +20,8 @@ import { rowsToEvents, type StatementRow } from './statements';
 import type { Drill } from './drill';
 import { foldGoals } from './goals';
 import { foldDebts } from './debt';
+import { foldChallenges } from './challenges';
+import { foldVehicles } from './vehicles';
 import { foldTrades, foldDividends, positionsFrom, investmentSummary, type Position, type InvestmentSummary } from './investments';
 import { fetchConvertedQuotes, type ConvertedQuote } from './quotes';
 import { occurrencesUpTo } from './recurrence';
@@ -108,6 +110,12 @@ interface MoneyLabState {
 
   upsertDebt: (debt: Omit<Debt, 'id'> & { id?: ID }) => void;
   removeDebt: (id: ID) => void;
+
+  upsertChallenge: (challenge: Omit<SpendChallenge, 'id'> & { id?: ID }) => void;
+  removeChallenge: (id: ID) => void;
+
+  upsertVehicle: (vehicle: Omit<Vehicle, 'id'> & { id?: ID }) => void;
+  removeVehicle: (id: ID) => void;
 
   addCategory: (name: string) => void;
   removeCategory: (name: string) => void;
@@ -485,6 +493,46 @@ export const useStore = create<MoneyLabState>()(
           }));
         },
 
+        upsertChallenge: (input) =>
+          set((s) => ({
+            events: [
+              ...s.events,
+              {
+                id: makeId(),
+                type: 'challenge_upsert',
+                timestamp: new Date().toISOString(),
+                challenge: { ...input, id: input.id ?? makeId() },
+              },
+            ],
+          })),
+
+        removeChallenge: (id) => {
+          snapshot('Challenge removed');
+          set((s) => ({
+            events: [...s.events, { id: makeId(), type: 'challenge_remove', timestamp: new Date().toISOString(), challengeId: id }],
+          }));
+        },
+
+        upsertVehicle: (input) =>
+          set((s) => ({
+            events: [
+              ...s.events,
+              {
+                id: makeId(),
+                type: 'vehicle_upsert',
+                timestamp: new Date().toISOString(),
+                vehicle: { ...input, id: input.id ?? makeId() },
+              },
+            ],
+          })),
+
+        removeVehicle: (id) => {
+          snapshot('Vehicle removed');
+          set((s) => ({
+            events: [...s.events, { id: makeId(), type: 'vehicle_remove', timestamp: new Date().toISOString(), vehicleId: id }],
+          }));
+        },
+
         runRecurring: () => {
           const events = get().events;
           const posted = foldPostedMonths(events);
@@ -830,6 +878,16 @@ export const useGoals = (): Goal[] => {
 export const useDebts = (): Debt[] => {
   const events = useStore((s) => s.events);
   return useMemo(() => foldDebts(events), [events]);
+};
+
+export const useChallenges = (): SpendChallenge[] => {
+  const events = useStore((s) => s.events);
+  return useMemo(() => foldChallenges(events), [events]);
+};
+
+export const useVehicles = (): Vehicle[] => {
+  const events = useStore((s) => s.events);
+  return useMemo(() => foldVehicles(events), [events]);
 };
 
 /**

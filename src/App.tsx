@@ -5,6 +5,7 @@ import { useStore } from './lib/store';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from './lib/animation';
 import { useShortcuts } from './lib/shortcuts';
 import { useLiveQuoteScheduler } from './lib/useLiveQuotes';
+import { onNavigate } from './lib/navigate';
 import { UndoToast } from './components/ui/UndoToast';
 import { ShortcutsHelp } from './components/ui/ShortcutsHelp';
 import { OverviewView } from './components/overview/OverviewView';
@@ -16,6 +17,7 @@ import { DrillPanel } from './components/entries/DrillPanel';
 const EntriesView = lazy(() => import('./components/entries/EntriesView').then((m) => ({ default: m.EntriesView })));
 const PlanView = lazy(() => import('./components/plan/PlanView').then((m) => ({ default: m.PlanView })));
 const IrsView = lazy(() => import('./components/irs/IrsView').then((m) => ({ default: m.IrsView })));
+const TaxesView = lazy(() => import('./components/taxes/TaxesView').then((m) => ({ default: m.TaxesView })));
 const PortfolioView = lazy(() => import('./components/portfolio/PortfolioView').then((m) => ({ default: m.PortfolioView })));
 const MarketsView = lazy(() => import('./components/markets/MarketsView').then((m) => ({ default: m.MarketsView })));
 const SettingsView = lazy(() => import('./components/settings/SettingsView').then((m) => ({ default: m.SettingsView })));
@@ -52,6 +54,10 @@ export default function App() {
   useEffect(() => {
     runRecurring();
   }, [runRecurring]);
+
+  // The one thing every card that requests a tab switch can rely on existing:
+  // this component owns `tab`, so it's the only one that can actually change it.
+  useEffect(() => onNavigate((detail) => changeTab(detail.tab as Tab)), [changeTab]);
 
   const onNewExpense = useCallback(() => {
     changeTab('entries');
@@ -117,6 +123,7 @@ export default function App() {
           {tab === 'entries' && <EntriesView />}
           {tab === 'plan' && <PlanView />}
           {tab === 'irs' && <IrsView />}
+          {tab === 'taxes' && <TaxesView />}
           {tab === 'portfolio' && <PortfolioView />}
           {tab === 'markets' && <MarketsView />}
           {tab === 'settings' && <SettingsView />}

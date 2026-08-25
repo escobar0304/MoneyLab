@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Reveal } from '../ui/Reveal';
 import { Segmented } from '../ui/Segmented';
+import { onNavigate, consumePendingSection } from '../../lib/navigate';
 import { RecurringManager } from './RecurringManager';
 import { ExpenseEntryForm } from './ExpenseEntryForm';
 import { AccountsManager } from './AccountsManager';
@@ -31,7 +32,22 @@ const SECTIONS: { id: Section; label: string }[] = [
  * context whichever you're doing.
  */
 export function EntriesView() {
-  const [section, setSection] = useState<Section>('log');
+  // Entries is a lazy chunk, so a request that arrives before this component
+  // exists — the common case, clicking in from Overview — has to be read here
+  // rather than relying solely on the effect below, which subscribes too late
+  // to catch an event that already fired.
+  const [section, setSection] = useState<Section>(() => consumePendingSection('entries') ?? 'log');
+
+  // A card elsewhere (Overview's subscription alert, say) can ask for Manage
+  // directly rather than landing on Log and making the reader find it.
+  useEffect(
+    () =>
+      onNavigate((detail) => {
+        if (detail.tab !== 'entries' || !detail.section) return;
+        setSection(detail.section);
+      }),
+    []
+  );
 
   return (
     <Reveal className="grid grid-cols-1 gap-3 xl:grid-cols-2" from="start">

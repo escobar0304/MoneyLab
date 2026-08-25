@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useStore, useCategories } from '../../lib/store';
 import { deductionSummary, totalDeduction, foldDeductionMap, IRS_DEDUCTIONS, type DeductionStatus } from '../../lib/irs';
+import { buildIrsExport, irsExportToCsv } from '../../lib/irsExport';
 import { formatMoney } from '../../lib/format';
 import { Button, Card, Input, Select, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 
@@ -128,6 +129,20 @@ export function IrsPanel() {
   const statuses = useMemo(() => deductionSummary(events, year), [events, year]);
   const map = useMemo(() => foldDeductionMap(events), [events]);
   const total = totalDeduction(statuses);
+  const exportData = useMemo(() => buildIrsExport(events, year), [events, year]);
+
+  // A BOM so Excel (which otherwise guesses the system codepage) reads the
+  // accented headings correctly instead of mangling "Saúde" into "SaÃºde".
+  const exportForAccountant = () => {
+    const bom = String.fromCharCode(0xfeff);
+    const blob = new Blob([bom + irsExportToCsv(exportData)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `moneylab-irs-${year}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const years = useMemo(() => {
     const set = new Set<number>([thisYear]);
@@ -141,14 +156,19 @@ export function IrsPanel() {
     <Card>
       <SectionTitle
         action={
-          <div className="w-28">
-            <Select value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year">
-              {years.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </Select>
+          <div className="flex items-center gap-2">
+            <div className="w-28">
+              <Select value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Year">
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Button variant="secondary" onClick={exportForAccountant} disabled={exportData.rows.length === 0}>
+              Export for accountant
+            </Button>
           </div>
         }
       >

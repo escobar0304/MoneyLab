@@ -7,6 +7,7 @@ import {
   IconEntries,
   IconPlan,
   IconIrs,
+  IconTaxes,
   IconPortfolio,
   IconMarkets,
   IconSettings,
@@ -15,13 +16,14 @@ import {
   IconEyeOff,
 } from './icons';
 
-export type Tab = 'overview' | 'entries' | 'plan' | 'irs' | 'portfolio' | 'markets' | 'settings';
+export type Tab = 'overview' | 'entries' | 'plan' | 'irs' | 'taxes' | 'portfolio' | 'markets' | 'settings';
 
 const TABS: { id: Tab; label: string; Icon: typeof IconOverview }[] = [
   { id: 'overview', label: 'Overview', Icon: IconOverview },
   { id: 'entries', label: 'Entries', Icon: IconEntries },
   { id: 'plan', label: 'Plan', Icon: IconPlan },
   { id: 'irs', label: 'IRS', Icon: IconIrs },
+  { id: 'taxes', label: 'Taxes', Icon: IconTaxes },
   { id: 'portfolio', label: 'Portfolio', Icon: IconPortfolio },
   { id: 'markets', label: 'Markets', Icon: IconMarkets },
   { id: 'settings', label: 'Settings', Icon: IconSettings },
