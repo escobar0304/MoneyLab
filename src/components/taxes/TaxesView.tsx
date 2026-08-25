@@ -71,8 +71,13 @@ function toInstallments(rows: Draft['installments']): IucInstallment[] {
 }
 
 function VehicleRow({ vehicle }: { vehicle: Vehicle }) {
+  const events = useStore((s) => s.events);
   const remove = useStore((s) => s.removeVehicle);
-  const deadlines = useMemo(() => vehicleDeadlines([{ id: 'x', type: 'vehicle_upsert', timestamp: '2026-01-01T00:00:00.000Z', vehicle }]), [vehicle]);
+  // Filtered out of the same real computation the calendar card uses, rather
+  // than reconstructed for this vehicle alone — otherwise a settled
+  // occurrence would vanish from the calendar above but linger here, since
+  // there'd be no expenses in the row's own event list to settle it against.
+  const deadlines = useMemo(() => vehicleDeadlines(events).filter((d) => d.id.startsWith(`${vehicle.id}-`)), [events, vehicle.id]);
 
   return (
     <div className="rounded-lg border border-hairline p-3">
@@ -90,12 +95,16 @@ function VehicleRow({ vehicle }: { vehicle: Vehicle }) {
         </Button>
       </div>
       <ul className="mt-2 space-y-1 border-t border-hairline pt-2">
-        {deadlines.map((d) => (
-          <li key={d.id} className="flex items-center justify-between text-xs text-ink-muted">
-            <span>{formatDate(d.date)}</span>
-            <span className="num-col text-ink-secondary">{formatMoney(d.amount ?? 0)}</span>
-          </li>
-        ))}
+        {deadlines.length === 0 ? (
+          <li className="text-xs text-ink-muted">Settled for this cycle.</li>
+        ) : (
+          deadlines.map((d) => (
+            <li key={d.id} className="flex items-center justify-between text-xs text-ink-muted">
+              <span>{formatDate(d.date)}</span>
+              <span className="num-col text-ink-secondary">{formatMoney(d.amount ?? 0)}</span>
+            </li>
+          ))
+        )}
       </ul>
     </div>
   );

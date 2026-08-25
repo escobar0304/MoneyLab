@@ -18,6 +18,31 @@ function nextOccurrence(monthDay: string, now: Date): string {
   return candidate >= today ? candidate : `${year + 1}-${monthDay}`;
 }
 
+/** One year before a YYYY-MM-DD date, as a string — the start of the window
+ * a payment could fall in and still count as covering that occurrence. */
+function oneYearBefore(date: string): string {
+  const [year, month, day] = date.split('-').map(Number);
+  return `${year - 1}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/**
+ * Whether an occurrence has already been settled — a real expense, tagged to
+ * this vehicle and this installment, logged sometime in the year leading up
+ * to it. Scoped to that one-year window rather than "ever paid", or a single
+ * old payment would hide every future cycle's due date forever.
+ */
+function isSettled(events: LedgerEvent[], vehicleId: string, installmentIndex: number, occurrenceDate: string, today: string): boolean {
+  const windowStart = oneYearBefore(occurrenceDate);
+  return events.some(
+    (e) =>
+      e.type === 'expense' &&
+      e.vehicleId === vehicleId &&
+      (e.installmentIndex ?? 0) === installmentIndex &&
+      e.timestamp.slice(0, 10) > windowStart &&
+      e.timestamp.slice(0, 10) <= today
+  );
+}
+
 /**
  * Dates that recur every year regardless of anything logged in the ledger.
  *
@@ -40,9 +65,18 @@ export function fixedDeadlines(now: Date = new Date()): FiscalDeadline[] {
   return FIXED_DEADLINES.map((d) => ({ id: d.id, label: d.label, date: nextOccurrence(d.monthDay, now), note: d.note }));
 }
 
-/** Every vehicle's next payment(s) — one per installment, or a single one
- * covering the full amount in the registration month when none are set. */
+/**
+ * Every vehicle's next payment(s) — one per installment, or a single one
+ * covering the full amount in the registration month when none are set.
+ *
+ * An occurrence already settled by a tagged expense is left out entirely
+ * rather than shown with a "paid" label: the point of a calendar is what
+ * still needs doing, and a real record of the payment already exists in
+ * History like any other expense. It reappears on its own once the next
+ * cycle's due date arrives.
+ */
 export function vehicleDeadlines(events: LedgerEvent[], now: Date = new Date()): FiscalDeadline[] {
+  const today = now.toISOString().slice(0, 10);
   const out: FiscalDeadline[] = [];
   for (const vehicle of foldVehicles(events)) {
     const installments =
@@ -51,12 +85,9 @@ export function vehicleDeadlines(events: LedgerEvent[], now: Date = new Date()):
         : [{ monthDay: vehicle.registrationDate.slice(5, 10), amount: vehicle.amount }];
 
     installments.forEach((installment, i) => {
-      out.push({
-        id: `${vehicle.id}-${i}`,
-        label: `IUC · ${vehicle.plate}`,
-        date: nextOccurrence(installment.monthDay, now),
-        amount: installment.amount,
-      });
+      const date = nextOccurrence(installment.monthDay, now);
+      if (isSettled(events, vehicle.id, i, date, today)) return;
+      out.push({ id: `${vehicle.id}-${i}`, label: `IUC · ${vehicle.plate}`, date, amount: installment.amount });
     });
   }
   return out;

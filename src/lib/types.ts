@@ -223,6 +223,12 @@ export interface ExpenseEvent extends LedgerEventBase {
   recurringId?: ID;
   /** Which pot it came out of. Absent means the main account. */
   accountId?: ID;
+  /** Set when this expense is a vehicle's IUC payment, so the fiscal
+   * calendar can tell a cycle has been settled instead of continuing to show
+   * a due date already paid. `installmentIndex` picks which of the vehicle's
+   * installments this covers; absent means the default single payment. */
+  vehicleId?: ID;
+  installmentIndex?: number;
 }
 
 export interface RecurringUpsertEvent extends LedgerEventBase {

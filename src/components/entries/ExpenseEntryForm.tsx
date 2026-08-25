@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useStore, useAccounts } from '../../lib/store';
+import { useStore, useAccounts, useVehicles } from '../../lib/store';
 import { MAIN_ACCOUNT_ID } from '../../lib/accounts';
 import { Button, Card, Input, Label, SectionTitle, Select } from '../ui/primitives';
-import { todayInputValue } from '../../lib/format';
+import { todayInputValue, formatMoney } from '../../lib/format';
 import { CategoryPicker } from './CategoryPicker';
 import { AmountField, type AmountValue } from './AmountField';
 import type { LedgerEvent } from '../../lib/types';
@@ -24,6 +24,7 @@ export function ExpenseEntryForm() {
   const events = useStore((s) => s.events);
   const addExpense = useStore((s) => s.addExpense);
   const accounts = useAccounts();
+  const vehicles = useVehicles();
   const knownSubcategories = useKnownSubcategories(events);
 
   const [amount, setAmount] = useState('');
@@ -33,6 +34,11 @@ export function ExpenseEntryForm() {
   const [date, setDate] = useState(todayInputValue());
   const [note, setNote] = useState('');
   const [accountId, setAccountId] = useState(MAIN_ACCOUNT_ID);
+  const [vehicleId, setVehicleId] = useState('');
+  const [installmentIndex, setInstallmentIndex] = useState('');
+
+  const selectedVehicle = vehicles.find((v) => v.id === vehicleId);
+  const installmentOptions = selectedVehicle?.installments ?? [];
 
   const canSubmit = resolved !== null && category.trim() !== '';
 
@@ -48,10 +54,16 @@ export function ExpenseEntryForm() {
       // Left off entirely when it is the main account, so an expense on a
       // ledger with no accounts stays byte-for-byte what it always was.
       accountId: accountId === MAIN_ACCOUNT_ID ? undefined : accountId,
+      vehicleId: vehicleId || undefined,
+      installmentIndex: installmentIndex === '' ? undefined : Number(installmentIndex),
     });
     setAmount('');
     setSubcategory('');
     setNote('');
+    // Which vehicle this paid is specific to this one expense, unlike
+    // category/date/account which usually repeat across a sitting.
+    setVehicleId('');
+    setInstallmentIndex('');
     // Category, date and account deliberately persist: logging several expenses
     // in one sitting usually means the same day, and often the same category.
   };
@@ -89,6 +101,45 @@ export function ExpenseEntryForm() {
                 </option>
               ))}
             </Select>
+          </div>
+        )}
+
+        {/* Only once there's a vehicle to tag it to. Tagging is what lets the
+            Taxes tab tell this cycle's IUC is settled instead of still
+            showing the due date after it's already been paid. */}
+        {vehicles.length > 0 && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="expense-vehicle">Vehicle (IUC payment, optional)</Label>
+              <Select
+                id="expense-vehicle"
+                value={vehicleId}
+                onChange={(e) => {
+                  setVehicleId(e.target.value);
+                  setInstallmentIndex('');
+                }}
+              >
+                <option value="">Not a vehicle payment</option>
+                {vehicles.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.plate}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            {installmentOptions.length > 1 && (
+              <div>
+                <Label htmlFor="expense-installment">Which payment</Label>
+                <Select id="expense-installment" value={installmentIndex} onChange={(e) => setInstallmentIndex(e.target.value)}>
+                  <option value="">Choose…</option>
+                  {installmentOptions.map((inst, i) => (
+                    <option key={i} value={i}>
+                      Payment {i + 1} — {formatMoney(inst.amount)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
           </div>
         )}
 

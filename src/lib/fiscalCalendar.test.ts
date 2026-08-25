@@ -9,6 +9,17 @@ const vehicle = (v: Partial<Vehicle> & Pick<Vehicle, 'id' | 'plate' | 'registrat
   vehicle: { installments: undefined, note: undefined, ...v } as Vehicle,
 });
 
+let seq = 0;
+const paidExpense = (vehicleId: string, date: string, installmentIndex?: number): LedgerEvent => ({
+  id: `pe${seq++}`,
+  type: 'expense',
+  timestamp: `${date}T10:00:00.000Z`,
+  amount: 90,
+  category: 'Car',
+  vehicleId,
+  installmentIndex,
+});
+
 describe('fixedDeadlines', () => {
   it('reports the IRS filing deadline for this year when it has not passed yet', () => {
     const d = fixedDeadlines(new Date('2026-03-01T00:00:00.000Z'));
@@ -65,6 +76,52 @@ describe('vehicleDeadlines', () => {
       { id: 'r', type: 'vehicle_remove', timestamp: '2026-01-02T00:00:00.000Z', vehicleId: 'v1' },
     ];
     expect(vehicleDeadlines(events, new Date('2026-01-01T00:00:00.000Z'))).toEqual([]);
+  });
+
+  describe('once settled', () => {
+    it('drops the occurrence once a tagged expense covers it, instead of still showing the due date', () => {
+      const events = [
+        vehicle({ id: 'v1', plate: '00-AA-00', registrationDate: '2018-09-12', amount: 90 }),
+        paidExpense('v1', '2026-08-20'),
+      ];
+      expect(vehicleDeadlines(events, new Date('2026-09-01T00:00:00.000Z'))).toEqual([]);
+    });
+
+    it('ignores an expense not tagged to any vehicle', () => {
+      const events: LedgerEvent[] = [
+        vehicle({ id: 'v1', plate: '00-AA-00', registrationDate: '2018-09-12', amount: 90 }),
+        { id: 'e1', type: 'expense', timestamp: '2026-08-20T00:00:00.000Z', amount: 90, category: 'Car' },
+      ];
+      expect(vehicleDeadlines(events, new Date('2026-09-01T00:00:00.000Z'))).toHaveLength(1);
+    });
+
+    it('does not let a payment from a year-old cycle settle the current one', () => {
+      const events = [
+        vehicle({ id: 'v1', plate: '00-AA-00', registrationDate: '2018-09-12', amount: 90 }),
+        paidExpense('v1', '2025-09-01'), // last cycle's payment
+      ];
+      // Today is inside this year's window, and last year's payment is now
+      // outside the twelve months leading up to it.
+      expect(vehicleDeadlines(events, new Date('2026-09-01T00:00:00.000Z'))).toHaveLength(1);
+    });
+
+    it('settles only the installment it was tagged to, not the other one', () => {
+      const events = [
+        vehicle({
+          id: 'v1',
+          plate: '00-AA-00',
+          registrationDate: '2018-09-12',
+          amount: 180,
+          installments: [
+            { monthDay: '09-12', amount: 90 },
+            { monthDay: '03-12', amount: 90 },
+          ],
+        }),
+        paidExpense('v1', '2026-08-20', 0),
+      ];
+      const d = vehicleDeadlines(events, new Date('2026-09-01T00:00:00.000Z'));
+      expect(d).toEqual([expect.objectContaining({ id: 'v1-1', date: '2027-03-12' })]);
+    });
   });
 });
 

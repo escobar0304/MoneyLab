@@ -77,7 +77,13 @@ apart from Plan and IRS for that reason
   the date arithmetic. **Installments** are optional and off by default (one
   payment, the full amount, in the registration month) — there for the
   announced rule that splits IUC into more than one payment depending on how
-  much is owed, once that actually applies.
+  much is owed, once that actually applies. Logging the actual payment as an
+  expense and **tagging it to the vehicle** (an optional field on the expense
+  form, shown once a vehicle exists) settles that cycle: the due date drops
+  off the calendar instead of sitting there already paid, and reappears on
+  its own once the next cycle's date arrives. The real record stays exactly
+  where every other expense lives — in History — this only stops the
+  calendar from nagging about something already done.
 
 **Portfolio** — what you own
 - Holdings (shares, funds, crypto) with buy/sell trades and dividends, cost

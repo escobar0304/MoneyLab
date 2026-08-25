@@ -74,6 +74,8 @@ interface MoneyLabState {
     date?: string;
     foreign?: ForeignAmount;
     accountId?: ID;
+    vehicleId?: ID;
+    installmentIndex?: number;
   }) => void;
 
   upsertAccount: (account: Omit<Account, 'id'> & { id?: ID }) => void;
@@ -208,7 +210,7 @@ export const useStore = create<MoneyLabState>()(
           set((s) => ({ events: [...s.events, applyRules(event, foldRules(s.events))] }));
         },
 
-        addExpense: ({ amount, category, subcategory, note, date, foreign, accountId }) => {
+        addExpense: ({ amount, category, subcategory, note, date, foreign, accountId, vehicleId, installmentIndex }) => {
           const event: MoneyEvent = {
             id: makeId(),
             type: 'expense',
@@ -219,6 +221,8 @@ export const useStore = create<MoneyLabState>()(
             note,
             foreign,
             accountId,
+            vehicleId,
+            installmentIndex,
           };
           set((s) => ({ events: [...s.events, applyRules(event, foldRules(s.events))] }));
         },

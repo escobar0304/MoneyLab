@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { seed, category, income, dayIn } from './helpers';
+import { seed, category, income, dayIn, openEntries } from './helpers';
 
 test.describe('taxes', () => {
   test('always shows the IRS filing deadline, even with no vehicles', async ({ page }) => {
@@ -64,5 +64,35 @@ test.describe('taxes', () => {
     await page.getByRole('button', { name: 'Remove 00-AA-00' }).click();
     await expect(page.getByText('IUC · 00-AA-00')).toHaveCount(0);
     await expect(page.getByText('No vehicles yet')).toBeVisible();
+  });
+
+  test('tagging a logged expense to the vehicle settles this cycle’s due date', async ({ page }) => {
+    await seed(page, [category('Car'), income(2000, 'Salary', dayIn(0))]);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Taxes', exact: true }).click();
+
+    await page.getByRole('button', { name: '+ Add vehicle' }).click();
+    await page.getByLabel('Plate').fill('00-AA-00');
+    await page.getByLabel('Registration date').fill('2018-09-12');
+    await page.getByLabel('Annual IUC').fill('180');
+    await page.getByRole('button', { name: 'Add vehicle' }).click();
+    await expect(page.getByText('IUC · 00-AA-00')).toHaveCount(1);
+
+    await openEntries(page, 'log');
+    await page.locator('#expense-amount').fill('180');
+    await page.getByRole('radio', { name: 'Car' }).click();
+    await page.getByLabel('Vehicle (IUC payment, optional)').selectOption({ label: '00-AA-00' });
+    await page.getByRole('button', { name: 'Log expense' }).click();
+
+    await page.getByRole('button', { name: 'Taxes', exact: true }).click();
+    await expect(page.getByText('IUC · 00-AA-00')).toHaveCount(0);
+    await expect(page.getByText('Settled for this cycle.')).toBeVisible();
+  });
+
+  test('the vehicle picker on Entries only appears once a vehicle exists', async ({ page }) => {
+    await seed(page, [category('Car'), income(2000, 'Salary', dayIn(0))]);
+    await page.goto('/');
+    await openEntries(page, 'log');
+    await expect(page.getByLabel('Vehicle (IUC payment, optional)')).toHaveCount(0);
   });
 });
