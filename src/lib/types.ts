@@ -229,6 +229,12 @@ export interface ExpenseEvent extends LedgerEventBase {
    * installments this covers; absent means the default single payment. */
   vehicleId?: ID;
   installmentIndex?: number;
+  /** Set when this expense is one payment of a purchase split across several
+   * months, so the group can be told apart from a one-off expense and shown as
+   * "3 of 12" instead of just another entry that happens to repeat. */
+  splitId?: ID;
+  splitIndex?: number;
+  splitCount?: number;
 }
 
 export interface RecurringUpsertEvent extends LedgerEventBase {

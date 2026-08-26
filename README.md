@@ -26,6 +26,12 @@ while to keep Log honest.
 - **Multi-currency entries**: log in another currency and it's converted to the
   base currency (EUR) via ECB reference rates, with the original amount and rate
   kept alongside for the audit trail.
+- **Split a purchase into installments** — post one expense over N months
+  instead of a single lump sum, with an optional annual interest rate. Reuses
+  the same amortization math as the Debt tab, so an interest-free split
+  divides evenly (last month absorbs the rounding) and a financed one is the
+  real fixed monthly payment a lender would quote. Each posted entry carries
+  its place in the group ("3 of 12") in the list and detail view.
 
 *Manage — the setup that keeps Log honest:*
 - **Bank statement import** (CSV/OFX) previewed before anything is written,

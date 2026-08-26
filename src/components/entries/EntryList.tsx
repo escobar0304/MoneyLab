@@ -40,6 +40,7 @@ export function EntryRow({
   const isIncome = entry.type === 'income';
   const detail = [
     formatDate(entry.timestamp),
+    !isIncome && entry.splitCount ? `${entry.splitIndex} of ${entry.splitCount}` : null,
     !isIncome ? entry.subcategory : null,
     !isIncome ? entry.note : null,
     accountLabel,

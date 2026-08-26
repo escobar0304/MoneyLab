@@ -187,6 +187,12 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
               </Field>
             )}
 
+            {!isIncome && entry.splitCount && (
+              <Field label="Instalment">
+                <span className="text-ink-muted">Payment {entry.splitIndex} of {entry.splitCount}</span>
+              </Field>
+            )}
+
             <Field label="Recorded">
               <span className="text-ink-muted">{formatDateTime(entry.timestamp)}</span>
             </Field>
