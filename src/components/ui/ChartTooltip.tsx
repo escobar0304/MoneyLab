@@ -1,4 +1,4 @@
-import { CHART_INK } from '../../lib/chartTheme';
+import { CHART_INK } from '../../lib/insight/chartTheme';
 
 interface TooltipEntry {
   name?: string;

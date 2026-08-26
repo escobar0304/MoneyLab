@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useStore, useCleared, useAccounts } from '../../lib/store';
-import { monthsWithActivity, monthKey, totalIncomeForMonth, totalOutflowForMonth } from '../../lib/derive';
-import { searchEntries } from '../../lib/search';
-import { reconcile } from '../../lib/entities';
-import { accountIdOf, MAIN_ACCOUNT_ID } from '../../lib/accounts';
+import { useStore, useCleared, useAccounts } from '../../lib/core/store';
+import { monthsWithActivity, monthKey, totalIncomeForMonth, totalOutflowForMonth } from '../../lib/core/derive';
+import { searchEntries } from '../../lib/core/search';
+import { reconcile } from '../../lib/core/entities';
+import { accountIdOf, MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
 import { Card, EmptyState, SectionTitle, Select, Input, Button, Modal } from '../ui/primitives';
 import { CategoryPicker } from './CategoryPicker';
-import { formatMoney, monthLabel } from '../../lib/format';
-import { categoryColorMap } from '../../lib/chartTheme';
-import { listReceiptIds } from '../../lib/receipts';
-import { isMoneyEvent } from '../../lib/types';
+import { formatMoney, monthLabel } from '../../lib/core/format';
+import { categoryColorMap } from '../../lib/insight/chartTheme';
+import { listReceiptIds } from '../../lib/money/receipts';
+import { isMoneyEvent } from '../../lib/core/types';
 import { EntryRow } from './EntryList';
 import { EntryDetail } from './EntryDetail';
 

@@ -1,11 +1,11 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { AppShell } from './components/layout/AppShell';
 import type { Tab } from './components/layout/Sidebar';
-import { useStore } from './lib/store';
-import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from './lib/animation';
-import { useShortcuts } from './lib/shortcuts';
-import { useLiveQuoteScheduler } from './lib/useLiveQuotes';
-import { onNavigate } from './lib/navigate';
+import { useStore } from './lib/core/store';
+import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from './lib/core/animation';
+import { useShortcuts } from './lib/core/shortcuts';
+import { useLiveQuoteScheduler } from './lib/investments/useLiveQuotes';
+import { onNavigate } from './lib/core/navigate';
 import { UndoToast } from './components/ui/UndoToast';
 import { ShortcutsHelp } from './components/ui/ShortcutsHelp';
 import { OverviewView } from './components/overview/OverviewView';

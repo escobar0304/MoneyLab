@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
-import { useStore, useAccounts, useVehicles } from '../../lib/store';
-import { MAIN_ACCOUNT_ID } from '../../lib/accounts';
+import { useStore, useAccounts, useVehicles } from '../../lib/core/store';
+import { MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
 import { Button, Card, Input, Label, SectionTitle, Select } from '../ui/primitives';
-import { todayInputValue, formatMoney, formatDate } from '../../lib/format';
+import { todayInputValue, formatMoney, formatDate } from '../../lib/core/format';
 import { CategoryPicker } from './CategoryPicker';
 import { AmountField, type AmountValue } from './AmountField';
-import { splitPayment } from '../../lib/splitPayment';
-import { makeId } from '../../lib/id';
-import type { LedgerEvent } from '../../lib/types';
+import { splitPayment } from '../../lib/money/splitPayment';
+import { makeId } from '../../lib/core/id';
+import type { LedgerEvent } from '../../lib/core/types';
 
 /** Subcategories stay free text — they're detail, not a dimension the charts
  * group by, so a controlled vocabulary would be friction for no benefit. The

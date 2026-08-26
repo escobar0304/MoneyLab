@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { useStore, useAccounts, useRules, useCategories } from '../../lib/store';
-import { MAIN_ACCOUNT_ID } from '../../lib/accounts';
+import { useStore, useAccounts, useRules, useCategories } from '../../lib/core/store';
+import { MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
 import {
   parseDelimited,
   parseOfx,
@@ -11,8 +11,8 @@ import {
   type ColumnMap,
   type ParsedTable,
   type StatementRow,
-} from '../../lib/statements';
-import { formatMoney, formatDate } from '../../lib/format';
+} from '../../lib/money/statements';
+import { formatMoney, formatDate } from '../../lib/core/format';
 import { Button, Card, Label, Modal, SectionTitle, Select } from '../ui/primitives';
 
 const UNCATEGORISED = 'Uncategorised';

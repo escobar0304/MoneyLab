@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useStore } from '../../lib/store';
-import { detectSubscriptions, subscriptionTotal, type DetectedSubscription } from '../../lib/subscriptions';
-import { formatMoney, formatDate } from '../../lib/format';
+import { useStore } from '../../lib/core/store';
+import { detectSubscriptions, subscriptionTotal, type DetectedSubscription } from '../../lib/money/subscriptions';
+import { formatMoney, formatDate } from '../../lib/core/format';
 import { Button, Card, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 
 function Row({ sub }: { sub: DetectedSubscription }) {

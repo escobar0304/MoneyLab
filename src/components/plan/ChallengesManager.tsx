@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useStore, useChallenges, useCategories } from '../../lib/store';
-import { challengeProgress, type ChallengeProgress } from '../../lib/challenges';
-import { formatMoney, formatDate, todayInputValue } from '../../lib/format';
+import { useStore, useChallenges, useCategories } from '../../lib/core/store';
+import { challengeProgress, type ChallengeProgress } from '../../lib/planning/challenges';
+import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 
 interface Draft {

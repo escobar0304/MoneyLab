@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useStore, useRecurring } from '../../lib/store';
+import { useStore, useRecurring } from '../../lib/core/store';
 import { Button, Card, Input, Label, SectionTitle } from '../ui/primitives';
-import { formatMoney, formatDate, todayInputValue } from '../../lib/format';
-import { nextRenewalDate } from '../../lib/recurrence';
-import type { Recurring, RecurringKind } from '../../lib/types';
+import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format';
+import { nextRenewalDate } from '../../lib/core/recurrence';
+import type { Recurring, RecurringKind } from '../../lib/core/types';
 import { CategoryPicker } from './CategoryPicker';
 
 interface Draft {

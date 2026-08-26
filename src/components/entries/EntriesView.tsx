@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Reveal } from '../ui/Reveal';
 import { Segmented } from '../ui/Segmented';
-import { onNavigate, consumePendingSection } from '../../lib/navigate';
+import { onNavigate, consumePendingSection } from '../../lib/core/navigate';
 import { RecurringManager } from './RecurringManager';
 import { ExpenseEntryForm } from './ExpenseEntryForm';
 import { AccountsManager } from './AccountsManager';

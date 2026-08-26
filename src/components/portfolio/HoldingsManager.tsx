@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useStore, usePortfolio } from '../../lib/store';
-import { foldTrades, foldDividends, type Position } from '../../lib/investments';
-import { useLivePrices } from '../../lib/useLiveQuotes';
-import { formatMoney, formatDate, formatTime, todayInputValue } from '../../lib/format';
-import { PRIMARY, COMPLEMENT } from '../../lib/chartTheme';
+import { useStore, usePortfolio } from '../../lib/core/store';
+import { foldTrades, foldDividends, type Position } from '../../lib/investments/investments';
+import { useLivePrices } from '../../lib/investments/useLiveQuotes';
+import { formatMoney, formatDate, formatTime, todayInputValue } from '../../lib/core/format';
+import { PRIMARY, COMPLEMENT } from '../../lib/insight/chartTheme';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 import { SymbolPicker } from '../ui/SymbolPicker';
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useStore, useCategories } from '../../lib/store';
-import { categoryColorMap } from '../../lib/chartTheme';
+import { useStore, useCategories } from '../../lib/core/store';
+import { categoryColorMap } from '../../lib/insight/chartTheme';
 import { Button, Input, Label } from '../ui/primitives';
 
 /**

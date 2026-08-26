@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CHART_INK } from '../../lib/chartTheme';
+import { CHART_INK } from '../../lib/insight/chartTheme';
 
 const WIDGET_SRC = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
 

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useStore } from '../../lib/store';
-import { chooseFolder, forgetFolder, runBackup, ensureWritable, savedFolder, LATEST_FILE } from '../../lib/backup';
-import { useAutoBackup } from '../../lib/useAutoBackup';
-import { formatDateTime } from '../../lib/format';
+import { useStore } from '../../lib/core/store';
+import { chooseFolder, forgetFolder, runBackup, ensureWritable, savedFolder, LATEST_FILE } from '../../lib/settings/backup';
+import { useAutoBackup } from '../../lib/settings/useAutoBackup';
+import { formatDateTime } from '../../lib/core/format';
 import { Button, Card, SectionTitle, Badge } from '../ui/primitives';
 
 /**

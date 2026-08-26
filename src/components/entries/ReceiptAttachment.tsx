@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { saveReceipt, getReceipt, deleteReceipt, formatBytes } from '../../lib/receipts';
+import { saveReceipt, getReceipt, deleteReceipt, formatBytes } from '../../lib/money/receipts';
 import { Button, Modal } from '../ui/primitives';
 
 /**

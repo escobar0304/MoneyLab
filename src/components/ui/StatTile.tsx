@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { formatMoney } from '../../lib/format';
+import { formatMoney } from '../../lib/core/format';
 import { Card } from './primitives';
 import { AnimatedNumber } from './AnimatedNumber';
 

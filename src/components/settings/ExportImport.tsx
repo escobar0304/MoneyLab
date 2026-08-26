@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useStore } from '../../lib/store';
-import type { LedgerEvent } from '../../lib/types';
-import { mergeEvents } from '../../lib/migrations';
-import { formatDateTime } from '../../lib/format';
+import { useStore } from '../../lib/core/store';
+import type { LedgerEvent } from '../../lib/core/types';
+import { mergeEvents } from '../../lib/core/migrations';
+import { formatDateTime } from '../../lib/core/format';
 import { Button, Card, Input, Label, Modal, SectionTitle } from '../ui/primitives';
-import { receiptsFootprint, formatBytes } from '../../lib/receipts';
-import { decryptJSON, encryptJSON, encryptionAvailable, isEncryptedEnvelope, passphraseAdvice, WrongPassphraseError } from '../../lib/crypto';
+import { receiptsFootprint, formatBytes } from '../../lib/money/receipts';
+import { decryptJSON, encryptJSON, encryptionAvailable, isEncryptedEnvelope, passphraseAdvice, WrongPassphraseError } from '../../lib/investments/crypto';
 
 /** Nag threshold. Long enough not to be noise, short enough that a browser
  * clearing site data can't cost more than a month of entries. */

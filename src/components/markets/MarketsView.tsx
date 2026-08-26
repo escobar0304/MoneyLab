@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useWatchlist } from '../../lib/watchlist';
+import { useWatchlist } from '../../lib/investments/watchlist';
 import { Button, Card, Input, Label, SectionTitle, EmptyState } from '../ui/primitives';
 import { Reveal } from '../ui/Reveal';
 import { Segmented } from '../ui/Segmented';

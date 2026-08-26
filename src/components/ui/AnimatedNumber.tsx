@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { gsap, useGSAP, EASE, prefersReducedMotion } from '../../lib/animation';
+import { gsap, useGSAP, EASE, prefersReducedMotion } from '../../lib/core/animation';
 
 /**
  * Counts from the previous value to the new one instead of snapping.

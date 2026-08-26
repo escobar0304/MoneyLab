@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from 'react';
-import { gsap, useGSAP, EASE, DUR } from '../../lib/animation';
+import { gsap, useGSAP, EASE, DUR } from '../../lib/core/animation';
 
 /**
  * Choreographed entrance for a group of tiles. `grid: 'auto'` lets GSAP infer

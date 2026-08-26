@@ -1,7 +1,7 @@
-import { formatMoney, formatDate, monthLabel } from '../../lib/format';
-import { formatForeign } from '../../lib/currency';
-import { monthKey } from '../../lib/derive';
-import type { MoneyEvent } from '../../lib/types';
+import { formatMoney, formatDate, monthLabel } from '../../lib/core/format';
+import { formatForeign } from '../../lib/core/currency';
+import { monthKey } from '../../lib/core/derive';
+import type { MoneyEvent } from '../../lib/core/types';
 
 /**
  * One entry, as a row.

@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { useStore, useVehicles } from '../../lib/store';
-import { fiscalCalendar, vehicleDeadlines } from '../../lib/fiscalCalendar';
-import { daysUntil } from '../../lib/recurrence';
-import { formatMoney, formatDate, todayInputValue } from '../../lib/format';
+import { useStore, useVehicles } from '../../lib/core/store';
+import { fiscalCalendar, vehicleDeadlines } from '../../lib/tax/fiscalCalendar';
+import { daysUntil } from '../../lib/core/recurrence';
+import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format';
 import { Reveal } from '../ui/Reveal';
 import { Button, Card, Input, Label, SectionTitle, EmptyState } from '../ui/primitives';
-import type { IucInstallment, Vehicle } from '../../lib/types';
+import type { IucInstallment, Vehicle } from '../../lib/core/types';
 
 function when(days: number): string {
   if (days === 0) return 'today';

@@ -262,25 +262,40 @@ test.describe('IRS deductions', () => {
     await page.getByRole('button', { name: 'IRS', exact: true }).click();
     await expect(page.getByText(/not an official simulation/)).toBeVisible();
   });
+});
 
-  test('exports a CSV with the line items behind a heading, ready for the accountant', async ({ page }) => {
-    await seed(page, [category('Saúde'), expense(1000, 'Saúde', dayIn(0))]);
+test.describe('worth it? check-in', () => {
+  function daysAgo(days: number): string {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - days);
+    return d.toISOString();
+  }
+
+  test('asks about an old, big enough purchase and records the verdict', async ({ page }) => {
+    await seed(page, [category('Shopping'), expense(200, 'Shopping', daysAgo(10), 'New jacket')]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'IRS', exact: true }).click();
-    await page.getByLabel('Deduction heading for Saúde').selectOption('saude');
 
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      page.getByRole('button', { name: 'Export for accountant' }).click(),
-    ]);
-    expect(download.suggestedFilename()).toMatch(/^moneylab-irs-\d{4}\.csv$/);
+    await expect(page.getByText('Worth it?')).toBeVisible();
+    const row = page.locator('li', { hasText: 'New jacket' });
+    await expect(row).toBeVisible();
+    await expect(row.getByText(money(200))).toBeVisible();
+
+    await row.getByRole('button', { name: 'Yes' }).click();
+    await expect(page.getByText('Worth it?')).toHaveCount(0);
+
+    const events = await ledger(page);
+    expect(events.some((e) => e.type === 'worth_it' && e.worthIt === true)).toBe(true);
   });
 
-  test('disables the export while nothing has been filed under a heading', async ({ page }) => {
-    await seed(page, [category('Saúde'), expense(1000, 'Saúde', dayIn(0))]);
+  test('stays off the page for a purchase under the threshold', async ({ page }) => {
+    await seed(page, [category('Coffee'), expense(4, 'Coffee', daysAgo(10))]);
     await page.goto('/');
-    await page.getByRole('button', { name: 'IRS', exact: true }).click();
+    await expect(page.getByText('Worth it?')).toHaveCount(0);
+  });
 
-    await expect(page.getByRole('button', { name: 'Export for accountant' })).toBeDisabled();
+  test('stays off the page for a purchase logged less than a week ago', async ({ page }) => {
+    await seed(page, [category('Shopping'), expense(200, 'Shopping', daysAgo(2))]);
+    await page.goto('/');
+    await expect(page.getByText('Worth it?')).toHaveCount(0);
   });
 });

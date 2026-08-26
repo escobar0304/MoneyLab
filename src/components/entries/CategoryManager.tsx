@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useStore, useCategories, useBudgets } from '../../lib/store';
-import { categoryColorMap } from '../../lib/chartTheme';
-import { formatMoney } from '../../lib/format';
+import { useStore, useCategories, useBudgets } from '../../lib/core/store';
+import { categoryColorMap } from '../../lib/insight/chartTheme';
+import { formatMoney } from '../../lib/core/format';
 import { Button, Card, Input, SectionTitle, Modal, EmptyState } from '../ui/primitives';
 
 /** Case- and accent-folded, so "Alimentação" and "alimentacao" collide. */

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { CHART_INK } from '../../lib/chartTheme';
-import { formatMoneyCompact } from '../../lib/format';
+import { CHART_INK } from '../../lib/insight/chartTheme';
+import { formatMoneyCompact } from '../../lib/core/format';
 
 /**
  * One definition of chart furniture for the whole app.

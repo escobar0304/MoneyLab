@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { useStore, useAccounts, useAccountBalances, useTransfers } from '../../lib/store';
-import { MAIN_ACCOUNT_ID, SUGGESTED_ACCOUNTS } from '../../lib/accounts';
-import { stableColorMap } from '../../lib/chartTheme';
-import { formatMoney, formatDate, todayInputValue } from '../../lib/format';
+import { useStore, useAccounts, useAccountBalances, useTransfers } from '../../lib/core/store';
+import { MAIN_ACCOUNT_ID, SUGGESTED_ACCOUNTS } from '../../lib/money/accounts';
+import { stableColorMap } from '../../lib/insight/chartTheme';
+import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format';
 import { Button, Card, Input, Label, Modal, SectionTitle, Select, SubsectionLabel } from '../ui/primitives';
-import type { Account, AccountKind } from '../../lib/types';
+import type { Account, AccountKind } from '../../lib/core/types';
 
 const KINDS: { id: AccountKind; label: string }[] = [
   { id: 'savings', label: 'Savings' },

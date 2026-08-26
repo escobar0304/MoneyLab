@@ -1,32 +1,33 @@
 import { useMemo, useRef } from 'react';
-import { useVisibleEvents, useStore } from '../../lib/store';
-import { foldTrades, foldDividends, investmentSummary, positionsFrom } from '../../lib/investments';
-import { foldHoldings } from '../../lib/entities';
-import { foldAccounts } from '../../lib/accounts';
-import { foldDebts, totalOwed } from '../../lib/debt';
-import { totalBalance, monthKey, previousMonthKey, monthsWithActivity, endOfMonth } from '../../lib/derive';
+import { useVisibleEvents, useStore } from '../../lib/core/store';
+import { foldTrades, foldDividends, investmentSummary, positionsFrom } from '../../lib/investments/investments';
+import { foldHoldings } from '../../lib/core/entities';
+import { foldAccounts } from '../../lib/money/accounts';
+import { foldDebts, totalOwed } from '../../lib/planning/debt';
+import { totalBalance, monthKey, previousMonthKey, monthsWithActivity, endOfMonth } from '../../lib/core/derive';
 import { Card, EmptyState } from '../ui/primitives';
 import { ChartCard, DrillHint } from '../ui/ChartCard';
-import { netWorthTable, incomeVsExpensesTable, spendOverTimeTable, savingsRateTable } from '../../lib/chartTables';
-import { formatMoney } from '../../lib/format';
+import { netWorthTable, incomeVsExpensesTable, spendOverTimeTable, savingsRateTable } from '../../lib/insight/chartTables';
+import { formatMoney } from '../../lib/core/format';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { Delta } from '../ui/StatTile';
 import { Reveal } from '../ui/Reveal';
-import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
-import { TimeTravel, TimeTravelBanner } from './TimeTravel';
-import { RunwayChart, RunwaySummary } from './RunwayChart';
-import { PortfolioCard } from './PortfolioCard';
-import { AccountsCard } from './AccountsCard';
-import { NetWorthChart } from './NetWorthChart';
-import { IncomeVsExpensesChart } from './IncomeVsExpensesChart';
-import { SpendByCategoryChart } from './SpendByCategoryChart';
-import { SavingsRateChart } from './SavingsRateChart';
-import { MonthlySnapshot } from './MonthlySnapshot';
-import { SubscriptionAlerts } from './SubscriptionAlerts';
-import { UpcomingPayments } from './UpcomingPayments';
-import { CategoryChanges } from './CategoryChanges';
-import { PeriodReview } from './PeriodReview';
-import { WhatIfLab } from './WhatIfLab';
+import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/core/animation';
+import { TimeTravel, TimeTravelBanner } from './tools/TimeTravel';
+import { RunwayChart, RunwaySummary } from './charts/RunwayChart';
+import { PortfolioCard } from './cards/PortfolioCard';
+import { AccountsCard } from './cards/AccountsCard';
+import { NetWorthChart } from './charts/NetWorthChart';
+import { IncomeVsExpensesChart } from './charts/IncomeVsExpensesChart';
+import { SpendByCategoryChart } from './charts/SpendByCategoryChart';
+import { SavingsRateChart } from './charts/SavingsRateChart';
+import { MonthlySnapshot } from './snapshot/MonthlySnapshot';
+import { SubscriptionAlerts } from './alerts/SubscriptionAlerts';
+import { WorthItCheckIn } from './alerts/WorthItCheckIn';
+import { UpcomingPayments } from './alerts/UpcomingPayments';
+import { CategoryChanges } from './alerts/CategoryChanges';
+import { PeriodReview } from './tools/PeriodReview';
+import { WhatIfLab } from './tools/WhatIfLab';
 
 export function OverviewView() {
   // Everything on this page reads the ledger through this one list, so a date
@@ -152,6 +153,7 @@ export function OverviewView() {
       <SubscriptionAlerts />
       <UpcomingPayments />
       <CategoryChanges />
+      <WorthItCheckIn />
 
       {/* Where the money sits, and what it is invested in. Secondary weight:
           they qualify the headline figure rather than restating it. */}

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useStore, useBudgets, useCategories } from '../../lib/store';
-import { categoryColorMap } from '../../lib/chartTheme';
-import { formatMoney } from '../../lib/format';
+import { useStore, useBudgets, useCategories } from '../../lib/core/store';
+import { categoryColorMap } from '../../lib/insight/chartTheme';
+import { formatMoney } from '../../lib/core/format';
 import { Button, Card, Input, SectionTitle } from '../ui/primitives';
 
 /**

@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import { Card, type CardLevel } from './primitives';
-import type { TableData } from '../../lib/chartTables';
+import type { TableData } from '../../lib/insight/chartTables';
 
 /**
  * A chart panel with an accessible table twin behind a toggle.

@@ -36,6 +36,20 @@ test.describe('period review', () => {
 
     await expect(page.getByRole('dialog').getByRole('button', { name: 'Next period' })).toBeDisabled();
   });
+
+  test('replay walks the balance forward to the same total the recap shows, and back', async ({ page }) => {
+    await seed(page, base);
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Year & month in review' }).click();
+
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: '▶ Replay' }).click();
+    await expect(dialog.getByRole('button', { name: '← Recap' })).toBeVisible();
+    await expect(dialog.getByText(money(1500)).first()).toBeVisible({ timeout: 10000 });
+
+    await dialog.getByRole('button', { name: '← Recap' }).click();
+    await expect(dialog.getByText('Saved')).toBeVisible();
+  });
 });
 
 test.describe('coming up', () => {

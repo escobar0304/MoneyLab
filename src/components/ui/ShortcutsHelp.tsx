@@ -1,4 +1,4 @@
-import { SHORTCUTS } from '../../lib/shortcuts';
+import { SHORTCUTS } from '../../lib/core/shortcuts';
 import { Modal } from './primitives';
 
 /** Reachable with `?`, and the only place the shortcut list is presented — it

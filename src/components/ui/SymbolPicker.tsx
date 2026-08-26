@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { searchCatalogue, searchRemote, type SymbolHit } from '../../lib/symbolSearch';
+import { searchCatalogue, searchRemote, type SymbolHit } from '../../lib/investments/symbolSearch';
 import { Input } from './primitives';
 
 /** Long enough that typing "VWCE" is one request rather than four. */

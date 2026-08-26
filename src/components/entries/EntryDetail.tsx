@@ -1,13 +1,13 @@
 import { useState, type ReactNode } from 'react';
-import { useStore, useCleared, useAccounts } from '../../lib/store';
-import { accountIdOf } from '../../lib/accounts';
-import { formatMoney, formatDate, formatDateTime } from '../../lib/format';
-import { formatForeign } from '../../lib/currency';
-import { categoryColorMap } from '../../lib/chartTheme';
+import { useStore, useCleared, useWorthIt, useAccounts } from '../../lib/core/store';
+import { accountIdOf } from '../../lib/money/accounts';
+import { formatMoney, formatDate, formatDateTime } from '../../lib/core/format';
+import { formatForeign } from '../../lib/core/currency';
+import { categoryColorMap } from '../../lib/insight/chartTheme';
 import { Button, Input, Label, Modal, Select } from '../ui/primitives';
 import { CategoryPicker } from './CategoryPicker';
 import { ReceiptAttachment } from './ReceiptAttachment';
-import type { MoneyEvent } from '../../lib/types';
+import type { MoneyEvent } from '../../lib/core/types';
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -32,6 +32,7 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
   const removeEntry = useStore((s) => s.removeEntry);
   const setCleared = useStore((s) => s.setCleared);
   const isCleared = useCleared().has(entry.id);
+  const worthItVerdict = useWorthIt().get(entry.id);
   const accounts = useAccounts();
   const colors = categoryColorMap(events);
 
@@ -190,6 +191,12 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
             {!isIncome && entry.splitCount && (
               <Field label="Instalment">
                 <span className="text-ink-muted">Payment {entry.splitIndex} of {entry.splitCount}</span>
+              </Field>
+            )}
+
+            {!isIncome && worthItVerdict !== undefined && (
+              <Field label="Worth it?">
+                <span className={worthItVerdict ? 'text-positive' : 'text-ink-muted'}>{worthItVerdict ? 'Yes' : 'No'}</span>
               </Field>
             )}
 

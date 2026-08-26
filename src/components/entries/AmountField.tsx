@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { BASE_CURRENCY, COMMON_CURRENCIES, fetchRate, toBase, formatForeign } from '../../lib/currency';
-import { formatMoney } from '../../lib/format';
+import { BASE_CURRENCY, COMMON_CURRENCIES, fetchRate, toBase, formatForeign } from '../../lib/core/currency';
+import { formatMoney } from '../../lib/core/format';
 import { Input, Label, Select } from '../ui/primitives';
-import type { ForeignAmount } from '../../lib/types';
+import type { ForeignAmount } from '../../lib/core/types';
 
 export interface AmountValue {
   /** Always in the base currency — this is what gets stored on the event. */

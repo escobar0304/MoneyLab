@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useStore, useGoals } from '../../lib/store';
-import { goalProgress, totalReserved, type GoalProgress } from '../../lib/goals';
-import { totalBalance } from '../../lib/derive';
-import { formatMoney, monthLabel, todayInputValue } from '../../lib/format';
+import { useStore, useGoals } from '../../lib/core/store';
+import { goalProgress, totalReserved, type GoalProgress } from '../../lib/planning/goals';
+import { totalBalance } from '../../lib/core/derive';
+import { formatMoney, monthLabel, todayInputValue } from '../../lib/core/format';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 
 interface Draft {

@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useStore, useCleared, useAccounts, useVisibleEvents } from '../../lib/store';
-import { selectEntries, drillTotals } from '../../lib/drill';
-import { accountIdOf, MAIN_ACCOUNT_ID } from '../../lib/accounts';
-import { categoryColorMap } from '../../lib/chartTheme';
-import { formatMoney } from '../../lib/format';
+import { useStore, useCleared, useAccounts, useVisibleEvents } from '../../lib/core/store';
+import { selectEntries, drillTotals } from '../../lib/insight/drill';
+import { accountIdOf, MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
+import { categoryColorMap } from '../../lib/insight/chartTheme';
+import { formatMoney } from '../../lib/core/format';
 import { EmptyState, Modal } from '../ui/primitives';
 import { EntryRow } from './EntryList';
 import { EntryDetail } from './EntryDetail';

@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { amortize } from '../../lib/debt';
-import type { Debt } from '../../lib/types';
-import { monthKey } from '../../lib/derive';
-import { formatMoney, monthLabel } from '../../lib/format';
-import { PRIMARY, COMPLEMENT, CHART_INK } from '../../lib/chartTheme';
+import { amortize } from '../../lib/planning/debt';
+import type { Debt } from '../../lib/core/types';
+import { monthKey } from '../../lib/core/derive';
+import { formatMoney, monthLabel } from '../../lib/core/format';
+import { PRIMARY, COMPLEMENT, CHART_INK } from '../../lib/insight/chartTheme';
 import { ChartTooltip } from '../ui/ChartTooltip';
 import { ChartLegend, Plot, crosshair, gridProps, plotMargin, xAxisProps, yAxisProps } from '../ui/chartChrome';
 import { EmptyState } from '../ui/primitives';

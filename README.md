@@ -65,11 +65,10 @@ in History, which stays on screen through both Log and Manage.
   does.
 - **IRS deductions** — map your categories to Portuguese IRS deduction
   headings and track spend against each heading's annual ceiling, with an
-  editable ceiling since the published rates move every state budget.
-  **Export for accountant** turns a year into one CSV: every deductible
-  entry (date, heading, category, note, amount) followed by the per-heading
-  totals — so handing it over is one file, not a screenshot and a promise to
-  double-check later.
+  editable ceiling since the published rates move every state budget. Purely
+  informative: your accountant already has every invoice through e-fatura, so
+  this is for knowing where a ceiling stands *before* the return is filed, not
+  for handing anything over.
 
 **Taxes** — dates that happen on a fixed day whether you look or not, kept
 apart from Plan and IRS for that reason
@@ -151,6 +150,14 @@ something and watching it change on different rhythms
   it went, net worth change, the biggest single surprise, and — for a year —
   the best and toughest months. A year costs nothing extra to compute; it's
   the same per-month figures summed, which is also why Time Travel works.
+  **Replay** turns the same numbers into a watched-not-read animation: the
+  balance ticks forward one day (or one month, for a year) at a time instead
+  of landing on the total straight away.
+- **Worth it?** — a week after logging a big enough expense (a threshold you
+  set, in Appearance), the Overview asks whether it was worth it. Never for a
+  recurring bill or a later instalment of a split purchase — those aren't a
+  decision to reflect on. The verdicts roll up into Year & month in review
+  ("6 of 8 big purchases were"), the one number here that isn't a metric.
 - **What if?** — try a raise, a new bill, or cancelling a subscription against
   the real ledger without logging anything: add a hypothetical change and see
   its effect on next month and on the projected balance for the next 180
@@ -194,7 +201,7 @@ three distinct lightness steps (`neutral-950` / `neutral-900` / `neutral-800`) s
 sections read as physically separate panels, and body text uses a soft off-white
 (`neutral-100`) rather than pure white. A single `accent` blue (defined once in
 `src/index.css` via Tailwind v4's `@theme`, reused as the chart palette's primary
-hue in `src/lib/chartTheme.ts`) is the one color that means "interactive." The
+hue in `src/lib/insight/chartTheme.ts`) is the one color that means "interactive." The
 chart palette is the `dataviz` skill's validated dark-mode set.
 
 ## Getting started
@@ -214,7 +221,7 @@ npm run build    # type-check + production build
 Nothing in this app is stored as mutable state. Every action — logging an
 expense, filing a category under an IRS heading, buying a holding, moving money
 between accounts — appends one `LedgerEvent` to a single `events: LedgerEvent[]`
-array (`src/lib/types.ts`). Every figure and chart is **computed from that array
+array (`src/lib/core/types.ts`). Every figure and chart is **computed from that array
 on the fly**, never written down directly:
 
 - Nothing can silently drift out of sync with its history — recompute from
@@ -225,40 +232,49 @@ on the fly**, never written down directly:
   second history to keep, and no replay needed.
 
 `events` is persisted to `localStorage` via Zustand's `persist` middleware, and
-brought up to the current shape on load by `src/lib/migrations.ts` — old event
+brought up to the current shape on load by `src/lib/core/migrations.ts` — old event
 shapes (a v0 `salary_upsert`, a v1 `recurring_income_upsert`) migrate forward
 losslessly rather than being read-time-tolerated all over the codebase.
 
 ### Project structure
 
+`src/lib/` and `src/components/overview/` are grouped into topical
+subfolders rather than left flat — both had grown past the point where a
+flat listing was actually faster to scan than a folder tree.
+
 ```
 src/
   lib/
-    types.ts, store.ts        Domain types + the Zustand store (events, actions, persistence)
-    entities.ts, accounts.ts   Fold functions: current categories/budgets/accounts from the log
-    derive.ts, analysis.ts     Pure functions: balance, totals, forecasts, deltas
-    runway.ts, review.ts        60-day cash projection; month/year recap (sums
-                                  the same per-month figures runway.ts's peers derive)
-    whatif.ts                    Hypothetical events on a throwaway copy of the ledger,
-                                  fed straight back into runway.ts's own projection
-    investments.ts, quotes.ts  Portfolio pricing; useLiveQuotes.ts polls and caches live prices
-    goals.ts, debt.ts, irs.ts  Domain math for each planning feature
-    challenges.ts                 No-spend challenges: day-by-day clean/broken tracking
-    irsExport.ts                 IRS line items + per-heading summary as one CSV, for the accountant
-    capitalGains.ts               FIFO lot-matching for realised gains, year by year
-    vehicles.ts, fiscalCalendar.ts  Vehicle fold + IUC/IRS deadline dates, merged and sorted
-    rules.ts, statements.ts    Auto-categorization + bank statement CSV parsing
-    recurrence.ts               Monthly-cycle date math + elapsed-cycle simulation
-    migrations.ts                Brings old ledger shapes up to the current one
-    backup.ts, crypto.ts,       Silent folder auto-backup + AES-GCM encrypted exports
-    receipts.ts                  Receipt photo storage (IndexedDB)
-    subscriptions.ts (repeating-charge detection), navigate.ts (a lazy tab
-                       asking another lazy tab to switch to it — see below)
-    chartTheme.ts, chartTables.ts, format.ts, currency.ts, drill.ts, search.ts, …
+    core/         types.ts, store.ts (events, actions, persistence), entities.ts
+                    (fold functions: current categories/budgets/accounts from
+                    the log), derive.ts (balance, totals), migrations.ts,
+                    recurrence.ts, search.ts, shortcuts.ts, navigate.ts (a lazy
+                    tab asking another lazy tab to switch to it — see below),
+                    format.ts, currency.ts, id.ts, animation.ts
+    money/        accounts.ts, rules.ts (auto-categorization), statements.ts
+                    (bank CSV parsing), subscriptions.ts (repeating-charge
+                    detection), splitPayment.ts (instalments with optional
+                    interest), receipts.ts
+    planning/     goals.ts, debt.ts, challenges.ts (no-spend, day-by-day
+                    clean/broken tracking), whatif.ts (hypothetical events on
+                    a throwaway ledger copy, fed into runway.ts), runway.ts
+                    (60-day cash projection)
+    investments/  investments.ts, capitalGains.ts (FIFO lot-matching), crypto.ts,
+                    quotes.ts + useLiveQuotes.ts (polls and caches live prices),
+                    watchlist.ts, symbolSearch.ts
+    tax/          irs.ts, fiscalCalendar.ts (IUC/IRS deadline dates, merged
+                    and sorted), vehicles.ts
+    insight/      analysis.ts, review.ts + replay.ts (month/year recap, and
+                    the same figures animated one point at a time), worthIt.ts,
+                    drill.ts, chartTables.ts, chartTheme.ts
+    settings/     privacy.ts, density.ts, backup.ts, useAutoBackup.ts
   components/
     layout/     AppShell + Sidebar (tab navigation, icons)
     ui/          Shared primitives (Card, Button, Modal, ChartCard, Segmented, StatTile, …)
-    overview/    The dashboard: hero net worth, trend charts, the monthly snapshot
+    overview/    The dashboard, itself grouped: charts/ (trend charts),
+                  snapshot/ (this month's numbers), alerts/ (cards that render
+                  nothing when there's nothing to flag), cards/ (accounts,
+                  portfolio), tools/ (time travel, what-if, period review)
     entries/     Every input, split into Log (EntriesView's default) and Manage
                   via a Segmented control — recurring, expense form on Log;
                   accounts, budgets, rules, statement import, categories on Manage

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
-import { usePrivacy } from '../../lib/privacy';
+import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/core/animation';
+import { usePrivacy } from '../../lib/settings/privacy';
 import { LogoMark, LogoWordmark } from './Logo';
 import {
   IconOverview,

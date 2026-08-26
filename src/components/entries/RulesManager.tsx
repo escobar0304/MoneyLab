@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
-import { useStore, useRules, useAccounts } from '../../lib/store';
-import { MAIN_ACCOUNT_ID } from '../../lib/accounts';
-import { matchCount, ruleChanges } from '../../lib/rules';
+import { useStore, useRules, useAccounts } from '../../lib/core/store';
+import { MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
+import { matchCount, ruleChanges } from '../../lib/money/rules';
 import { Button, Card, Input, Label, Modal, SectionTitle, Select, EmptyState } from '../ui/primitives';
 import { CategoryPicker } from './CategoryPicker';
-import type { ID, Rule, RuleCondition, RuleField, RuleOp } from '../../lib/types';
+import type { ID, Rule, RuleCondition, RuleField, RuleOp } from '../../lib/core/types';
 
 const FIELDS: { id: RuleField; label: string }[] = [
   { id: 'text', label: 'Category, note or source' },

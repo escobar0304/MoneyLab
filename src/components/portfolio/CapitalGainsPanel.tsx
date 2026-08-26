@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useStore } from '../../lib/store';
-import { closedLots, capitalGainsByYear, capitalGainsToCsv } from '../../lib/capitalGains';
-import { formatMoney, formatDate } from '../../lib/format';
-import { PRIMARY, COMPLEMENT } from '../../lib/chartTheme';
+import { useStore } from '../../lib/core/store';
+import { closedLots, capitalGainsByYear, capitalGainsToCsv } from '../../lib/investments/capitalGains';
+import { formatMoney, formatDate } from '../../lib/core/format';
+import { PRIMARY, COMPLEMENT } from '../../lib/insight/chartTheme';
 import { Card, SectionTitle, Select, Button, Badge } from '../ui/primitives';
 
 const YEAR_DAYS = 365;

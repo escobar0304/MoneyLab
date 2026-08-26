@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useStore, useDebts } from '../../lib/store';
-import { debtSummary, overpaymentEffect, scheduledPayment, totalOwed } from '../../lib/debt';
-import type { Debt } from '../../lib/types';
-import { formatMoney, monthLabel, todayInputValue } from '../../lib/format';
+import { useStore, useDebts } from '../../lib/core/store';
+import { debtSummary, overpaymentEffect, scheduledPayment, totalOwed } from '../../lib/planning/debt';
+import type { Debt } from '../../lib/core/types';
+import { formatMoney, monthLabel, todayInputValue } from '../../lib/core/format';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 import { AmortizationChart } from './AmortizationChart';
 

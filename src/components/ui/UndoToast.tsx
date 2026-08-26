@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useStore } from '../../lib/store';
-import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/animation';
+import { useStore } from '../../lib/core/store';
+import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/core/animation';
 
 /** How long the offer stands. Long enough to react to a misclick, short enough
  * that the snapshot never becomes a stale "undo something from ten minutes ago". */
