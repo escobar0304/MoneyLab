@@ -20,7 +20,7 @@ Portuguese IRS deductions.
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline%20ready-5A0FC8?logo=pwa&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-398%20passing-3987e5)
+![Tests](https://img.shields.io/badge/tests-419%20passing-3987e5)
 
 <br />
 
@@ -211,6 +211,9 @@ different rhythms.
 - Every embed mounts only once it scrolls near the viewport (an `IntersectionObserver`,
   not a timer) — with five or six on one page, loading them all at once starves the
   browser's per-host connection limit and the lower ones never finish.
+- **🔒 Every embed runs in a frame of its own**, sandboxed without
+  `allow-same-origin`, so TradingView's code gets an opaque origin and cannot read the
+  ledger. See the security note below.
 
 ### 📊 Dashboard & insight
 
@@ -266,6 +269,7 @@ different rhythms.
 | 🧾 **Receipt photos** | Optional, stored in IndexedDB and exported separately so a routine export stays small. |
 | ⌨️ **Shortcuts** | `g`+letter to jump tabs, `n` for a new expense, `Ctrl`/`⌘Z` to undo, `?` for the list. |
 | 🛟 **Never fails silently** | A refused write or a crashed render both say so, and both offer the data as a download on the spot. |
+| 🔒 **Third-party code is contained** | The market embeds run in sandboxed frames with an opaque origin, so they cannot reach the ledger. |
 
 <details>
 <summary><b>🛟 Why "never fails silently" needed building</b></summary>
@@ -289,6 +293,33 @@ root for a crash that takes the shell with it.
 
 Both rescue paths read `localStorage` directly rather than going through the store, since
 in both situations the store is either the suspect or already known not to be saving.
+
+</details>
+
+<details>
+<summary><b>🔒 How third-party code is kept away from the ledger</b></summary>
+
+The Markets tab embeds TradingView, which means running someone else's JavaScript. That
+used to happen by appending `<script src="s3.tradingview.com/…">` straight into the page
+— third-party code executing in this app's own origin, with read access to the
+`localStorage` the whole ledger lives in. The promise that nothing leaves your device was
+worth exactly as much as that CDN was trustworthy on any given day.
+
+Each embed now loads inside `public/embed.html`, framed with `sandbox` and deliberately
+**without** `allow-same-origin`. That single omission gives the frame an opaque origin:
+the widget still draws its chart and still talks to its own servers, and `parent.
+localStorage` throws a `SecurityError` if it reaches for anything of ours. It is a real
+file rather than a `srcdoc` blob so its bootstrap can be an ordinary same-origin script,
+which is what lets the app's own policy forbid inline script entirely.
+
+`nginx.conf` carries two Content-Security-Policies, and the split is the point. The app
+gets `script-src 'self'` — it loads no third-party script at all any more. Only
+`/embed.html` may reach TradingView, and it is the only page allowed to be framed
+(`frame-ancestors 'self'`, where the app says `'none'`).
+
+Other hardening in the same pass: the accountant CSV neutralises values a spreadsheet
+would execute as a formula on open, and imports are validated per event type rather than
+being waved through on three string fields.
 
 </details>
 

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Market embed</title>
+    <!--
+      The page every TradingView widget is loaded into.
+
+      It exists so that third-party code never runs in the app's own origin.
+      The parent frames this with `sandbox` and without `allow-same-origin`, so
+      this document gets an opaque origin: the widget script can draw its chart
+      and talk to its own servers, and it cannot reach the ledger in the app's
+      localStorage, because as far as the browser is concerned it is not the
+      same site.
+
+      A real file rather than a `srcdoc` blob so that its bootstrap can be an
+      ordinary same-origin script. `srcdoc` would have meant an inline script,
+      which would have meant `'unsafe-inline'` in the app's script-src — paying
+      for this isolation by weakening every other page.
+    -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #13161d;
+        overflow: hidden;
+      }
+      #mount {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="tradingview-widget-container" id="mount">
+      <div class="tradingview-widget-container__widget"></div>
+    </div>
+    <script src="./embed.js"></script>
+  </body>
+</html>

