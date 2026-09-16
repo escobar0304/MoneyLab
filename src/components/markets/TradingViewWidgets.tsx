@@ -1,101 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
-import { ErrorState } from '../ui/primitives';
-import { ChartSkeleton } from '../ui/Skeleton';
-
-const BASE = 'https://s3.tradingview.com/external-embedding/embed-widget-';
+import { SandboxedEmbed } from './SandboxedEmbed';
 
 /**
- * Mounts one of TradingView's free embeddable widgets.
+ * One of TradingView's free embeddable widgets, framed rather than injected.
  *
- * Same mechanics as `TradingViewChart`: a throwaway inner node the script owns
- * outright, torn down and rebuilt on every config change rather than patched,
- * because none of these widgets expose an update API once constructed.
- *
- * Mounting is deferred until the widget is nearly on screen. A page with five
- * or six of these firing at once starves the browser's per-host connection
- * limit — each one pulls in a dozen-plus chunk requests — and the widgets
- * lower on the page simply never finish loading. Watching for the widget to
- * scroll into view spreads that load out over time instead of all at once.
+ * These used to append a `<script src="s3.tradingview.com/…">` into this page,
+ * which put third-party code in our own origin with read access to the ledger
+ * in localStorage. `SandboxedEmbed` runs each one in a frame with an opaque
+ * origin instead; what is left in this file is configuration.
  */
-function Widget({ file, config, height = 400 }: { file: string; config: Record<string, unknown>; height?: number }) {
-  const host = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<'waiting' | 'loading' | 'ready' | 'error'>('waiting');
-  const [visible, setVisible] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-  const configKey = JSON.stringify(config);
-
-  useEffect(() => {
-    const el = host.current;
-    if (!el) return;
-    // 400px of runway so the widget is already loading by the time it's
-    // actually in frame, rather than popping in as the reader scrolls to it.
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '400px' }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!visible) return;
-    const el = host.current;
-    if (!el) return;
-    setStatus('loading');
-    el.replaceChildren();
-
-    const mount = document.createElement('div');
-    mount.className = 'tradingview-widget-container';
-    const inner = document.createElement('div');
-    inner.className = 'tradingview-widget-container__widget';
-    mount.appendChild(inner);
-
-    const script = document.createElement('script');
-    script.src = `${BASE}${file}.js`;
-    script.async = true;
-    script.type = 'text/javascript';
-    script.innerHTML = configKey;
-    script.onload = () => setStatus('ready');
-    script.onerror = () => setStatus('error');
-
-    // Same ordering constraint as the chart embed: the container has to be
-    // live in the document before the script runs, because the widget
-    // resolves its mount point from `document.currentScript`.
-    el.appendChild(mount);
-    mount.appendChild(script);
-
-    return () => {
-      el.replaceChildren();
-    };
-  }, [visible, file, configKey, attempt]);
-
-  return (
-    <div className="relative">
-      <div ref={host} style={{ minHeight: height }} />
-      {status !== 'ready' && (
-        <div
-          className={`absolute inset-0 flex items-center justify-center rounded-lg bg-surface-1/60 text-xs ${
-            status === 'error' ? '' : 'pointer-events-none'
-          }`}
-          aria-live="polite"
-        >
-          {status === 'loading' || status === 'waiting' ? (
-            <ChartSkeleton />
-          ) : (
-            <div className="w-full max-w-xs px-4">
-              <ErrorState message="Couldn't reach TradingView" onRetry={() => setAttempt((n) => n + 1)} compact />
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+function Widget({
+  file,
+  config,
+  height = 400,
+  title,
+}: {
+  file: string;
+  config: Record<string, unknown>;
+  height?: number;
+  title: string;
+}) {
+  return <SandboxedEmbed widget={file} config={config} height={height} title={title} />;
 }
+
 
 /** Buy/sell/neutral rating for one symbol, rolled up from its own indicators —
  * a second, independent read alongside the raw chart. */
@@ -103,6 +29,7 @@ export function TechnicalAnalysisWidget({ symbol, height = 425 }: { symbol: stri
   return (
     <Widget
       file="technical-analysis"
+      title={`${symbol} technical rating`}
       height={height}
       config={{
         interval: '1m',
@@ -129,6 +56,7 @@ export function SymbolInfoWidget({ symbol }: { symbol: string }) {
   return (
     <Widget
       file="symbol-info"
+      title={`${symbol} summary`}
       height={170}
       config={{
         symbol,
@@ -146,6 +74,7 @@ export function SymbolNewsWidget({ symbol, height = 425 }: { symbol: string; hei
   return (
     <Widget
       file="timeline"
+      title={`${symbol} news`}
       height={height}
       config={{
         feedMode: 'symbol',
@@ -168,6 +97,7 @@ export function HotlistsWidget({ height = 460 }: { height?: number }) {
   return (
     <Widget
       file="hotlists"
+      title="Trending today"
       height={height}
       config={{
         colorTheme: 'dark',
@@ -192,6 +122,7 @@ export function MarketOverviewWidget({ height = 420 }: { height?: number }) {
   return (
     <Widget
       file="market-overview"
+      title="Market overview"
       height={height}
       config={{
         colorTheme: 'dark',
