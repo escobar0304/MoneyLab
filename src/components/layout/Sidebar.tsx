@@ -126,11 +126,18 @@ export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab
             sits below the nav's padding, so translating it by the button's
             offsetTop would double-count that padding and park it a row low.
             The inset matches the nav padding so the rail tracks the button width. */}
+        {/* The travelling marker. A filled pill made the active item look like
+            a button someone had left pressed; a lit edge with the faintest
+            wash behind it reads as a selector on a panel — the item is being
+            pointed at rather than highlighted. The 2px bar is the same mark
+            the section titles use, so "this one" looks the same everywhere. */}
         <span
           ref={railRef}
           aria-hidden="true"
-          className="pointer-events-none absolute top-0 left-2.5 right-2.5 rounded-lg bg-accent/12 ring-1 ring-inset ring-accent/25"
-        />
+          className="pointer-events-none absolute top-0 left-2.5 right-2.5 overflow-hidden rounded-md bg-gradient-to-r from-accent/14 to-transparent"
+        >
+          <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-accent" />
+        </span>
         {TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
@@ -143,7 +150,7 @@ export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab
             title={collapsed ? label : undefined}
             aria-label={label}
             aria-current={active === id ? 'page' : undefined}
-            className={`relative z-10 flex cursor-pointer items-center gap-3 whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ${
+            className={`font-display relative z-10 flex cursor-pointer items-center gap-3 whitespace-nowrap rounded-md px-3 py-2.5 text-sm font-semibold tracking-tight transition-colors duration-200 ${
               collapsed ? 'justify-center' : ''
             } ${active === id ? 'text-accent' : 'text-ink-muted hover:text-ink-secondary'}`}
           >

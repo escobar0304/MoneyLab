@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react';
-import { Card, type CardLevel } from './primitives';
+import { Card, TitleTick, type CardLevel } from './primitives';
 import type { TableData } from '../../lib/insight/chartTables';
 
 /**
@@ -31,9 +31,14 @@ export function ChartCard({
   return (
     <Card className={className} level={level}>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="t-title text-ink">{title}</p>
-          {subtitle && <p className="t-caption mt-0.5">{subtitle}</p>}
+        <div className="flex min-w-0 gap-2.5">
+          {/* The same mark SectionTitle carries. A page mixing panels that have
+              it with panels that don't reads as two different designs. */}
+          <TitleTick className="mt-1 h-3.5" />
+          <div className="min-w-0">
+            <p className="t-title text-ink">{title}</p>
+            {subtitle && <p className="t-caption mt-0.5">{subtitle}</p>}
+          </div>
         </div>
         {table && (
           <button

@@ -99,7 +99,7 @@ export function PortfolioCard() {
             since the last look. */}
         {dayChange !== null && (
           <div className="text-right">
-            <p className="text-xs text-ink-muted">Today</p>
+            <p className="t-label">Today</p>
             <p className="text-lg">
               <Signed value={dayChange} suffix={dayChangePct !== null ? ` (${dayChangePct.toFixed(2)}%)` : undefined} />
             </p>

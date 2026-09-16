@@ -6,8 +6,25 @@
    on borders alone to separate; spacing is the dense/dashboard scale (8-32px).
    --------------------------------------------------------------------------- */
 @theme {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  /* Three faces, each with one job, because the product is an instrument and
+     instruments label themselves differently from how they read out.
+
+     Space Grotesk carries headings and every etched legend: its flat terminals
+     and squared bowls are drafting-table shapes, and at 11px uppercase they
+     stay distinct where a neutral grotesk turns to grey mush.
+
+     Inter carries running prose — the explanatory sentences this app is full
+     of, since it explains its own reasoning constantly and that text has to be
+     effortless at 13px.
+
+     JetBrains Mono carries every figure. Money is the readout, and a readout
+     wants fixed advance widths so a column of amounts aligns on the decimal
+     and a number changing under live prices doesn't shift the row it sits in.
+     Its zero is slashed, which matters when the difference between 0 and O is
+     the difference between a balance and a typo. */
+  --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-display: "Space Grotesk Variable", "Inter Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
   /* The whole product runs on one complementary pair: blue and its opposite,
      orange. Blue carries money in, balance, selection and every affirmative
@@ -92,37 +109,60 @@
    their own `text-3xl font-semibold` is exactly how an app ends up with no
    hierarchy at all despite every card being carefully made.
    --------------------------------------------------------------------------- */
+/* Headline figures take the display face, not the mono one — and keep
+   proportional figures, which the original scale was right about.
+   Monospace belongs where numbers stack into columns and have to align; a
+   single 48px balance aligns with nothing, and setting it in mono buys no
+   alignment while costing two real things. Every fixed advance is sized for
+   the widest glyph, so large digits sit loose; and the thousands separator
+   this app's locale emits is a narrow no-break space that a mono face widens
+   to a full advance, which splits `13 131,50` into what reads as two numbers.
+   The columns below still get mono, via `.num-col` — that is where it pays. */
 .t-hero {
+  font-family: var(--font-display);
   font-size: 3rem;
   line-height: 1;
   font-weight: 600;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.03em;
 }
 .t-metric {
+  font-family: var(--font-display);
   font-size: 1.875rem;
   line-height: 1.1;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 .t-figure {
+  font-family: var(--font-display);
   font-size: 1.25rem;
   line-height: 1.2;
   font-weight: 600;
+  letter-spacing: -0.015em;
 }
 .t-title {
+  font-family: var(--font-display);
   font-size: 0.875rem;
   line-height: 1.3;
   font-weight: 600;
+  letter-spacing: -0.005em;
 }
+
+/* The etched legend. Uppercase, tracked out, in the display face — the label
+   stamped next to a dial rather than a sentence introducing a value. It is
+   deliberately quieter and smaller than what it labels, because on a panel of
+   forty of these the labels are furniture and the figures are the content. */
 .t-label {
-  font-size: 0.75rem;
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
   line-height: 1.3;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
   color: var(--color-ink-muted);
 }
 .t-caption {
   font-size: 0.75rem;
-  line-height: 1.4;
+  line-height: 1.45;
   color: var(--color-ink-muted);
 }
 
@@ -132,13 +172,26 @@
    entirely and lets the content sit directly on the background. The middle
    level is the unchanged default, which is what most panels should stay.
    --------------------------------------------------------------------------- */
+/* Every panel now catches a light along its top edge and casts a shadow onto
+   the substrate below it. Previously only `primary` did, which left the other
+   fourteen panels on a page looking like regions of the background that
+   happened to have a border — the thing that made a dense screen read as flat.
+   The shadow is wide and very soft so the effect is separation, not chrome. */
+.card-material {
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.045),
+    0 1px 2px 0 rgb(0 0 0 / 0.4),
+    0 12px 28px -20px rgb(0 0 0 / 0.8);
+}
+
 .card-primary {
   background:
     linear-gradient(to bottom, color-mix(in oklab, var(--color-accent) 5%, var(--color-surface-1)), var(--color-surface-1) 160px);
   border-color: var(--color-border);
   box-shadow:
-    inset 0 1px 0 0 color-mix(in oklab, white 7%, transparent),
-    0 10px 28px -16px rgb(0 0 0 / 0.7);
+    inset 0 1px 0 0 color-mix(in oklab, white 9%, transparent),
+    0 1px 2px 0 rgb(0 0 0 / 0.4),
+    0 14px 34px -18px rgb(0 0 0 / 0.85);
 }
 
 /* Transparent rather than absent, so the 1px border still occupies its space
@@ -186,20 +239,53 @@ html {
   color-scheme: dark;
 }
 
+/* ---------------------------------------------------------------------------
+   The substrate. A 32px rule grid under everything, at an alpha low enough
+   (~2.5%) that you register it as texture rather than read it as lines — the
+   page becomes squared paper the panels are laid on instead of a void they
+   float in, which is most of why the empty states used to look broken.
+
+   Fixed attachment so the grid belongs to the surface rather than to the
+   content: scrolling a long dashboard slides the cards across a stationary
+   substrate, the way paper moves across a desk.
+   --------------------------------------------------------------------------- */
 body {
-  background: var(--color-surface-0);
+  background-color: var(--color-surface-0);
+  background-image:
+    linear-gradient(to right, rgb(255 255 255 / 0.025) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-attachment: fixed;
   @apply text-ink antialiased;
+}
+
+/* Headings default to the display face everywhere, including the ones written
+   as plain <h2> inside a panel that never reached for a `.t-` class. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
 }
 
 ::selection {
   @apply bg-accent text-white;
 }
 
-/* Numeric columns that must align vertically. Hero/stat figures deliberately
-   keep proportional figures — tabular-nums makes large numbers look loose. */
+/* Numeric columns that must align vertically. */
 .num-col {
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
+}
+
+/* A field you type an amount or a date into is a readout you can edit, so it
+   is set like one. Keyed off the input's own type rather than a class, because
+   the rule should hold for every numeric field in the app including the ones
+   written before this existed and the ones written after it. */
+input[type='number'],
+input[type='date'],
+input[inputmode='decimal'] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Pointer-tracked spotlight. The gradient centre is written to --mx/--my by

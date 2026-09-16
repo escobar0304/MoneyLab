@@ -79,18 +79,18 @@ export function CapitalGainsPanel() {
 
       <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
         <div>
-          <p className="text-xs text-ink-muted">Net {year}</p>
+          <p className="t-label">Net {year}</p>
           <p className="t-metric" style={{ color: data.netGain >= 0 ? 'var(--color-positive)' : 'var(--color-complement)' }}>
             {data.netGain >= 0 ? '+' : '−'}
             {formatMoney(Math.abs(data.netGain))}
           </p>
         </div>
         <div>
-          <p className="text-xs text-ink-muted">Gains</p>
+          <p className="t-label">Gains</p>
           <p className="num-col text-sm text-ink-secondary">{formatMoney(data.gain)}</p>
         </div>
         <div>
-          <p className="text-xs text-ink-muted">Losses</p>
+          <p className="t-label">Losses</p>
           <p className="num-col text-sm text-ink-secondary">{formatMoney(data.loss)}</p>
         </div>
       </div>

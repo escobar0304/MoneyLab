@@ -32,7 +32,7 @@ export function LogoMark(props: SVGProps<SVGSVGElement>) {
 
 export function LogoWordmark({ className = '' }: { className?: string }) {
   return (
-    <span className={`text-sm font-semibold tracking-tight text-ink ${className}`}>
+    <span className={`font-display text-[0.9375rem] font-bold tracking-[-0.02em] text-ink ${className}`}>
       Money<span className="text-accent">Lab</span>
     </span>
   );

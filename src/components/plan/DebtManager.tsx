@@ -208,11 +208,11 @@ export function DebtManager() {
       {debts.length > 0 && (
         <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
           <div>
-            <p className="text-xs text-ink-muted">Still owed</p>
+            <p className="t-label">Still owed</p>
             <p className="t-metric text-ink">{formatMoney(owed)}</p>
           </div>
           <div>
-            <p className="text-xs text-ink-muted">Per month</p>
+            <p className="t-label">Per month</p>
             <p className="num-col text-sm text-ink-secondary">{formatMoney(monthly)}</p>
           </div>
         </div>

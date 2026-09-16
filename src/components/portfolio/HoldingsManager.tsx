@@ -292,7 +292,7 @@ function PositionRow({ position }: { position: Position }) {
               misleading — anything typed there is overwritten within a minute. */}
           {quote ? (
             <div className="text-right">
-              <p className="text-xs text-ink-muted">Price / unit</p>
+              <p className="t-label">Price / unit</p>
               <p className="num-col text-sm text-ink">
                 {formatMoney(quote.basePrice)}{' '}
                 <span style={{ color: quote.changePct >= 0 ? PRIMARY : COMPLEMENT }}>
@@ -430,26 +430,26 @@ export function HoldingsManager() {
 
       <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
         <div>
-          <p className="text-xs text-ink-muted">Value</p>
+          <p className="t-label">Value</p>
           <p className="t-metric text-ink">{formatMoney(summary.value)}</p>
         </div>
         {/* Today first among the derived figures: it is the only one that is new
             since the last time this page was open. */}
         {dayChange !== null && (
           <div>
-            <p className="text-xs text-ink-muted">Today</p>
+            <p className="t-label">Today</p>
             <p className="text-sm">
               <Signed value={dayChange} suffix={dayChangePct !== null ? ` (${dayChangePct.toFixed(2)}%)` : undefined} />
             </p>
           </div>
         )}
         <div>
-          <p className="text-xs text-ink-muted">Cost</p>
+          <p className="t-label">Cost</p>
           <p className="num-col text-sm text-ink-secondary">{formatMoney(summary.cost)}</p>
         </div>
         {summary.returnPct !== null && (
           <div>
-            <p className="text-xs text-ink-muted">Total return</p>
+            <p className="t-label">Total return</p>
             <p className="text-sm">
               <Signed value={summary.totalReturn} suffix={` (${summary.returnPct.toFixed(1)}%)`} />
             </p>
@@ -459,7 +459,7 @@ export function HoldingsManager() {
             ten years ago or last week. This one accounts for when. */}
         {summary.irr !== null && (
           <div>
-            <p className="text-xs text-ink-muted">Annualised</p>
+            <p className="t-label">Annualised</p>
             <p className="num-col text-sm font-medium" style={{ color: summary.irr >= 0 ? PRIMARY : COMPLEMENT }}>
               {(summary.irr * 100).toFixed(1)}% a year
             </p>
@@ -467,7 +467,7 @@ export function HoldingsManager() {
         )}
         {summary.dividends > 0 && (
           <div>
-            <p className="text-xs text-ink-muted">Dividends</p>
+            <p className="t-label">Dividends</p>
             <p className="num-col text-sm text-ink-secondary">{formatMoney(summary.dividends)}</p>
           </div>
         )}

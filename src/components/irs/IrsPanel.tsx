@@ -158,7 +158,7 @@ export function IrsPanel() {
       </SectionTitle>
 
       <div className="mb-3">
-        <p className="text-xs text-ink-muted">Deductible in {year}</p>
+        <p className="t-label">Deductible in {year}</p>
         <p className="t-metric text-ink">{formatMoney(total)}</p>
       </div>
 

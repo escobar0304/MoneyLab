@@ -13,7 +13,10 @@ export type CardLevel = 'primary' | 'default' | 'quiet';
 
 const LEVELS: Record<CardLevel, string> = {
   primary: 'card-primary',
-  default: 'bg-surface-1 border-hairline hover:border-border',
+  default: 'card-material bg-surface-1 border-hairline hover:border-border',
+  // Quiet panels stay flat deliberately: the level exists to let supporting
+  // detail recede into the page, and giving it an edge and a shadow would be
+  // undoing the one thing it is for.
   quiet: 'card-quiet',
 };
 
@@ -57,17 +60,33 @@ export function Card({
   );
 }
 
+/**
+ * A panel's header, with the accent tick that marks the start of every one.
+ *
+ * The tick is the app's one repeated ornament, and it is doing a job rather
+ * than decorating: on a screen of a dozen stacked panels the rules under the
+ * titles all looked alike, so nothing said where a panel began — only where
+ * its header ended. A lit mark at the left edge of each title gives the eye a
+ * fixed point to run down the page against.
+ */
+export function TitleTick({ className = '' }: { className?: string }) {
+  return <span aria-hidden="true" className={`w-0.5 shrink-0 rounded-full bg-accent ${className}`} />;
+}
+
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
-    <div className="mb-3 flex items-center justify-between border-b border-hairline pb-3">
-      <h2 className="text-base font-semibold text-ink">{children}</h2>
+    <div className="mb-3 flex items-center justify-between gap-3 border-b border-hairline pb-3">
+      <h2 className="flex min-w-0 items-center gap-2.5 text-base font-semibold text-ink">
+        <TitleTick className="h-3.5" />
+        <span className="truncate">{children}</span>
+      </h2>
       {action}
     </div>
   );
 }
 
 export function SubsectionLabel({ children }: { children: ReactNode }) {
-  return <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-muted">{children}</p>;
+  return <p className="t-label mb-3">{children}</p>;
 }
 
 export function Button({
@@ -75,15 +94,18 @@ export function Button({
   className = '',
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost' }) {
+  // Each variant carries its own hairline so the four sit at the same size and
+  // a row of mixed buttons keeps one baseline — a bordered button next to an
+  // unbordered one is 2px taller, which is visible and reads as a mistake.
   const variants: Record<string, string> = {
-    primary: 'bg-accent text-white hover:bg-accent-hover',
-    secondary: 'bg-surface-2 text-ink hover:bg-border',
-    danger: 'bg-critical text-white hover:brightness-110',
-    ghost: 'text-ink-muted hover:bg-surface-2 hover:text-ink',
+    primary: 'bg-accent text-white border-accent hover:bg-accent-hover hover:border-accent-hover',
+    secondary: 'bg-surface-2 text-ink border-border hover:bg-border hover:border-ink-muted',
+    danger: 'bg-critical text-white border-critical hover:brightness-110',
+    ghost: 'border-transparent text-ink-muted hover:bg-surface-2 hover:text-ink hover:border-hairline',
   };
   return (
     <button
-      className={`cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-200 disabled:opacity-40 disabled:pointer-events-none ${variants[variant]} ${className}`}
+      className={`font-display cursor-pointer rounded-md border px-3 py-1.5 text-sm font-semibold tracking-tight transition-colors duration-200 disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${variants[variant]} ${className}`}
       {...props}
     />
   );

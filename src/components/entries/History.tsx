@@ -227,11 +227,11 @@ export function History() {
           </p>
           <div className="mt-2.5 flex flex-wrap items-end gap-x-5 gap-y-2">
             <div>
-              <p className="text-xs text-ink-muted">Cleared</p>
+              <p className="t-label">Cleared</p>
               <p className="num-col text-lg font-semibold text-ink">{formatMoney(balances.clearedBalance)}</p>
             </div>
             <div>
-              <p className="text-xs text-ink-muted">Not yet</p>
+              <p className="t-label">Not yet</p>
               <p className="num-col text-sm text-ink-secondary">
                 {formatMoney(balances.unclearedBalance)} · {balances.unclearedCount} left
               </p>

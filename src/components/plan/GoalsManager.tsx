@@ -222,15 +222,15 @@ export function GoalsManager() {
       {goals.length > 0 && (
         <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
           <div>
-            <p className="text-xs text-ink-muted">Unspoken for</p>
+            <p className="t-label">Unspoken for</p>
             <p className={`t-metric ${free < 0 ? 'text-critical-text' : 'text-ink'}`}>{formatMoney(free)}</p>
           </div>
           <div>
-            <p className="text-xs text-ink-muted">Set aside</p>
+            <p className="t-label">Set aside</p>
             <p className="num-col text-sm text-ink-secondary">{formatMoney(reserved)}</p>
           </div>
           <div>
-            <p className="text-xs text-ink-muted">Balance</p>
+            <p className="t-label">Balance</p>
             <p className="num-col text-sm text-ink-secondary">{formatMoney(balance)}</p>
           </div>
           {free < 0 && (
