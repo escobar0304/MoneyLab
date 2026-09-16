@@ -5,6 +5,7 @@ import { daysUntil } from '../../lib/core/recurrence';
 import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format';
 import { Reveal } from '../ui/Reveal';
 import { Button, Card, Input, Label, SectionTitle, EmptyState } from '../ui/primitives';
+import { IconVehicle } from '../ui/icons';
 import type { IucInstallment, Vehicle } from '../../lib/core/types';
 
 function when(days: number): string {
@@ -247,7 +248,12 @@ function VehiclesManager() {
       )}
 
       {vehicles.length === 0 ? (
-        <EmptyState title="No vehicles yet" description="Add one to see its IUC due date on the calendar above." />
+        <EmptyState
+          icon={<IconVehicle />}
+          title="No vehicles yet"
+          description="Add one to see its IUC due date on the calendar above."
+          action={adding ? undefined : { label: 'Add a vehicle', onClick: () => setAdding(true) }}
+        />
       ) : (
         <div className="space-y-2">
           {vehicles.map((v) => (

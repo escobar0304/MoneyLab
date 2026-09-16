@@ -106,6 +106,92 @@ export function IconTaxes(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** A stack of logged lines — the ledger itself, for anywhere a list of entries
+ * would be but isn't yet. */
+export function IconLedger(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="2.2" />
+      <path d="M7.5 9h9M7.5 12.5h9M7.5 16h5" />
+    </Icon>
+  );
+}
+
+/** A trend line over an axis — for a chart that has no data to draw yet, so the
+ * placeholder says which shape is missing. */
+export function IconChart(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4 4v15.5h16" />
+      <path d="M7.5 15l3.5-4 3 2.4 4.5-6" />
+    </Icon>
+  );
+}
+
+/** A star — symbols kept deliberately, which is what a watchlist is. */
+export function IconWatchlist(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="m12 4 2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8Z" />
+    </Icon>
+  );
+}
+
+/** A car, for the vehicles a IUC date hangs off. */
+export function IconVehicle(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4 16.5v2.2h2.6v-2.2M17.4 16.5v2.2H20v-2.2" />
+      <path d="M3.4 16.5v-4l1.9-4.6A2 2 0 0 1 7.2 6.6h9.6a2 2 0 0 1 1.9 1.3l1.9 4.6v4Z" />
+      <path d="M3.4 12.5h17.2M7 15h1.4M15.6 15H17" />
+    </Icon>
+  );
+}
+
+/** An arrow landing in a tray — bringing a file in from outside the app. */
+export function IconImport(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3v10M8.5 9.5 12 13l3.5-3.5" />
+      <path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+    </Icon>
+  );
+}
+
+/** A triangle with a bar — the one shape reserved for something having gone
+ * wrong, so an error never has to rely on red text alone to be read as one. */
+export function IconWarning(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M10.3 4.1 2.5 17.6a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 4.1a2 2 0 0 0-3.4 0Z" />
+      <path d="M12 9.5v4.2" />
+      <circle cx="12" cy="17" r="0.9" fill="currentColor" stroke="none" />
+    </Icon>
+  );
+}
+
+/** A circular arrow — try that again. */
+export function IconRefresh(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M20 12a8 8 0 1 1-2.4-5.7" />
+      <path d="M20.5 3.5V8H16" />
+    </Icon>
+  );
+}
+
+/** A cup — the one icon in the set that exists purely to congratulate, shown
+ * when a goal is actually reached rather than merely progressing. */
+export function IconTrophy(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M8 4h8v5a4 4 0 0 1-8 0Z" />
+      <path d="M8 5.5H5.5v1.6A3 3 0 0 0 8 10M16 5.5h2.5v1.6A3 3 0 0 1 16 10" />
+      <path d="M12 13v3.5M9 20h6l-.6-3.5H9.6Z" />
+    </Icon>
+  );
+}
+
 export function IconChevronsLeft(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

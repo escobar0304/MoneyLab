@@ -5,6 +5,7 @@ import { searchEntries } from '../../lib/core/search';
 import { reconcile } from '../../lib/core/entities';
 import { accountIdOf, MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
 import { Card, EmptyState, SectionTitle, Select, Input, Button, Modal } from '../ui/primitives';
+import { IconLedger } from '../ui/icons';
 import { CategoryPicker } from './CategoryPicker';
 import { formatMoney, monthLabel } from '../../lib/core/format';
 import { categoryColorMap } from '../../lib/insight/chartTheme';
@@ -268,6 +269,10 @@ export function History() {
 
       {entries.length === 0 ? (
         <EmptyState
+          // No icon while searching: the ledger mark would read as "your
+          // history is empty" when the history is fine and only the query
+          // missed.
+          icon={searching ? undefined : <IconLedger />}
           title={searching ? `Nothing matches “${query.trim()}”` : `Nothing logged in ${monthLabel(month)}`}
           description={searching ? 'Search covers category, subcategory, note, amount and date.' : undefined}
         />

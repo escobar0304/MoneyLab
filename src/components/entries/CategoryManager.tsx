@@ -3,6 +3,8 @@ import { useStore, useCategories, useBudgets } from '../../lib/core/store';
 import { categoryColorMap } from '../../lib/insight/chartTheme';
 import { formatMoney } from '../../lib/core/format';
 import { Button, Card, Input, SectionTitle, Modal, EmptyState } from '../ui/primitives';
+import { IconLedger } from '../ui/icons';
+import { requestNavigate } from '../../lib/core/navigate';
 
 /** Case- and accent-folded, so "Alimentação" and "alimentacao" collide. */
 function fold(value: string): string {
@@ -85,7 +87,12 @@ export function CategoryManager() {
       <SectionTitle>Categories</SectionTitle>
 
       {categories.length === 0 ? (
-        <EmptyState title="No categories yet" description="They appear here as soon as you create one in the expense form." />
+        <EmptyState
+          icon={<IconLedger />}
+          title="No categories yet"
+          description="They appear here as soon as you create one in the expense form."
+          action={{ label: 'Go to Log', onClick: () => requestNavigate({ tab: 'entries', section: 'log' }) }}
+        />
       ) : (
         <ul className="space-y-1">
           {categories.map((name) => {

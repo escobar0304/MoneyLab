@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { CHART_INK } from '../../lib/insight/chartTheme';
+import { ErrorState } from '../ui/primitives';
+import { ChartSkeleton } from '../ui/Skeleton';
 
 const WIDGET_SRC = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
 
@@ -30,6 +32,10 @@ export function TradingViewChart({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  // Bumped by Retry. The embed offers no reload of its own, so the only way
+  // back from a failed script load is to tear the whole thing down and build
+  // it again — which is what re-running this effect does.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const el = host.current;
@@ -80,22 +86,30 @@ export function TradingViewChart({
     return () => {
       el.replaceChildren();
     };
-  }, [symbol, interval, style, height]);
+  }, [symbol, interval, style, height, attempt]);
 
   return (
     <div className="relative">
       <div ref={host} style={{ minHeight: height }} />
       {status !== 'ready' && (
         <div
-          className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-surface-1/60 text-sm"
+          // Only the loading veil stays click-through; the error state has a
+          // button in it, and a pointer-events-none overlay would swallow it.
+          className={`absolute inset-0 flex items-center justify-center rounded-lg bg-surface-1/60 text-sm ${
+            status === 'loading' ? 'pointer-events-none' : ''
+          }`}
           aria-live="polite"
         >
           {status === 'loading' ? (
-            <span className="text-ink-muted">Loading {symbol}…</span>
+            <ChartSkeleton label={`Loading ${symbol}…`} />
           ) : (
-            <span className="max-w-sm px-6 text-center text-critical-text">
-              Couldn't reach TradingView. This panel needs an internet connection — the rest of MoneyLab works offline.
-            </span>
+            <div className="max-w-sm px-6">
+              <ErrorState
+                message="Couldn't reach TradingView"
+                detail="This panel needs an internet connection — the rest of MoneyLab works offline."
+                onRetry={() => setAttempt((n) => n + 1)}
+              />
+            </div>
           )}
         </div>
       )}

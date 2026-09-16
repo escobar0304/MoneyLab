@@ -5,7 +5,7 @@ import { foldHoldings } from '../../lib/core/entities';
 import { foldAccounts } from '../../lib/money/accounts';
 import { foldDebts, totalOwed } from '../../lib/planning/debt';
 import { totalBalance, monthKey, previousMonthKey, monthsWithActivity, endOfMonth } from '../../lib/core/derive';
-import { Card, EmptyState } from '../ui/primitives';
+import { Card } from '../ui/primitives';
 import { ChartCard, DrillHint } from '../ui/ChartCard';
 import { netWorthTable, incomeVsExpensesTable, spendOverTimeTable, savingsRateTable } from '../../lib/insight/chartTables';
 import { formatMoney } from '../../lib/core/format';
@@ -13,6 +13,7 @@ import { AnimatedNumber } from '../ui/AnimatedNumber';
 import { Delta } from '../ui/StatTile';
 import { Reveal } from '../ui/Reveal';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/core/animation';
+import { FirstRun } from './FirstRun';
 import { TimeTravel, TimeTravelBanner } from './tools/TimeTravel';
 import { RunwayChart, RunwaySummary } from './charts/RunwayChart';
 import { PortfolioCard } from './cards/PortfolioCard';
@@ -73,12 +74,7 @@ export function OverviewView() {
   );
 
   if (events.length === 0) {
-    return (
-      <EmptyState
-        title="Nothing to show yet"
-        description="Head to Entries to set your salary and log your first expense — this page fills in automatically."
-      />
-    );
+    return <FirstRun />;
   }
 
   return (

@@ -4,6 +4,8 @@ import { symbolColorMap, PRIMARY, COMPLEMENT } from '../../../lib/insight/chartT
 import { formatMoney, formatTime } from '../../../lib/core/format';
 import { AnimatedNumber } from '../../ui/AnimatedNumber';
 import { Card, EmptyState } from '../../ui/primitives';
+import { IconPortfolio } from '../../ui/icons';
+import { requestNavigate } from '../../../lib/core/navigate';
 
 /** Signed money with the sign spelled out, so direction never rides on hue alone. */
 function Signed({ value, suffix }: { value: number; suffix?: string }) {
@@ -64,7 +66,12 @@ export function PortfolioCard() {
       <Card>
         <p className="t-title text-ink">Portfolio</p>
         <div className="mt-3">
-          <EmptyState title="Nothing held yet" description="Add a holding in Markets to see it here." />
+          <EmptyState
+            icon={<IconPortfolio />}
+            title="Nothing held yet"
+            description="Add what you own in Portfolio and it shows up here, in Net worth and in capital gains."
+            action={{ label: 'Open Portfolio', onClick: () => requestNavigate({ tab: 'portfolio' }) }}
+          />
         </div>
       </Card>
     );

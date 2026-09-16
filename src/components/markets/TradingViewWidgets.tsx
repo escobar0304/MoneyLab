@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { ErrorState } from '../ui/primitives';
+import { ChartSkeleton } from '../ui/Skeleton';
 
 const BASE = 'https://s3.tradingview.com/external-embedding/embed-widget-';
 
@@ -19,6 +21,7 @@ function Widget({ file, config, height = 400 }: { file: string; config: Record<s
   const host = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'waiting' | 'loading' | 'ready' | 'error'>('waiting');
   const [visible, setVisible] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const configKey = JSON.stringify(config);
 
   useEffect(() => {
@@ -69,20 +72,24 @@ function Widget({ file, config, height = 400 }: { file: string; config: Record<s
     return () => {
       el.replaceChildren();
     };
-  }, [visible, file, configKey]);
+  }, [visible, file, configKey, attempt]);
 
   return (
     <div className="relative">
       <div ref={host} style={{ minHeight: height }} />
       {status !== 'ready' && (
         <div
-          className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-surface-1/60 text-xs"
+          className={`absolute inset-0 flex items-center justify-center rounded-lg bg-surface-1/60 text-xs ${
+            status === 'error' ? '' : 'pointer-events-none'
+          }`}
           aria-live="polite"
         >
           {status === 'loading' || status === 'waiting' ? (
-            <span className="text-ink-muted">Loading…</span>
+            <ChartSkeleton />
           ) : (
-            <span className="px-4 text-center text-critical-text">Couldn't reach TradingView.</span>
+            <div className="w-full max-w-xs px-4">
+              <ErrorState message="Couldn't reach TradingView" onRetry={() => setAttempt((n) => n + 1)} compact />
+            </div>
           )}
         </div>
       )}

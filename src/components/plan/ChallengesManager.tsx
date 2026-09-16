@@ -3,6 +3,8 @@ import { useStore, useChallenges, useCategories } from '../../lib/core/store';
 import { challengeProgress, type ChallengeProgress } from '../../lib/planning/challenges';
 import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
+import { IconTrophy } from '../ui/icons';
+
 
 interface Draft {
   label: string;
@@ -31,12 +33,20 @@ function ChallengeRow({ progress }: { progress: ChallengeProgress }) {
   const remove = useStore((s) => s.removeChallenge);
   const { challenge, status, days, elapsed, cleanDays, brokenDays, currentStreak } = progress;
   const badge = STATUS_COPY[status];
+  // A window that ran its full course without a single charge landing in it.
+  // Only worth marking once it's over — a clean run with a week still to go is
+  // an unfinished one, and congratulating it early is how a tracker starts
+  // lying to the person using it.
+  const perfect = status === 'ended' && elapsed.length > 0 && brokenDays === 0;
 
   return (
-    <div className="rounded-lg border border-hairline p-3">
+    <div className={`rounded-lg border p-3 ${perfect ? 'border-accent/35 bg-accent/6' : 'border-hairline'}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-ink">{challenge.label}</p>
+          <p className="flex items-center gap-1.5 truncate text-sm font-medium text-ink">
+            {perfect && <IconTrophy className="h-4 w-4 shrink-0 text-accent" />}
+            {challenge.label}
+          </p>
           <p className="mt-0.5 text-xs text-ink-muted">
             {challenge.categories.join(', ')} · {formatDate(challenge.startDate)} – {formatDate(challenge.endDate)}
           </p>
@@ -72,6 +82,10 @@ function ChallengeRow({ progress }: { progress: ChallengeProgress }) {
       <p className="mt-2 text-xs text-ink-muted">
         {elapsed.length === 0 ? (
           "Hasn't started yet."
+        ) : perfect ? (
+          <span className="text-positive">
+            Clean run — all <span className="num-col">{elapsed.length}</span> days.
+          </span>
         ) : (
           <>
             <span className="num-col text-ink-secondary">{cleanDays}</span> of{' '}
@@ -207,8 +221,10 @@ export function ChallengesManager() {
 
       {challenges.length === 0 ? (
         <EmptyState
+          icon={<IconTrophy />}
           title="No challenges yet"
           description="Pick a handful of categories and a window of days — this only ever reports what happened, it never blocks anything."
+          action={adding ? undefined : { label: 'Start a challenge', onClick: () => setAdding(true) }}
         />
       ) : (
         <div className="space-y-2">

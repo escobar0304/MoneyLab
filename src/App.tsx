@@ -8,6 +8,7 @@ import { useLiveQuoteScheduler } from './lib/investments/useLiveQuotes';
 import { onNavigate } from './lib/core/navigate';
 import { UndoToast } from './components/ui/UndoToast';
 import { ShortcutsHelp } from './components/ui/ShortcutsHelp';
+import { Skeleton } from './components/ui/Skeleton';
 import { OverviewView } from './components/overview/OverviewView';
 import { DrillPanel } from './components/entries/DrillPanel';
 
@@ -23,9 +24,18 @@ const MarketsView = lazy(() => import('./components/markets/MarketsView').then((
 const SettingsView = lazy(() => import('./components/settings/SettingsView').then((m) => ({ default: m.SettingsView })));
 
 /** Holds the layout while a lazy chunk arrives, so switching tabs doesn't
- * collapse the page height and bounce the scroll position. */
+ * collapse the page height and bounce the scroll position.
+ *
+ * Card-shaped rather than blank: every tab opens on a stack of panels, so on a
+ * cold chunk the reader watches the page they asked for assemble instead of
+ * staring at a black rectangle wondering whether the click registered. */
 function ViewFallback() {
-  return <div className="min-h-[60vh]" aria-busy="true" />;
+  return (
+    <div className="view-stack min-h-[60vh]" aria-busy="true" aria-label="Loading">
+      <Skeleton className="h-40 w-full" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
 }
 
 export default function App() {

@@ -3,6 +3,8 @@ import { useStore, useCategories } from '../../lib/core/store';
 import { deductionSummary, totalDeduction, foldDeductionMap, IRS_DEDUCTIONS, type DeductionStatus } from '../../lib/tax/irs';
 import { formatMoney } from '../../lib/core/format';
 import { Button, Card, Input, Select, SectionTitle, Badge, EmptyState } from '../ui/primitives';
+import { IconIrs } from '../ui/icons';
+import { requestNavigate } from '../../lib/core/navigate';
 
 function Meter({ status }: { status: DeductionStatus }) {
   const setCap = useStore((s) => s.setDeductionCap);
@@ -161,7 +163,12 @@ export function IrsPanel() {
       </div>
 
       {categories.length === 0 ? (
-        <EmptyState title="No categories yet" description="Deductions attach to your expense categories, so create some first." />
+        <EmptyState
+          icon={<IconIrs />}
+          title="No categories yet"
+          description="Deductions attach to your expense categories, so create some first."
+          action={{ label: 'Go to Entries', onClick: () => requestNavigate({ tab: 'entries', section: 'log' }) }}
+        />
       ) : (
         <>
           {/* Nothing works until categories are filed, so the mapping comes

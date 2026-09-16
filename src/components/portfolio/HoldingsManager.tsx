@@ -5,6 +5,7 @@ import { useLivePrices } from '../../lib/investments/useLiveQuotes';
 import { formatMoney, formatDate, formatTime, todayInputValue } from '../../lib/core/format';
 import { PRIMARY, COMPLEMENT } from '../../lib/insight/chartTheme';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
+import { IconPortfolio, IconWarning } from '../ui/icons';
 import { SymbolPicker } from '../ui/SymbolPicker';
 
 function daysOld(iso: string): number {
@@ -480,7 +481,13 @@ export function HoldingsManager() {
           {!live.enabled ? (
             'Live prices are off — holdings use the price you recorded.'
           ) : live.error ? (
-            <span className="text-critical-text">{live.error}</span>
+            // The icon rather than a full ErrorState panel: Refresh is already
+            // the control sitting next to this line, so all that was missing
+            // was a signal that doesn't depend on seeing the red.
+            <span className="inline-flex items-center gap-1.5 text-critical-text">
+              <IconWarning className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {live.error}
+            </span>
           ) : live.loading && liveCount === 0 ? (
             'Fetching prices…'
           ) : liveCount > 0 ? (
@@ -584,8 +591,10 @@ export function HoldingsManager() {
 
       {positions.length === 0 ? (
         <EmptyState
+          icon={<IconPortfolio />}
           title="Nothing recorded yet"
           description="Add what you own to make Net worth mean more than cash in the account."
+          action={adding ? undefined : { label: 'Add a holding', onClick: () => setAdding(true) }}
         />
       ) : (
         <div className="space-y-2">

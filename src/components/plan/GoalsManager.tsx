@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useStore, useGoals } from '../../lib/core/store';
 import { goalProgress, totalReserved, type GoalProgress } from '../../lib/planning/goals';
 import { totalBalance } from '../../lib/core/derive';
 import { formatMoney, monthLabel, todayInputValue } from '../../lib/core/format';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
+import { IconPlan, IconTrophy } from '../ui/icons';
+import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/core/animation';
 
 interface Draft {
   label: string;
@@ -33,10 +35,46 @@ function GoalRow({ progress }: { progress: GoalProgress }) {
   const contribute = useStore((s) => s.contributeToGoal);
   const remove = useStore((s) => s.removeGoal);
   const [amount, setAmount] = useState('');
+  const rowRef = useRef<HTMLDivElement>(null);
 
   const { goal, saved, remaining, ratio, monthlyPace, requiredMonthly, projectedMonth, monthsLeft, state } = progress;
   const badge = STATE_COPY[state];
   const pct = Math.min(ratio, 1) * 100;
+  const reached = state === 'reached';
+
+  // Fires on the transition into `reached`, not on every render of a reached
+  // goal — otherwise every unrelated keystroke in the contribute field would
+  // re-congratulate a goal that was already finished weeks ago.
+  const wasReached = useRef(reached);
+  useGSAP(
+    () => {
+      const justReached = reached && !wasReached.current;
+      wasReached.current = reached;
+      if (!justReached || prefersReducedMotion() || !rowRef.current) return;
+      // A glow that rises and falls, rather than a bounce. The motion
+      // vocabulary here is deliberately overshoot-free (see lib/core/animation),
+      // and a goal being met should feel like a light coming on, not a toy.
+      gsap.fromTo(
+        rowRef.current,
+        { boxShadow: '0 0 0 0 color-mix(in oklab, var(--color-accent) 45%, transparent)' },
+        {
+          boxShadow: '0 0 22px 2px color-mix(in oklab, var(--color-accent) 22%, transparent)',
+          duration: DUR.base,
+          ease: EASE.out,
+          yoyo: true,
+          repeat: 1,
+          clearProps: 'boxShadow',
+        }
+      );
+      gsap.from(rowRef.current.querySelector('[data-trophy]'), {
+        scale: 0.4,
+        autoAlpha: 0,
+        duration: DUR.base,
+        ease: EASE.out,
+      });
+    },
+    { dependencies: [reached] }
+  );
 
   const put = (sign: 1 | -1) => {
     const value = Number(amount);
@@ -46,10 +84,18 @@ function GoalRow({ progress }: { progress: GoalProgress }) {
   };
 
   return (
-    <div className="rounded-lg border border-hairline p-3">
+    <div
+      ref={rowRef}
+      className={`rounded-lg border p-3 transition-colors duration-300 ${
+        reached ? 'border-accent/35 bg-accent/6' : 'border-hairline'
+      }`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-ink">{goal.label}</p>
+          <p className="flex items-center gap-1.5 truncate text-sm font-medium text-ink">
+            {reached && <IconTrophy data-trophy className="h-4 w-4 shrink-0 text-accent" />}
+            {goal.label}
+          </p>
           <p className="mt-0.5 text-xs text-ink-muted">
             <span className="num-col text-ink-secondary">{formatMoney(saved)}</span> of{' '}
             <span className="num-col text-ink-secondary">{formatMoney(goal.target)}</span>
@@ -250,8 +296,10 @@ export function GoalsManager() {
 
       {goals.length === 0 ? (
         <EmptyState
+          icon={<IconPlan />}
           title="No goals yet"
           description="A goal earmarks part of your balance for something specific, and tells you whether your pace gets you there in time."
+          action={adding ? undefined : { label: 'Create a goal', onClick: () => setAdding(true) }}
         />
       ) : (
         <div className="space-y-2">

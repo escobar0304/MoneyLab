@@ -4,6 +4,7 @@ import { debtSummary, overpaymentEffect, scheduledPayment, totalOwed } from '../
 import type { Debt } from '../../lib/core/types';
 import { formatMoney, monthLabel, todayInputValue } from '../../lib/core/format';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
+import { IconChart } from '../ui/icons';
 import { AmortizationChart } from './AmortizationChart';
 
 interface Draft {
@@ -313,8 +314,10 @@ export function DebtManager() {
 
       {debts.length === 0 ? (
         <EmptyState
+          icon={<IconChart />}
           title="No loans recorded"
           description="Adding a mortgage or car loan makes Net worth honest, and shows what the interest really costs over the term."
+          action={adding ? undefined : { label: 'Add a loan', onClick: () => setAdding(true) }}
         />
       ) : (
         <div className="space-y-2">

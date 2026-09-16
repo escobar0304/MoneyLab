@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useWatchlist } from '../../lib/investments/watchlist';
 import { Button, Card, Input, Label, SectionTitle, EmptyState } from '../ui/primitives';
+import { IconWatchlist, IconChart } from '../ui/icons';
 import { Reveal } from '../ui/Reveal';
 import { Segmented } from '../ui/Segmented';
 import { SymbolPicker } from '../ui/SymbolPicker';
@@ -100,7 +101,12 @@ export function MarketsView() {
         )}
 
         {symbols.length === 0 ? (
-          <EmptyState title="Watchlist is empty" description="Add a TradingView symbol such as NASDAQ:AAPL to get started." />
+          <EmptyState
+            icon={<IconWatchlist />}
+            title="Watchlist is empty"
+            description="Add a TradingView symbol such as NASDAQ:AAPL to get started."
+            action={adding ? undefined : { label: 'Add a symbol', onClick: () => setAdding(true) }}
+          />
         ) : (
           <div className="flex flex-wrap gap-2">
             {symbols.map((s) => {
@@ -149,7 +155,7 @@ export function MarketsView() {
         {current ? (
           <TradingViewChart symbol={current.id} interval={interval} style={style} />
         ) : (
-          <EmptyState title="Pick a symbol" description="Select one from the watchlist above." />
+          <EmptyState icon={<IconChart />} title="Pick a symbol" description="Select one from the watchlist above." />
         )}
 
         <p className="mt-3 text-xs text-ink-muted">

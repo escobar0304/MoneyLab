@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/core/animation';
 import { usePrivacy } from '../../lib/settings/privacy';
 import { LogoMark, LogoWordmark } from './Logo';
@@ -14,7 +14,7 @@ import {
   IconChevronsLeft,
   IconEye,
   IconEyeOff,
-} from './icons';
+} from '../ui/icons';
 
 export type Tab = 'overview' | 'entries' | 'plan' | 'irs' | 'taxes' | 'portfolio' | 'markets' | 'settings';
 
@@ -33,8 +33,25 @@ const COLLAPSED_KEY = 'moneylab-sidebar-collapsed';
 const EXPANDED_W = 220;
 const COLLAPSED_W = 68;
 
+/** Below this the expanded rail costs more than half the viewport, so it
+ * collapses whatever the stored preference says. */
+const NARROW = '(max-width: 639px)';
+
 export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === '1');
+  const [preferCollapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === '1');
+  const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW).matches);
+
+  // Forced, not stored: a phone shouldn't silently rewrite the preference the
+  // same person set on their desktop — the ledger syncs through an exported
+  // file, but this key is per-browser and would be theirs to find wrong later.
+  const collapsed = narrow || preferCollapsed;
+
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW);
+    const onChangeMq = (e: MediaQueryListEvent) => setNarrow(e.matches);
+    mq.addEventListener('change', onChangeMq);
+    return () => mq.removeEventListener('change', onChangeMq);
+  }, []);
   const [hidden, setHidden] = usePrivacy();
   const asideRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -88,7 +105,7 @@ export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab
   );
 
   const toggle = () => {
-    const next = !collapsed;
+    const next = !preferCollapsed;
     setCollapsed(next);
     localStorage.setItem(COLLAPSED_KEY, next ? '1' : '0');
   };
@@ -152,14 +169,18 @@ export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab
         >
           {hidden ? <IconEyeOff className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
         </button>
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
-          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors duration-200 hover:bg-surface-2 hover:text-ink"
-        >
-          <IconChevronsLeft className={`h-4 w-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
-        </button>
+        {/* Hidden rather than disabled on a narrow screen: the rail is forced
+            collapsed there, so the control has nothing it could do. */}
+        {!narrow && (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors duration-200 hover:bg-surface-2 hover:text-ink"
+          >
+            <IconChevronsLeft className={`h-4 w-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
+          </button>
+        )}
       </div>
     </aside>
   );
