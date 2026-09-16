@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Pushes made with a GitHub App token do not always create a run, which
+  # leaves a branch with no CI and no way to ask for one. This is that way.
+  workflow_dispatch:
 
 # A new push makes the run in progress irrelevant, so cancel it rather than
 # queueing behind work that is already superseded.

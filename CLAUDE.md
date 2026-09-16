@@ -52,9 +52,10 @@ The interface is in **English**, and stays that way. A Portuguese translation
 was tried and deliberately reverted — do not reintroduce one, or an i18n layer,
 without being asked.
 
-Note that money is formatted `pt-PT` while dates are formatted `en-US`
-(`src/lib/core/format.ts`), so a row can read `1 234,56 €` next to
-`Sep 25, 2026`. That inconsistency is known and untouched.
+Formatting is a separate axis from interface language, and it is all `pt-PT`
+now — money always was, dates used to be `en-US`, so a single row could read
+`1 234,56 €` next to `Sep 25, 2026`. One `LOCALE` constant in
+`src/lib/core/format.ts` is the only place that decides it.
 
 ## Things this codebase cares about
 

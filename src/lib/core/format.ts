@@ -1,4 +1,14 @@
-const currencyFormatter = new Intl.NumberFormat('pt-PT', {
+/**
+ * One locale for the whole app.
+ *
+ * Money was formatted pt-PT while every date was formatted en-US, so a single
+ * row could read "1 234,56 €" next to "Sep 25, 2026" — two conventions for the
+ * same reader, in the same line. The app is Portuguese where it is opinionated
+ * at all (IRS headings, IUC dates), so that is the one it commits to.
+ */
+export const LOCALE = 'pt-PT';
+
+const currencyFormatter = new Intl.NumberFormat(LOCALE, {
   style: 'currency',
   currency: 'EUR',
 });
@@ -32,11 +42,11 @@ export function formatSignedMoney(amount: number): string {
 }
 
 export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  return new Date(iso).toLocaleDateString(LOCALE, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString('en-US', {
+  return new Date(iso).toLocaleString(LOCALE, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -55,11 +65,11 @@ export function todayInputValue(): string {
 
 export function monthLabel(monthKey: string): string {
   const [year, month] = monthKey.split('-').map(Number);
-  return new Date(year, month - 1, 1).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+  return new Date(year, month - 1, 1).toLocaleDateString(LOCALE, { year: 'numeric', month: 'long' });
 }
 
 /** Clock time only. A price fetched four minutes ago needs the minute, not the
  * date — and the date would be today in every case that matters. */
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
 }
