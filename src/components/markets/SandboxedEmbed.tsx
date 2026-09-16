@@ -39,12 +39,20 @@ export function SandboxedEmbed({
   const [status, setStatus] = useState<'waiting' | 'loading' | 'ready' | 'error'>(lazy ? 'waiting' : 'loading');
   const [attempt, setAttempt] = useState(0);
 
+  // Keyed on the serialised config, not the object.
+  //
+  // Every caller passes an object literal, so the reference is new on each of
+  // its renders — and a changed `src` reloads the frame. Depending on the
+  // identity would have the chart tear itself down and start again whenever
+  // anything unrelated on the Markets tab re-rendered, losing whatever the
+  // reader had zoomed or drawn.
+  const configKey = JSON.stringify(config);
   const src = useMemo(() => {
-    const params = new URLSearchParams({ w: widget, h: String(height), c: JSON.stringify(config) });
-    // `attempt` is in the URL rather than a key on the element: changing the
-    // src is what actually makes the browser fetch the widget again.
+    const params = new URLSearchParams({ w: widget, h: String(height), c: configKey });
+    // `attempt` is in the URL rather than only a key on the element: changing
+    // the src is what actually makes the browser fetch the widget again.
     return `embed.html?${params.toString()}&r=${attempt}`;
-  }, [widget, height, config, attempt]);
+  }, [widget, height, configKey, attempt]);
 
   useEffect(() => {
     if (!lazy) return;
