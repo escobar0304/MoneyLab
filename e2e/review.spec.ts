@@ -82,11 +82,12 @@ test.describe('coming up', () => {
     await page.goto('/');
 
     await expect(page.getByRole('heading', { name: 'Coming up' })).toBeVisible();
+    const rentRow = page.getByRole('listitem').filter({ hasText: 'Rent' });
     // Exact: a substring match for "Rent" also catches unrelated text
     // elsewhere on the page that happens to contain the word.
     await expect(page.getByText('Rent', { exact: true })).toBeVisible();
-    await expect(page.getByText('in 10 days')).toBeVisible();
-    await expect(page.getByText(money(900))).toBeVisible();
+    await expect(rentRow.getByText('in 10 days')).toBeVisible();
+    await expect(rentRow.getByText(money(900))).toBeVisible();
   });
 
   test('stays off the page when nothing is scheduled', async ({ page }) => {
