@@ -53,7 +53,9 @@ in History, which stays on screen through both Log and Manage.
 
 **Planning**
 - **Goals** — earmark part of the balance toward a target, with a deadline and
-  a required-pace-vs-actual-pace read on whether you're on track.
+  a required-pace-vs-actual-pace read on whether you're on track. A goal that's
+  reached says so — it's marked on the row, with a one-off glow on the
+  transition into it rather than on every later render.
 - **Debt** — a loan's amortization schedule from principal/rate/term, plus a
   "what if I overpaid" projection of months and interest saved.
 - **No-spend challenges** — a self-imposed window ("no takeaway for 30
@@ -62,7 +64,9 @@ in History, which stays on screen through both Log and Manage.
   category, it only reports afterwards which days in the window stayed
   clean — a blocked expense would just get logged a day late or under a
   different category, which teaches nothing; a visible day-by-day pattern
-  does.
+  does. A window that ran its full course without a single charge is marked as
+  a clean run — only once it's over, since congratulating an unfinished one is
+  how a tracker starts lying to the person using it.
 - **IRS deductions** — map your categories to Portuguese IRS deduction
   headings and track spend against each heading's annual ceiling, with an
   editable ceiling since the published rates move every state budget. Purely
@@ -122,6 +126,10 @@ something and watching it change on different rhythms
   connection limit and the lower ones simply never finish.
 
 **Dashboard & insight**
+- On an empty ledger the Overview is a **first-run screen** instead of a
+  dashboard with nothing in it: three next steps that each navigate where they
+  point (set income, log an expense, import a statement), since the one state
+  with no data behind it is also the first one most people see.
 - Net worth (or balance, until there's a portfolio or debt to compose it from)
   as the one headline figure, with a 60-day cash runway underneath it.
 - Trends: net worth and income-vs-expenses over time, savings rate, spend by
@@ -186,6 +194,8 @@ something and watching it change on different rhythms
 - **Vite + React 19 + TypeScript**
 - **Zustand** (with the `persist` middleware) for state, backed by `localStorage`
 - **Tailwind CSS v4** for styling, dark-mode only
+- **@fontsource-variable** (Inter, Space Grotesk, JetBrains Mono), self-hosted so
+  nothing is fetched from a font CDN and the PWA looks right offline
 - **Recharts** for charts, **GSAP** for motion
 - **Vitest** + **Testing Library** for unit tests, **Playwright** for e2e
 - **vite-plugin-pwa** for installability/offline
@@ -196,13 +206,52 @@ No backend, no database — everything lives in one browser's `localStorage`
 ### Dark mode, one theme only
 
 There's no light/dark toggle — dark is simply the app's one look, chosen for lower
-eye strain over long sessions. Page background, card surface, and borders sit on
-three distinct lightness steps (`neutral-950` / `neutral-900` / `neutral-800`) so
-sections read as physically separate panels, and body text uses a soft off-white
-(`neutral-100`) rather than pure white. A single `accent` blue (defined once in
-`src/index.css` via Tailwind v4's `@theme`, reused as the chart palette's primary
-hue in `src/lib/insight/chartTheme.ts`) is the one color that means "interactive." The
-chart palette is the `dataviz` skill's validated dark-mode set.
+eye strain over long sessions. Everything below is defined once in `src/index.css`
+via Tailwind v4's `@theme`.
+
+**Colour.** The whole product runs on one complementary pair: `--color-accent`
+blue (`#3987e5`) for money in, balance and every affirmative state, and
+`--color-complement` orange (`#d95926`) for money out and spend. They're slots 1
+and 2 of the chart palette in `src/lib/insight/chartTheme.ts`, which is what keeps
+the charts and the chrome looking like one application. `--color-critical` red is
+reserved for alarms and nothing routine. Surfaces are a three-step elevation ramp
+(`--color-surface-0/1/2`, `#0b0d12` → `#13161d` → `#1b1f28`) so a panel nested in
+a panel never relies on a border alone to separate; every grey is pulled slightly
+toward the accent's hue rather than being neutral. Ink is cooled to match
+(`--color-ink` `#f4f6f9`), since warm ink on blue-grey reads as dirty. The
+categorical chart palette is CVD-validated — re-run the validator before touching
+its order.
+
+**Type.** Three faces, each with one job. *Space Grotesk* for headings, the nav and
+every etched legend — its drafting-table shapes stay distinct at 11px uppercase
+where a neutral grotesk greys out. *Inter* for running prose, of which this app has
+a lot. *JetBrains Mono* for columns of figures and for numeric inputs (keyed off
+`input[type=number|date]`, so it holds for fields written later too). Headline
+figures take the display face rather than mono: mono buys alignment a lone 48px
+balance doesn't need, and this locale's narrow-no-break thousands separator widens
+to a full advance in a mono face, splitting `13 131,50` into what reads as two
+numbers. All three are bundled via `@fontsource-variable/*` rather than fetched
+from a font CDN — a CDN request would hand the reader's IP to a third party on
+every cold load and leave the app looking wrong offline, which for an
+offline-first local-only ledger is a state it's expressly built to be used in.
+
+**Surface and shape.** A 32px rule grid sits under the page at ~2.5% alpha, fixed
+attachment, so panels rest on squared paper rather than floating in a void. Every
+card catches a light along its top edge and casts a soft shadow (`.card-material`);
+one accent tick marks the start of every panel title, in both `SectionTitle` and
+`ChartCard`, and the sidebar's travelling marker is that same tick. The named type
+scale (`.t-hero`, `.t-metric`, `.t-figure`, `.t-title`, `.t-label`, `.t-caption`)
+exists so a new panel asks "what is this text for" instead of picking a Tailwind
+size, which is how an app ends up with no hierarchy despite every card being
+carefully made.
+
+**States.** `EmptyState` and `ErrorState` (`components/ui/primitives.tsx`) are the
+two shared answers to "there's nothing here". Empty is normal and usually the
+reader's next move, so page-level ones carry an icon and a lit primary action;
+chart-level ones inside an already-titled card stay quiet. Error is a failure they
+didn't cause, so it carries an icon rather than relying on red text alone, plus a
+retry where one can work. `Skeleton` holds the shape of what's loading — lazy tabs
+and pending embeds render a silhouette of the layout instead of a blank rectangle.
 
 ## Getting started
 
@@ -269,8 +318,11 @@ src/
                     drill.ts, chartTables.ts, chartTheme.ts
     settings/     privacy.ts, density.ts, backup.ts, useAutoBackup.ts
   components/
-    layout/     AppShell + Sidebar (tab navigation, icons)
-    ui/          Shared primitives (Card, Button, Modal, ChartCard, Segmented, StatTile, …)
+    layout/      AppShell + Sidebar (tab navigation; collapses to an icon rail
+                  under 640px, forced rather than stored so a phone doesn't
+                  rewrite the preference set on a desktop)
+    ui/          Shared primitives (Card, Button, Modal, ChartCard, Segmented,
+                  StatTile, EmptyState, ErrorState, Skeleton, icons, …)
     overview/    The dashboard, itself grouped: charts/ (trend charts),
                   snapshot/ (this month's numbers), alerts/ (cards that render
                   nothing when there's nothing to flag), cards/ (accounts,
