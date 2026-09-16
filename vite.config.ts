@@ -53,6 +53,15 @@ const tvSearchProxy: Record<string, ProxyOptions> = {
     rewrite: () => '/global/scan',
     configure: asTradingView,
   },
+  // ECB reference rates. Proxied for privacy rather than for access — the API
+  // is open and needs no key, but a direct call from the page would tell a
+  // third party the reader's IP every time an entry in another currency is
+  // edited. Kept identical to `location /fx` in nginx.conf.
+  '/fx': {
+    target: 'https://api.frankfurter.dev',
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/fx/, '/v1'),
+  },
 };
 
 export default defineConfig({
@@ -88,7 +97,7 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api\.frankfurter\.dev\/.*/,
+            urlPattern: ({ url }) => url.pathname.startsWith('/fx/'),
             handler: 'CacheFirst',
             options: {
               cacheName: 'fx-rates',

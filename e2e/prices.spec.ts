@@ -17,7 +17,7 @@ async function stubQuotes(page: Page, rows: [string, number, number, number, str
     })
   );
   // The euro rate, for anything quoted in another currency.
-  await page.route('**/api.frankfurter.dev/**', (route) =>
+  await page.route('**/fx/**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ date: '2026-08-12', rates: { EUR: 0.9 } }) })
   );
 }

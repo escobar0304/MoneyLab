@@ -317,6 +317,12 @@ gets `script-src 'self'` — it loads no third-party script at all any more. Onl
 `/embed.html` may reach TradingView, and it is the only page allowed to be framed
 (`frame-ancestors 'self'`, where the app says `'none'`).
 
+Exchange rates go through the server too, at `/fx`. Frankfurter is open and needs no key,
+so this is not about access — called from the page it would hand a third party the
+reader's IP on every rate lookup, which was the last request making "nothing leaves your
+device" not quite true. With it proxied, the app's `connect-src` is `'self'` and nothing
+else.
+
 Other hardening in the same pass: the accountant CSV neutralises values a spreadsheet
 would execute as a formula on open, and imports are validated per event type rather than
 being waved through on three string fields.
