@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { LedgerEvent, ID, Recurring, RecurringKind, MoneyEvent, Holding, ForeignAmount, Goal, Debt, Account, Rule, TransferEvent, SpendChallenge, Vehicle } from './types';
 import { makeId } from './id';
 import {
@@ -28,6 +28,31 @@ import { fetchConvertedQuotes, type ConvertedQuote } from '../investments/quotes
 import { occurrencesUpTo } from './recurrence';
 import { monthKey } from './derive';
 import { LEDGER_VERSION, normalizeEvents, mergeEvents } from './migrations';
+import { reportWriteFailure, clearWriteFailure } from './storageHealth';
+
+/**
+ * `localStorage`, but a refused write is reported instead of thrown away.
+ *
+ * zustand persists after the state has already changed, so a `setItem` that
+ * throws leaves the app showing an entry that was never stored — and the
+ * exception surfaces nowhere the reader will ever see it. Swallowing it here
+ * is deliberate: re-throwing would take down the action that triggered the
+ * write (and, uncaught in a state updater, the render with it) without saving
+ * anything either way. The write is lost regardless; what this buys is that
+ * the reader is told, while the data is still on screen to be exported.
+ */
+const guardedStorage = createJSONStorage(() => ({
+  getItem: (name: string) => localStorage.getItem(name),
+  setItem: (name: string, value: string) => {
+    try {
+      localStorage.setItem(name, value);
+      clearWriteFailure();
+    } catch (error) {
+      reportWriteFailure(error);
+    }
+  },
+  removeItem: (name: string) => localStorage.removeItem(name),
+}));
 
 /** A one-deep snapshot taken before anything destructive, so every such action
  * is reversible instead of only being confirmable. */
@@ -780,6 +805,7 @@ export const useStore = create<MoneyLabState>()(
     {
       name: 'moneylab-v1',
       version: LEDGER_VERSION,
+      storage: guardedStorage,
       // The undo snapshot is deliberately session-only: persisting it would
       // double the stored payload and offer to "undo" something from last week.
       partialize: (state) => ({ events: state.events, lastExportedAt: state.lastExportedAt, lastBackupAt: state.lastBackupAt }),

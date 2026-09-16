@@ -9,6 +9,8 @@ import { onNavigate } from './lib/core/navigate';
 import { UndoToast } from './components/ui/UndoToast';
 import { ShortcutsHelp } from './components/ui/ShortcutsHelp';
 import { Skeleton } from './components/ui/Skeleton';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { StorageWarning } from './components/ui/StorageWarning';
 import { OverviewView } from './components/overview/OverviewView';
 import { DrillPanel } from './components/entries/DrillPanel';
 
@@ -127,18 +129,25 @@ export default function App() {
 
   return (
     <AppShell active={tab} onChange={changeTab}>
-      <div ref={viewRef} key={tab}>
-        <Suspense fallback={<ViewFallback />}>
-          {tab === 'overview' && <OverviewView />}
-          {tab === 'entries' && <EntriesView />}
-          {tab === 'plan' && <PlanView />}
-          {tab === 'irs' && <IrsView />}
-          {tab === 'taxes' && <TaxesView />}
-          {tab === 'portfolio' && <PortfolioView />}
-          {tab === 'markets' && <MarketsView />}
-          {tab === 'settings' && <SettingsView />}
-        </Suspense>
-      </div>
+      <StorageWarning />
+      {/* Scoped to the view, not the shell: a crash in one tab leaves the
+          sidebar working, and `resetKey` means switching away from the broken
+          tab is itself the recovery. The root boundary in main.tsx catches
+          anything that takes the shell down with it. */}
+      <ErrorBoundary scope="view" resetKey={tab}>
+        <div ref={viewRef} key={tab}>
+          <Suspense fallback={<ViewFallback />}>
+            {tab === 'overview' && <OverviewView />}
+            {tab === 'entries' && <EntriesView />}
+            {tab === 'plan' && <PlanView />}
+            {tab === 'irs' && <IrsView />}
+            {tab === 'taxes' && <TaxesView />}
+            {tab === 'portfolio' && <PortfolioView />}
+            {tab === 'markets' && <MarketsView />}
+            {tab === 'settings' && <SettingsView />}
+          </Suspense>
+        </div>
+      </ErrorBoundary>
       {/* Mounted once at the root rather than per view: any chart anywhere can
           open it, and one owner is what stops two marks opening two panels. */}
       <DrillPanel />

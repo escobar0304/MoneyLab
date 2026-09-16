@@ -20,7 +20,7 @@ Portuguese IRS deductions.
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline%20ready-5A0FC8?logo=pwa&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-382%20passing-3987e5)
+![Tests](https://img.shields.io/badge/tests-398%20passing-3987e5)
 
 <br />
 
@@ -265,6 +265,32 @@ different rhythms.
 | 📂 **Silent folder backups** | Pick a folder once via the File System Access API, kept in sync with no further prompts (Chromium only). |
 | 🧾 **Receipt photos** | Optional, stored in IndexedDB and exported separately so a routine export stays small. |
 | ⌨️ **Shortcuts** | `g`+letter to jump tabs, `n` for a new expense, `Ctrl`/`⌘Z` to undo, `?` for the list. |
+| 🛟 **Never fails silently** | A refused write or a crashed render both say so, and both offer the data as a download on the spot. |
+
+<details>
+<summary><b>🛟 Why "never fails silently" needed building</b></summary>
+
+Two ways a local-only ledger can lose data without anyone noticing, both now closed:
+
+**A write that doesn't land.** The ledger is append-only and never prunes, so it grows for
+as long as the app is used, and `localStorage` caps an origin at a few megabytes. zustand
+persists *after* React state has already changed — so a `setItem` that throws leaves the
+entry on screen, looking saved, and gone on the next reload. The storage layer now reports
+a refused write instead of dropping the exception, and a banner says so until a later
+write succeeds. It offers one action, **Export now**, because pruning from inside an app
+that cannot save wouldn't save either.
+
+**A render that crashes.** For most apps a white screen is an annoyance; here it's
+indistinguishable from "my only copy of my finances is gone". An `ErrorBoundary` leads
+with the fact that the ledger is untouched — a failed render cannot write to it — and then
+offers to download it, because being *told* your data is safe is worth much less than
+being handed it. There are two: one per view, which a tab switch clears, and one at the
+root for a crash that takes the shell with it.
+
+Both rescue paths read `localStorage` directly rather than going through the store, since
+in both situations the store is either the suspect or already known not to be saving.
+
+</details>
 
 ---
 

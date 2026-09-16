@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { applyDensity, readDensity } from './lib/settings/density';
 import { applyPrivacy, readPrivacy } from './lib/settings/privacy';
 // Self-hosted rather than pulled from a font CDN, for the same reason the
@@ -22,6 +23,12 @@ applyPrivacy(readPrivacy());
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {/* The outermost net. The per-view boundary inside App keeps the shell
+        alive for a crash in one tab; this one is for a crash that takes the
+        shell with it, where the alternative is a white page and no way to
+        reach the data. */}
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>
 );
