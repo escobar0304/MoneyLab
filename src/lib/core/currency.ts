@@ -4,7 +4,17 @@ export const BASE_CURRENCY = 'EUR';
 /** Offered in the picker. Any ECB-quoted code works if typed. */
 export const COMMON_CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'BRL', 'JPY', 'CAD', 'AUD', 'SEK', 'NOK', 'PLN'] as const;
 
-const ENDPOINT = 'https://api.frankfurter.dev/v1';
+/**
+ * Same-origin, proxied to Frankfurter by the server (see `location /fx` in
+ * nginx.conf, mirrored in vite.config.ts for dev and preview).
+ *
+ * Calling them from the page directly worked, but handed the reader's IP to a
+ * third party on every rate lookup — for an app whose first promise is that
+ * nothing leaves the device, that was the one request still making the claim
+ * untrue. Going through the server also lets the app's CSP say
+ * `connect-src 'self'` and nothing else.
+ */
+const ENDPOINT = '/fx';
 
 export interface RateLookup {
   rate: number;
