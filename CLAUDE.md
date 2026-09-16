@@ -15,8 +15,15 @@ Every feature goes on its own branch, never straight onto `main`:
    checks below pass.
 4. **The repository owner approves and merges.** Never merge a PR, and never
    push to `main`, without being asked to in that specific case.
-5. **Delete the branch once the merge has landed** — confirm the merge first,
-   then delete it locally and on the remote.
+5. **The remote branch deletes itself.** The repository has GitHub's
+   *Automatically delete head branches* setting on, so merging the PR removes
+   `origin/feature/…` with no one having to remember. What it does not touch is
+   any local clone: clear those with `git fetch --prune` (drops the dead
+   remote-tracking ref) and `git branch -d feature/NAME`.
+
+Nobody needs to announce a merge. On the next session, check the PR's state
+through the API rather than asking — and only then clean up whatever is left
+locally, since a branch whose PR is still open must not be deleted.
 
 Small, obvious fixes (a typo, a broken link, a README correction) can go
 straight to `main`. Anything that changes behaviour or adds surface area takes
