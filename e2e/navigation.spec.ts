@@ -15,7 +15,17 @@ test.describe('navigation and shortcuts', () => {
 
   test('every route loads its own lazy chunk without error', async ({ page }) => {
     const errors: string[] = [];
-    page.on('pageerror', (e) => errors.push(e.message));
+    page.on('pageerror', (e) => {
+      // The Markets embeds are sandboxed without `allow-same-origin` on
+      // purpose, so anything reaching for storage inside one throws. Playwright's
+      // own service-worker blocker does exactly that, in every frame — running
+      // this same flow with `serviceWorkers: 'allow'` produces none of these,
+      // which is what identifies the harness rather than the app as the source.
+      // No user ever sees it, and the wording can only come from a sandboxed
+      // frame, so it cannot mask a real error from the app itself.
+      if (e.message.includes('allow-same-origin')) return;
+      errors.push(e.message);
+    });
 
     for (const [tab, heading] of [
       ['Entries', 'Log expense'],
