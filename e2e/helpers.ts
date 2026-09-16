@@ -29,6 +29,14 @@ export interface SeedEvent {
 export async function seed(page: Page, events: SeedEvent[], options: { livePrices?: boolean } = {}): Promise<void> {
   await page.addInitScript(
     ({ key, version, seeded, livePrices }) => {
+      // Only the top document. `addInitScript` runs in every frame, and the
+      // Markets embeds are sandboxed without `allow-same-origin` — so touching
+      // localStorage inside one throws a SecurityError that surfaces as an
+      // uncaught page error and fails the test watching for those. The ledger
+      // only ever lives in the top window, so this has no business running
+      // anywhere else.
+      if (window.top !== window.self) return;
+
       if (!localStorage.getItem(key)) {
         localStorage.setItem(
           key,
