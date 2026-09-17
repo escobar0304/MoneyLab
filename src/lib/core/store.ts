@@ -29,6 +29,7 @@ import { occurrencesUpTo } from './recurrence';
 import { monthKey } from './derive';
 import { LEDGER_VERSION, normalizeEvents, mergeEvents } from './migrations';
 import { reportWriteFailure, clearWriteFailure } from './storageHealth';
+import { sampleLedger, isDemoEvent, isDemoLedger } from '../demo/sampleLedger';
 
 /**
  * `localStorage`, but a refused write is reported instead of thrown away.
@@ -205,6 +206,12 @@ interface MoneyLabState {
   markExported: () => void;
   markBackedUp: () => void;
   clearAll: () => void;
+
+  /** Fill an empty ledger with the sample one. Refuses, and answers `false`,
+   * if anything real is already logged. */
+  loadDemo: () => boolean;
+  /** Take the sample data back out, leaving anything real untouched. */
+  clearDemo: () => void;
 }
 
 export const useStore = create<MoneyLabState>()(
@@ -800,6 +807,37 @@ export const useStore = create<MoneyLabState>()(
           snapshot('All data cleared');
           set({ events: [] });
         },
+
+        /**
+         * Loading the demo can only ever add to an empty ledger.
+         *
+         * The UI only offers this from the first-run screen, which by
+         * definition has nothing in it — but "the button is not on screen" is
+         * not a guarantee, and the thing on the other side of this call is the
+         * reader's own financial record. So the check lives here, where it
+         * cannot be routed around, and a refusal is reported rather than
+         * swallowed.
+         */
+        loadDemo: () => {
+          const existing = get().events;
+          if (existing.some((e) => !isDemoEvent(e))) return false;
+          snapshot('Sample data loaded');
+          set({ events: sampleLedger() });
+          return true;
+        },
+
+        /**
+         * Removes the sample data by its id prefix, which is what makes this
+         * safe: a real event's id is a UUID and cannot match, so this filter
+         * physically cannot take one with it — even if a reader logged real
+         * entries on top of the demo before clearing it.
+         */
+        clearDemo: () => {
+          const events = get().events;
+          if (!events.some(isDemoEvent)) return;
+          snapshot('Sample data cleared');
+          set({ events: events.filter((e) => !isDemoEvent(e)) });
+        },
       };
     },
     {
@@ -840,6 +878,18 @@ export const useStore = create<MoneyLabState>()(
     }
   )
 );
+
+/**
+ * Whether what is on screen is the sample ledger.
+ *
+ * Derived from the events themselves rather than kept as a flag, so it cannot
+ * disagree with what is actually stored — the same reason nothing else in this
+ * app is written down twice.
+ */
+export const useIsDemo = (): boolean => {
+  const events = useStore((s) => s.events);
+  return useMemo(() => isDemoLedger(events), [events]);
+};
 
 export const useRecurring = (kind?: RecurringKind): Recurring[] => {
   const events = useStore((s) => s.events);

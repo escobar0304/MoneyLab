@@ -20,7 +20,7 @@ Portuguese IRS deductions.
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline%20ready-5A0FC8?logo=pwa&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-440%20passing-3987e5)
+![Tests](https://img.shields.io/badge/tests-471%20passing-3987e5)
 
 <br />
 
@@ -65,7 +65,7 @@ npm run build      # 📦 type-check + production build
 |  |  |
 |---|---|
 | <img src="docs/screenshots/first-run.png" alt="First run" /> | <img src="docs/screenshots/entries.png" alt="Entries" /> |
-| **🌱 First run** — three next steps that each go where they point. | **✍️ Entries** — log on the left, the full searchable history on the right. |
+| **🌱 First run** — three next steps that each go where they point, plus sample data to explore first. | **✍️ Entries** — log on the left, the full searchable history on the right. |
 | <img src="docs/screenshots/plan.png" alt="Plan" /> | <img src="docs/screenshots/portfolio.png" alt="Portfolio" /> |
 | **🎯 Plan** — goals, debt payoff and no-spend challenges. | **📈 Portfolio** — holdings, live prices, FIFO capital gains. |
 
@@ -220,6 +220,13 @@ different rhythms.
 - **🌱 First run** — on an empty ledger the Overview is a proper welcome instead of a
   dashboard with nothing in it: three next steps that each navigate where they point,
   since the one state with no data behind it is also the first one most people see.
+- **🧪 Sample data** — a fourth way in, for anyone who would rather look before typing:
+  seven months of an invented ledger that lights up every screen — budgets against real
+  overruns, a debt part-way through its schedule, FIFO gains on a holding kept over a
+  year, IRS headings with two ceilings already reached. Every sample event's id carries a
+  `demo-` prefix, and real ids are UUIDs, so the two sets **cannot collide** — clearing
+  the demo is a filter that provably can't take a real entry with it, even if you started
+  logging on top of it. An orange banner sits on every screen until it's gone.
 - **💰 Net worth** (or balance, until there's a portfolio or debt to compose it from) as
   the one headline figure, with a **60-day cash runway** underneath it.
 - **📉 Trends** — net worth, income-vs-expenses, savings rate, spend by category over time.
@@ -495,6 +502,9 @@ src/
                     the same figures animated one point at a time), worthIt.ts,
                     drill.ts, chartTables.ts, chartTheme.ts
     settings/     privacy.ts, density.ts, backup.ts, useAutoBackup.ts
+    demo/         sampleLedger.ts (a deterministic sample ledger, every id
+                    prefixed `demo-` so it can be removed without touching
+                    anything real)
   components/
     layout/      AppShell + Sidebar (tab navigation; collapses to an icon rail
                   under 640px, forced rather than stored so a phone doesn't

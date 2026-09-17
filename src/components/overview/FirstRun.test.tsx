@@ -4,6 +4,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FirstRun } from './FirstRun';
 import { onNavigate, type NavigateDetail } from '../../lib/core/navigate';
+import { useStore } from '../../lib/core/store';
+import { isDemoEvent } from '../../lib/demo/sampleLedger';
 
 /** Collects the tab-switch requests the screen makes, which is the whole
  * contract here: every route out of this page has to be a control on it. */
@@ -17,6 +19,7 @@ let stopListening: (() => void) | null = null;
 afterEach(() => {
   stopListening?.();
   stopListening = null;
+  useStore.setState({ events: [], undoSnapshot: null });
 });
 
 describe('FirstRun', () => {
@@ -60,6 +63,17 @@ describe('FirstRun', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Restore a backup/ }));
     expect(requests).toEqual([{ tab: 'settings' }]);
+  });
+
+  // Offered apart from the three steps, because it is the opposite action:
+  // they start a ledger, this one puts off starting one.
+  it('offers sample data as a way to look before committing', async () => {
+    render(<FirstRun />);
+    await userEvent.click(screen.getByRole('button', { name: /Load sample data/ }));
+
+    const events = useStore.getState().events;
+    expect(events.length).toBeGreaterThan(50);
+    expect(events.every(isDemoEvent)).toBe(true);
   });
 
   // The local-only guarantee is a selling point, not a settings detail, so it

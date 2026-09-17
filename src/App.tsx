@@ -11,6 +11,7 @@ import { ShortcutsHelp } from './components/ui/ShortcutsHelp';
 import { Skeleton } from './components/ui/Skeleton';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { StorageWarning } from './components/ui/StorageWarning';
+import { DemoBanner } from './components/ui/DemoBanner';
 import { OverviewView } from './components/overview/OverviewView';
 import { DrillPanel } from './components/entries/DrillPanel';
 
@@ -130,6 +131,7 @@ export default function App() {
   return (
     <AppShell active={tab} onChange={changeTab}>
       <StorageWarning />
+      <DemoBanner />
       {/* Scoped to the view, not the shell: a crash in one tab leaves the
           sidebar working, and `resetKey` means switching away from the broken
           tab is itself the recovery. The root boundary in main.tsx catches
