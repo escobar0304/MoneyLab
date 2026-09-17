@@ -221,3 +221,20 @@ export function IconEyeOff(props: SVGProps<SVGSVGElement>) {
     </Icon>
   );
 }
+
+/**
+ * Sample data — a dashed panel holding stand-in figures.
+ *
+ * Dashed because that is the universal "placeholder" convention, and
+ * deliberately *not* a flask: the product's own logo mark is one, so a flask
+ * here would spend the brand's symbol on meaning "this is not real", which is
+ * the one thing it must not come to mean.
+ */
+export function IconSample(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2.5" strokeDasharray="3.2 2.6" />
+      <path d="M8 16v-3.2M12 16v-6.4M16 16v-4.6" />
+    </Icon>
+  );
+}
