@@ -20,7 +20,7 @@ Portuguese IRS deductions.
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline%20ready-5A0FC8?logo=pwa&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-493%20passing-3987e5)
+![Tests](https://img.shields.io/badge/tests-498%20passing-3987e5)
 
 <br />
 
@@ -153,6 +153,13 @@ other happens once in a while to keep Log honest.
   caught), updating every entry, rule and budget at once.
 
 </details>
+
+**An entry never lands silently.** The history shows one month at a time and the form
+lets you date an expense into any of them, so catching up on a July receipt in September
+used to write the event and change nothing on screen — indistinguishable from having
+failed, and the reasonable response to which is to log it again. It now says which month
+it went to, with a way to go there. It stays quiet when the row is about to appear beside
+the form: a confirmation for something already visible is noise.
 
 Always available in both sections: marking an entry **reconciled** against the bank,
 without touching the record of what actually happened — that lives in History.

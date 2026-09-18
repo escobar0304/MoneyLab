@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useStore, useAccounts, useVehicles } from '../../lib/core/store';
+import { monthKey } from '../../lib/core/derive';
+import { getShownMonth, requestMonth } from '../../lib/core/historyView';
 import { MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
 import { Button, Card, Input, Label, SectionTitle, Select } from '../ui/primitives';
-import { todayInputValue, formatMoney, formatDate } from '../../lib/core/format';
+import { todayInputValue, formatMoney, formatDate, monthLabel } from '../../lib/core/format';
 import { CategoryPicker } from './CategoryPicker';
 import { AmountField, type AmountValue } from './AmountField';
 import { splitPayment } from '../../lib/money/splitPayment';
@@ -41,6 +43,7 @@ export function ExpenseEntryForm() {
   const [splitting, setSplitting] = useState(false);
   const [splitMonths, setSplitMonths] = useState('');
   const [splitRate, setSplitRate] = useState('');
+  const [postedAway, setPostedAway] = useState<string | null>(null);
 
   const selectedVehicle = vehicles.find((v) => v.id === vehicleId);
   const installmentOptions = selectedVehicle?.installments ?? [];
@@ -87,6 +90,14 @@ export function ExpenseEntryForm() {
         installmentIndex: installmentIndex === '' ? undefined : Number(installmentIndex),
       });
     }
+    // An expense dated into a month the history is not showing lands in the
+    // ledger and changes nothing on screen, which is indistinguishable from
+    // having failed — so it says where it went, and offers to go there.
+    // Nothing is said when the row is about to animate in beside this form:
+    // a confirmation for something already visible is noise.
+    const posted = monthKey(new Date(date).toISOString());
+    setPostedAway(posted === getShownMonth() ? null : posted);
+
     setAmount('');
     setSubcategory('');
     setNote('');
@@ -268,6 +279,24 @@ export function ExpenseEntryForm() {
             />
           </div>
         </div>
+
+        {postedAway && (
+          <p role="status" className="flex flex-wrap items-center gap-2 text-xs text-ink-secondary">
+            <span>
+              Logged to <strong className="text-ink">{monthLabel(postedAway)}</strong>, which the history is not showing.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                requestMonth(postedAway);
+                setPostedAway(null);
+              }}
+              className="cursor-pointer text-accent underline-offset-2 transition-colors duration-200 hover:text-accent-hover hover:underline"
+            >
+              Show it
+            </button>
+          </p>
+        )}
 
         <div className="flex items-center justify-end gap-3 pt-1">
           {!canSubmit && <p className="text-xs text-ink-muted">Pick a category and enter an amount.</p>}
