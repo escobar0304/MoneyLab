@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useStore, useCleared, useAccounts } from '../../lib/core/store';
 import { monthsWithActivity, monthKey, totalIncomeForMonth, totalOutflowForMonth } from '../../lib/core/derive';
 import { useArrivals } from '../../lib/core/arrivals';
+import { setShownMonth, onMonthRequest } from '../../lib/core/historyView';
 import { searchEntries } from '../../lib/core/search';
 import { reconcile } from '../../lib/core/entities';
 import { accountIdOf, MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
@@ -40,6 +41,14 @@ export function History() {
 
   const accounts = useAccounts();
   const [month, setMonth] = useState(currentMonth);
+
+  // Published so the entry form can tell whether what it just posted landed
+  // somewhere visible, and honoured so its "show it" can bring that month here.
+  // During render rather than in an effect: the form reads this synchronously
+  // when the reader submits, and a value one commit stale would send them to
+  // the month they were on before.
+  setShownMonth(month);
+  useEffect(() => onMonthRequest(setMonth), []);
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [account, setAccount] = useState('all');
   const [query, setQuery] = useState('');
