@@ -7,6 +7,7 @@ import { PRIMARY, COMPLEMENT } from '../../lib/insight/chartTheme';
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 import { IconPortfolio, IconWarning } from '../ui/icons';
 import { SymbolPicker } from '../ui/SymbolPicker';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
 
 function daysOld(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -431,7 +432,9 @@ export function HoldingsManager() {
       <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
         <div>
           <p className="t-label">Value</p>
-          <p className="t-metric text-ink">{formatMoney(summary.value)}</p>
+          <p className="t-metric text-ink">
+            <AnimatedNumber value={summary.value} format={formatMoney} />
+          </p>
         </div>
         {/* Today first among the derived figures: it is the only one that is new
             since the last time this page was open. */}

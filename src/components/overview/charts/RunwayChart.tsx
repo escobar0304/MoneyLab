@@ -90,6 +90,14 @@ export function RunwayChart({ days = 60 }: { days?: number }) {
           <ReferenceLine y={0} stroke={CHART_INK.axis} strokeWidth={1} />
           <Tooltip cursor={crosshair} content={<RunwayTooltip />} />
 
+          {/* Both areas draw instantly, which looks like an oversight and is not.
+              Recharts tweens an Area over ~1.5s but renders ReferenceDot at its
+              final position immediately — so with the animation on, the orange
+              shortfall marker sits alone in empty space for the better part of a
+              second before the line that explains it arrives. Measured at 160ms
+              into the tween: the area had reached Oct 2 while the marker was
+              already at Oct 17. A lone dot in the void reads as a bug, and this
+              is the most prominent chart in the app. */}
           <Area
             type="stepAfter"
             dataKey="scheduled"

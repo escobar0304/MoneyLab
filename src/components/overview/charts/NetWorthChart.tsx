@@ -7,6 +7,7 @@ import { formatMoney, formatDate, monthLabel } from '../../../lib/core/format';
 import { ChartTooltip } from '../../ui/ChartTooltip';
 import { EndpointLabel, Plot, crosshair, gridProps, niceScale, plotMargin, xAxisProps, yAxisProps } from '../../ui/chartChrome';
 import { EmptyState } from '../../ui/primitives';
+import { AnimatedNumber } from '../../ui/AnimatedNumber';
 
 export function NetWorthChart() {
   const events = useVisibleEvents();
@@ -24,7 +25,9 @@ export function NetWorthChart() {
   if (data.length === 1) {
     return (
       <div className="py-6 text-center">
-        <p className="t-metric text-ink">{formatMoney(data[0].value)}</p>
+        <p className="t-metric text-ink">
+          <AnimatedNumber value={data[0].value} format={formatMoney} />
+        </p>
         <p className="mt-1 text-xs text-ink-muted">{formatDate(data[0].timestamp)} — keep logging to see a trend</p>
       </div>
     );

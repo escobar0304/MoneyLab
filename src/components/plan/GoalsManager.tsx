@@ -6,6 +6,7 @@ import { formatMoney, monthLabel, todayInputValue } from '../../lib/core/format'
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 import { IconPlan, IconTrophy } from '../ui/icons';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/core/animation';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
 
 interface Draft {
   label: string;
@@ -223,7 +224,9 @@ export function GoalsManager() {
         <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
           <div>
             <p className="t-label">Unspoken for</p>
-            <p className={`t-metric ${free < 0 ? 'text-critical-text' : 'text-ink'}`}>{formatMoney(free)}</p>
+            <p className={`t-metric ${free < 0 ? 'text-critical-text' : 'text-ink'}`}>
+              <AnimatedNumber value={free} format={formatMoney} />
+            </p>
           </div>
           <div>
             <p className="t-label">Set aside</p>

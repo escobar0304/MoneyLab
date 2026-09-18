@@ -6,6 +6,7 @@ import { formatMoney, monthLabel, todayInputValue } from '../../lib/core/format'
 import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 import { IconChart } from '../ui/icons';
 import { AmortizationChart } from './AmortizationChart';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
 
 interface Draft {
   label: string;
@@ -209,7 +210,9 @@ export function DebtManager() {
         <div className="mb-3 flex flex-wrap items-baseline gap-x-6 gap-y-1">
           <div>
             <p className="t-label">Still owed</p>
-            <p className="t-metric text-ink">{formatMoney(owed)}</p>
+            <p className="t-metric text-ink">
+              <AnimatedNumber value={owed} format={formatMoney} />
+            </p>
           </div>
           <div>
             <p className="t-label">Per month</p>
