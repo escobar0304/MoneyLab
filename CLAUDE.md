@@ -57,6 +57,19 @@ now — money always was, dates used to be `en-US`, so a single row could read
 `1 234,56 €` next to `Sep 25, 2026`. One `LOCALE` constant in
 `src/lib/core/format.ts` is the only place that decides it.
 
+## Theme
+
+Two: **Paper** (light, the default) and **Ink** (dark). They are not one inverted —
+each carries its own chart palette, validated separately with the dataviz skill's
+`validate_palette.js` against its own surface. Re-run it for **both** before changing a
+slot, and check any new ink step for WCAG AA against all three surfaces of its theme.
+
+Anything colour-bearing at module scope must read the theme **lazily** — a getter, not a
+value. ES imports evaluate before the importing module's body, so a constant that read
+the theme resolved before it was set, and every chart in the dark theme drew a light
+gridline. `index.html` also sets `data-theme` in an inline script before first paint,
+which is what stops the wrong theme flashing on load.
+
 ## Things this codebase cares about
 
 - **The ledger is append-only.** Everything else is derived from `events`. Do

@@ -20,7 +20,7 @@ Portuguese IRS deductions.
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline%20ready-5A0FC8?logo=pwa&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-498%20passing-3987e5)
+![Tests](https://img.shields.io/badge/tests-502%20passing-3987e5)
 
 <br />
 
@@ -405,9 +405,21 @@ IndexedDB for receipts and the backup folder handle).
 
 ## 🎨 Design
 
-There's no light/dark toggle — dark is the app's one look, chosen for lower eye strain
-over long sessions. Everything below is defined once in `src/index.css` via Tailwind v4's
-`@theme`.
+**Two faces, and Paper is the default.** Paper is light and printed — rules and columns
+on warm off-white, which is nearer what a personal ledger actually is than a control
+panel. Ink is the dark instrument panel the app was before, kept rather than replaced:
+it was chosen because a dark surface is easier over a long sitting, and that reason
+didn't stop being true when the product got a second face.
+
+The two are not one inverted. Each has its **own validated chart palette** — six of the
+eight slots are shared, and gold and violet are re-stepped for paper, where the dark
+theme's versions read 2.9:1 and 2.95:1 against the surface and fail contrast. Every ink
+step clears WCAG AA against all three surfaces of its own theme, measured rather than
+chosen.
+
+Everything is defined once in `src/index.css`: Tailwind's tokens point at `--ml-*`
+variables, and the two themes swap that whole set at the root — the same one-variable
+trick density already uses.
 
 <details>
 <summary><b>🎨 Colour</b> — one complementary pair, spent almost entirely on data</summary>

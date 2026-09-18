@@ -1,8 +1,14 @@
 import { useState } from 'react';
 import { useDensity, type Density } from '../../lib/settings/density';
+import { useTheme, type Theme } from '../../lib/settings/theme';
 import { usePrivacy } from '../../lib/settings/privacy';
 import { readWorthItThreshold, writeWorthItThreshold } from '../../lib/insight/worthIt';
 import { Card, SectionTitle, Input, Label } from '../ui/primitives';
+
+const THEMES: { id: Theme; label: string; description: string }[] = [
+  { id: 'paper', label: 'Paper', description: 'Light and printed. Rules and columns on warm off-white.' },
+  { id: 'ink', label: 'Ink', description: 'The dark panel. Easier on the eyes over a long sitting.' },
+];
 
 const OPTIONS: { id: Density; label: string; description: string }[] = [
   { id: 'comfortable', label: 'Comfortable', description: 'Roomier panels. Easier to read a page at a time.' },
@@ -19,6 +25,7 @@ const OPTIONS: { id: Density; label: string; description: string }[] = [
  * rather than a second stylesheet to keep in step.
  */
 export function Appearance() {
+  const [theme, setTheme] = useTheme();
   const [density, setDensity] = useDensity();
   const [hidden, setHidden] = usePrivacy();
   const [worthItThreshold, setWorthItThreshold] = useState(() => String(readWorthItThreshold()));
@@ -26,6 +33,33 @@ export function Appearance() {
   return (
     <Card>
       <SectionTitle>Appearance</SectionTitle>
+      <fieldset className="mb-4 border-b border-hairline pb-4">
+        <legend className="t-label mb-2">Theme</legend>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {THEMES.map((option) => (
+            <label
+              key={option.id}
+              className={`flex cursor-pointer gap-2.5 rounded-lg border p-3 transition-colors duration-200 ${
+                theme === option.id ? 'border-accent/40 bg-accent/10' : 'border-hairline hover:border-border'
+              }`}
+            >
+              <input
+                type="radio"
+                name="theme"
+                value={option.id}
+                checked={theme === option.id}
+                onChange={() => setTheme(option.id)}
+                className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-accent"
+              />
+              <span className="min-w-0">
+                <span className={`block text-sm font-medium ${theme === option.id ? 'text-accent' : 'text-ink'}`}>{option.label}</span>
+                <span className="t-caption mt-0.5 block">{option.description}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
       <fieldset>
         <legend className="t-label mb-2">Density</legend>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

@@ -15,6 +15,19 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   </head>
   <body>
+    <!-- Before anything is painted or any module is evaluated. A deferred module
+         script runs after the browser has already drawn the page, so setting the
+         theme there flashes the wrong one on every load — and a white flash on
+         the dark theme is the worst version of that. It also means module-scope
+         constants that read the theme resolve against the right one. Kept in
+         step with `readTheme()` in lib/settings/theme.ts. -->
+    <script>
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem('moneylab-theme') === 'ink' ? 'ink' : 'paper';
+      } catch (e) {
+        document.documentElement.dataset.theme = 'paper';
+      }
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
