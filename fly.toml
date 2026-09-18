@@ -1,0 +1,55 @@
+# Fly.io deployment.
+#
+# What this buys, and it is not "somewhere to keep your data" — there is no
+# data here to keep. The container is the same nginx that already serves the
+# app locally: static files plus the three lookup proxies. No database, no
+# sessions, no accounts. Every ledger lives in the browser that created it, so
+# whoever opens this URL gets an empty app and the offer of sample data.
+#
+# What it does buy is a secure context. Served over plain HTTP from a LAN
+# address — how you reach a local container from a phone — the browser
+# withholds `crypto.subtle`, service worker registration and the File System
+# Access API, which silently disables encrypted export, installing the app, and
+# automatic folder backup. HTTPS turns all three back on.
+
+app = "moneylab"
+# Fly has no Lisbon region; Madrid is the closest hop.
+primary_region = "mad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 80
+  # Everything below depends on this: the whole point of deploying is the
+  # secure context, and a reachable http:// route would quietly undo it.
+  force_https = true
+
+  # Scale to zero when nobody is looking. This is a personal app that will sit
+  # idle most of the day, and a stopped machine costs nothing. The wake-up is
+  # about a second for a container this small, and only the first request after
+  # an idle period pays it — the app itself is cached by its service worker.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 100
+    hard_limit = 250
+
+  # Hits the dedicated endpoint in nginx.conf rather than "/", so a health check
+  # cannot be answered by the SPA fallback — which would report healthy for a
+  # broken build, since index.html is served for anything that does not match.
+  [[http_service.checks]]
+    grace_period = "5s"
+    interval = "30s"
+    method = "GET"
+    timeout = "4s"
+    path = "/healthz"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  # nginx serving precompiled static files needs very little; the build happens
+  # at image time, not here.
+  memory = "256mb"

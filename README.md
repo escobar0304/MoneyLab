@@ -20,7 +20,7 @@ Portuguese IRS deductions.
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline%20ready-5A0FC8?logo=pwa&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-471%20passing-3987e5)
+![Tests](https://img.shields.io/badge/tests-473%20passing-3987e5)
 
 <br />
 
@@ -38,7 +38,7 @@ Portuguese IRS deductions.
 
 |  | |
 |---|---|
-| 🔐 **Local-only** | Your ledger lives in `localStorage`, in one browser. Nothing is uploaded, ever. |
+| 🔐 **Local-only** | Your ledger lives in `localStorage`, in one browser. Nothing is uploaded, ever — deploying it somewhere changes where the *code* is served from, not where the data lives. |
 | 🧾 **One source of truth** | Budgets, runway, net worth and tax headings are all *derived*. Nothing can drift out of sync with its history. |
 | ⏳ **Time travel is free** | "As of a past date" is just a filter over the same array — no second history to keep. |
 | 📦 **Your data is one JSON array** | That's literally what "export" writes to disk. |
@@ -57,6 +57,39 @@ npm run build      # 📦 type-check + production build
 ```
 
 > 💡 There's nothing to configure and no account to make. Open it and start logging.
+
+---
+
+## 🚀 Hosting it
+
+Running it on your own machine is the default and nothing here changes that.
+Deploying is worth it for one specific reason: **a phone.** Reached over plain HTTP
+from a LAN address, browsers withhold `crypto.subtle`, service worker registration
+and the File System Access API — which silently disables **encrypted export**,
+**installing the app**, and **automatic folder backup**. `localhost` is already a
+secure context, so on the desktop where the container runs you lose none of that;
+over `192.168.x.x` you lose all three. HTTPS gives them back.
+
+```bash
+fly launch --no-deploy   # once, to claim the app name
+fly deploy
+```
+
+`fly.toml` is committed. It scales to zero when idle, so an idle instance costs
+nothing and the first request after a quiet spell pays about a second to wake.
+
+**This does not put your ledger on a server, because there is no server-side state
+to put it in** — no database, no sessions, no accounts. Whoever opens the URL gets
+an empty app and the offer of sample data. What *does* change is that the three
+lookup proxies now run on someone else's hardware: a date and a currency code, the
+text typed into symbol search, and your list of ticker symbols would pass through
+it. Not amounts, not quantities, not entries. If that trade isn't worth it to you,
+the honest answer is to keep using the local container and deploy only the public
+instance you hand to other people — the code is identical and neither holds data.
+
+Because a public URL makes those proxies callable by anyone, they're rate-limited
+per client in `nginx.conf`, keyed on `Fly-Client-IP` where it's present so one
+visitor can't spend everybody else's budget.
 
 ---
 
