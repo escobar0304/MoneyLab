@@ -35,42 +35,134 @@
 
      Colour is spent almost entirely on data. The chrome uses these hues at low
      alpha (tints and rings, not fills), which is what keeps the app soft. */
-  --color-accent: #3987e5;
-  --color-accent-hover: #5ea0ee;
-  --color-accent-soft: #1c3a5c;
+  /* Colour is indirected through --ml-* so the two themes can swap the whole
+     set at the root. The names keep their jobs: accent is money in, balance and
+     every affirmative state; complement is money out and spend. They sit
+     opposite on the wheel, so they separate instantly without either shouting,
+     and both are slots 1 and 2 of the validated chart palette — which is what
+     keeps the charts and the chrome reading as one application. */
+  --color-accent: var(--ml-accent);
+  --color-accent-hover: var(--ml-accent-hover);
+  --color-accent-soft: var(--ml-accent-soft);
+  /* The accent at text weight. On paper the mark colour is too light to carry
+     a sentence, so links and figures take a darker step of the same hue. */
+  --color-accent-text: var(--ml-accent-text);
 
-  --color-complement: #d95926;
-  --color-complement-hover: #e8724a;
+  --color-complement: var(--ml-complement);
+  --color-complement-hover: var(--ml-complement-hover);
+  --color-complement-text: var(--ml-complement-text);
 
-  /* Reserved: the single alarm colour. Not used for anything routine.
-     `critical` fills marks; `critical-text` is the lighter step small text needs
-     to clear 4.5:1 on the card surface (the fill step only reaches 3.77). */
-  --color-critical: #d03b3b;
-  --color-critical-text: #e05a5a;
-  --color-positive: #3987e5;
+  --color-critical: var(--ml-critical);
+  --color-critical-text: var(--ml-critical-text);
+  --color-positive: var(--ml-accent);
 
-  /* Elevation ramp. surface-0 is the page, -1 a card, -2 a panel inside a card.
-     Every grey in the app is pulled toward the accent's hue rather than being
-     neutral, so the blue reads across the whole product instead of only where
-     data happens to be — but at a chroma low enough that it never competes with
-     the charts sitting on top of it.
-     Re-validated: the 8-slot categorical palette passes all six checks against
-     both #13161d and #0b0d12 (validate_palette.js --mode dark). */
-  --color-surface-0: #0b0d12;
-  --color-surface-1: #13161d;
-  --color-surface-2: #1b1f28;
-  --color-hairline: #262b36;
-  --color-border: #333a48;
+  --color-surface-0: var(--ml-surface-0);
+  --color-surface-1: var(--ml-surface-1);
+  --color-surface-2: var(--ml-surface-2);
+  --color-hairline: var(--ml-hairline);
+  --color-border: var(--ml-border);
 
-  /* Ink, cooled to match the tinted surfaces. Warm ink on blue-grey looks dirty.
-     Contrast on the card surface: 16.7 / 10.2 / 5.8 — all clear AA body text. */
-  --color-ink: #f4f6f9;
-  --color-ink-secondary: #bcc3cf;
-  --color-ink-muted: #8892a3;
+  --color-ink: var(--ml-ink);
+  --color-ink-secondary: var(--ml-ink-secondary);
+  --color-ink-muted: var(--ml-ink-muted);
 
   /* Dense dashboard spacing scale */
   --spacing-gutter: 0.75rem;
   --spacing-section: 1.5rem;
+}
+
+/* ---------------------------------------------------------------------------
+   The two faces.
+
+   `paper` is the default: warm off-white, rules and columns, the way a
+   statement is printed. `ink` is the dark instrument panel this app was
+   before — kept rather than replaced, because it was chosen for a real reason
+   (a dark surface is easier over a long sitting) and that reason did not stop
+   being true when the product got a second face.
+
+   Every value here is measured, not picked. The ink steps clear WCAG AA (4.5:1)
+   against all three surfaces of their own theme, and the chart palettes are
+   separate validated sets — a light theme is not a dark one inverted, and the
+   two slots that fail contrast on paper are re-stepped rather than reused.
+   --------------------------------------------------------------------------- */
+:root,
+:root[data-theme='paper'] {
+  color-scheme: light;
+
+  --ml-accent: #3987e5;
+  --ml-accent-hover: #2f78d2;
+  --ml-accent-soft: #dceafb;
+  --ml-accent-text: #1a63bd; /* 5.56 / 5.89 / 5.18 on the three surfaces */
+
+  --ml-complement: #d95926;
+  --ml-complement-hover: #c34c1d;
+  --ml-complement-text: #b8461a;
+
+  --ml-critical: #d03b3b;
+  --ml-critical-text: #b02a2a;
+
+  /* Paper, card, and the panel nested inside a card. Warm rather than neutral:
+     a pure grey next to these inks reads as a screenshot of a document, and a
+     touch of warmth reads as the document. */
+  --ml-surface-0: #faf8f5;
+  --ml-surface-1: #ffffff;
+  --ml-surface-2: #f3f0ea;
+  --ml-hairline: #e6e1d8;
+  --ml-border: #d4cec2;
+
+  --ml-ink: #1a1814;
+  --ml-ink-secondary: #4a453d;
+  --ml-ink-muted: #6b6459; /* 5.51 / 5.85 / 5.14 */
+
+  /* Ledger rule under the page — the faint grid a paper ledger is printed on. */
+  --ml-substrate: rgb(26 24 20 / 0.04);
+
+  /* Print has no drop shadows. A card here is a white block on warm paper with
+     a hairline around it, and that is the whole separation — the moment it
+     floats it stops reading as a printed thing. The one-pixel inner line along
+     the top is the only relief, standing in for the impression of ink. */
+  --ml-card-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.9), 0 1px 2px -1px rgb(26 24 20 / 0.07);
+  --ml-card-primary-bg: linear-gradient(to bottom, color-mix(in oklab, var(--ml-accent) 4%, #ffffff), #ffffff 180px);
+}
+
+:root[data-theme='ink'] {
+  color-scheme: dark;
+
+  --ml-accent: #3987e5;
+  --ml-accent-hover: #5ea0ee;
+  --ml-accent-soft: #1c3a5c;
+  --ml-accent-text: #5ea0ee;
+
+  --ml-complement: #d95926;
+  --ml-complement-hover: #e8724a;
+  --ml-complement-text: #e8724a;
+
+  --ml-critical: #d03b3b;
+  --ml-critical-text: #e05a5a;
+
+  /* Every grey pulled toward the accent's hue rather than neutral, so the blue
+     reads across the whole product instead of only where data happens to be —
+     at a chroma low enough never to compete with the charts on top of it. */
+  --ml-surface-0: #0b0d12;
+  --ml-surface-1: #13161d;
+  --ml-surface-2: #1b1f28;
+  --ml-hairline: #262b36;
+  --ml-border: #333a48;
+
+  --ml-ink: #f4f6f9;
+  --ml-ink-secondary: #bcc3cf;
+  --ml-ink-muted: #8892a3;
+
+  --ml-substrate: rgb(255 255 255 / 0.025);
+
+  /* Lit along the top edge and casting onto the substrate below, which is what
+     stops fifteen panels reading as regions of the background that happen to
+     have a border. Wide and very soft: separation, not chrome. */
+  --ml-card-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.045),
+    0 1px 2px 0 rgb(0 0 0 / 0.4),
+    0 12px 28px -20px rgb(0 0 0 / 0.8);
+  --ml-card-primary-bg: linear-gradient(to bottom, color-mix(in oklab, var(--ml-accent) 5%, var(--ml-surface-1)), var(--ml-surface-1) 160px);
 }
 
 /* ---------------------------------------------------------------------------
@@ -196,20 +288,13 @@
    happened to have a border — the thing that made a dense screen read as flat.
    The shadow is wide and very soft so the effect is separation, not chrome. */
 .card-material {
-  box-shadow:
-    inset 0 1px 0 0 rgb(255 255 255 / 0.045),
-    0 1px 2px 0 rgb(0 0 0 / 0.4),
-    0 12px 28px -20px rgb(0 0 0 / 0.8);
+  box-shadow: var(--ml-card-shadow);
 }
 
 .card-primary {
-  background:
-    linear-gradient(to bottom, color-mix(in oklab, var(--color-accent) 5%, var(--color-surface-1)), var(--color-surface-1) 160px);
+  background: var(--ml-card-primary-bg);
   border-color: var(--color-border);
-  box-shadow:
-    inset 0 1px 0 0 color-mix(in oklab, white 9%, transparent),
-    0 1px 2px 0 rgb(0 0 0 / 0.4),
-    0 14px 34px -18px rgb(0 0 0 / 0.85);
+  box-shadow: var(--ml-card-shadow);
 }
 
 /* Transparent rather than absent, so the 1px border still occupies its space
@@ -270,8 +355,8 @@ html {
 body {
   background-color: var(--color-surface-0);
   background-image:
-    linear-gradient(to right, rgb(255 255 255 / 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgb(255 255 255 / 0.025) 1px, transparent 1px);
+    linear-gradient(to right, var(--ml-substrate) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--ml-substrate) 1px, transparent 1px);
   background-size: 32px 32px;
   background-attachment: fixed;
   @apply text-ink antialiased;

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { applyDensity, readDensity } from './lib/settings/density';
+import { applyTheme, readTheme } from './lib/settings/theme';
 import { applyPrivacy, readPrivacy } from './lib/settings/privacy';
 // Self-hosted rather than pulled from a font CDN, for the same reason the
 // ledger never leaves the browser: a Google Fonts request would hand over the
@@ -19,6 +20,10 @@ import './index.css';
 // privacy here avoids a frame with every figure legible, which for that feature
 // would be the whole failure.
 applyDensity(readDensity());
+// Before React mounts, for the same reason density is: flipping after first
+// paint flashes the wrong theme on every load, and a white flash on the dark
+// one is the worst version of that.
+applyTheme(readTheme());
 applyPrivacy(readPrivacy());
 
 createRoot(document.getElementById('root')!).render(

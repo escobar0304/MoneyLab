@@ -1,28 +1,61 @@
 import type { LedgerEvent } from '../core/types';
 
-// Validated default palette (see dataviz skill references/palette.md) — dark mode
-// only, matching this app's dark-only surface. Slot order is the documented one,
-// which opens on blue and its complement orange: the same two hues the rest of the
-// app is built from, so the charts and the chrome read as one system.
+// Two validated palettes, one per theme — a light palette is not a dark one
+// inverted, and the skill that supplied these says so explicitly: each mode
+// gets its own steps, validated against its own surface.
 //
-// The ordering is the CVD-safety mechanism, not cosmetic — re-run
-// validate_palette.js before touching it. Current run against both app surfaces
-// (--surface #1a1a19 and #0d0d0d, --mode dark): all checks pass, worst adjacent
-// CVD ΔE 8.4, worst adjacent normal-vision ΔE 19.3.
-export const CATEGORICAL = [
+// Six of the eight slots are shared. Only gold and violet are re-stepped for
+// paper, where the dark theme's versions fall below 3:1 against the surface
+// (2.9 and 2.95) — everything else already cleared. Keeping the other six
+// identical is deliberate: the two themes stay recognisably the same product.
+//
+// The ordering is the CVD-safety mechanism, not cosmetic. Re-run
+// validate_palette.js before touching either.
+//
+//   ink   (--surface #13161d --mode dark):  all pass, worst adjacent CVD ΔE 8.4, normal 19.3
+//   paper (--surface #faf8f5 --mode light): all pass, worst adjacent CVD ΔE 9.4, normal 18.1
+const CATEGORICAL_INK = [
   '#3987e5', // blue      <- primary
   '#d95926', // orange    <- complement
   '#199e70', // aqua
-  '#c98500', // yellow
+  '#c98500', // gold
   '#d55181', // magenta
   '#008300', // green
   '#9085e9', // violet
   '#e66767', // red
 ];
 
-/** The complementary pair the whole product is built on. */
-export const PRIMARY = CATEGORICAL[0]; // blue  — money in, balance, everything positive
-export const COMPLEMENT = CATEGORICAL[1]; // orange — money out, spend, everything consumed
+const CATEGORICAL_PAPER = [
+  '#3987e5',
+  '#d95926',
+  '#199e70',
+  '#a86f00', // gold, darkened — #c98500 reads 2.9:1 on paper
+  '#d55181',
+  '#008300',
+  '#6f61d9', // violet, darkened — #9085e9 reads 2.95:1 on paper
+  '#e66767',
+];
+
+function onPaper(): boolean {
+  // Defaults to paper, matching `readTheme`, so a chart rendered before the
+  // root attribute is set (tests, SSR-ish paths) picks the default rather than
+  // silently using the other theme's steps.
+  return typeof document === 'undefined' || document.documentElement.dataset.theme !== 'ink';
+}
+
+/** The categorical palette for the theme currently on the document. */
+export function categorical(): string[] {
+  return onPaper() ? CATEGORICAL_PAPER : CATEGORICAL_INK;
+}
+
+/** Kept only for anything reading a palette without a theme in hand. Prefer
+ * `categorical()`, which follows the theme on the document. */
+export const CATEGORICAL = CATEGORICAL_INK;
+
+/** The complementary pair the whole product is built on. Identical in both
+ * themes, which is why they can be constants. */
+export const PRIMARY = '#3987e5'; // blue  — money in, balance, everything positive
+export const COMPLEMENT = '#d95926'; // orange — money out, spend, everything consumed
 
 export const SEQUENTIAL_BLUE = '#3987e5';
 
@@ -37,13 +70,52 @@ export const STATUS = {
 
 // Mirrors the CSS ink/surface tokens in index.css — charts and chrome read from
 // the same values, so a chart never sits on a surface it wasn't validated against.
-export const CHART_INK = {
+const INK_CHROME = {
   surface: '#13161d',
   primary: '#f4f6f9',
   secondary: '#bcc3cf',
   muted: '#8892a3',
   gridline: '#20242d',
   axis: '#2f3542',
+};
+
+const PAPER_CHROME = {
+  surface: '#ffffff',
+  primary: '#1a1814',
+  secondary: '#4a453d',
+  muted: '#6b6459',
+  gridline: '#eae5dc',
+  axis: '#d4cec2',
+};
+
+/**
+ * Chart chrome for the theme on the document — mirrors the CSS ink/surface
+ * tokens, so a chart never sits on a surface it was not validated against.
+ *
+ * A getter rather than a constant because the theme can change while the app is
+ * running, and the old shape was read once at module load. Every property is
+ * live, so existing `CHART_INK.muted` call sites keep working and start
+ * following the theme without being touched.
+ */
+export const CHART_INK: typeof INK_CHROME = {
+  get surface() {
+    return onPaper() ? PAPER_CHROME.surface : INK_CHROME.surface;
+  },
+  get primary() {
+    return onPaper() ? PAPER_CHROME.primary : INK_CHROME.primary;
+  },
+  get secondary() {
+    return onPaper() ? PAPER_CHROME.secondary : INK_CHROME.secondary;
+  },
+  get muted() {
+    return onPaper() ? PAPER_CHROME.muted : INK_CHROME.muted;
+  },
+  get gridline() {
+    return onPaper() ? PAPER_CHROME.gridline : INK_CHROME.gridline;
+  },
+  get axis() {
+    return onPaper() ? PAPER_CHROME.axis : INK_CHROME.axis;
+  },
 };
 
 export const MAX_CATEGORICAL_SERIES = 8;
@@ -73,8 +145,9 @@ export function rankedCategories(events: LedgerEvent[]): string[] {
  */
 export function categoryColorMap(events: LedgerEvent[]): Map<string, string> {
   const map = new Map<string, string>();
+  const palette = categorical();
   rankedCategories(events).forEach((name, i) => {
-    map.set(name, i < CATEGORICAL.length ? CATEGORICAL[i] : CHART_INK.muted);
+    map.set(name, i < palette.length ? palette[i] : CHART_INK.muted);
   });
   return map;
 }
@@ -89,10 +162,11 @@ export function categoryColorMap(events: LedgerEvent[]): Map<string, string> {
  */
 export function stableColorMap(keys: string[]): Map<string, string> {
   const map = new Map<string, string>();
+  const palette = categorical();
   Array.from(new Set(keys))
     .sort((a, b) => a.localeCompare(b))
     .forEach((key, i) => {
-      map.set(key, i < CATEGORICAL.length ? CATEGORICAL[i] : CHART_INK.muted);
+      map.set(key, i < palette.length ? palette[i] : CHART_INK.muted);
     });
   return map;
 }

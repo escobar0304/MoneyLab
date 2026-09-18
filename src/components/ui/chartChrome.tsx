@@ -14,15 +14,33 @@ import { formatMoneyCompact } from '../../lib/core/format';
 /** Every timeline plot is the same height, so cards sitting side by side line up. */
 export const PLOT_HEIGHT = 232;
 
+/**
+ * Everything colour-bearing here is a getter, not a value.
+ *
+ * These are module-scope constants spread into JSX, and ES imports evaluate
+ * before the importing module's body — so a constant reading `CHART_INK` was
+ * resolved before `main.tsx` had set the theme on the document, and every
+ * chart in the dark theme drew a light gridline. It is also what lets a theme
+ * change take effect without a reload.
+ */
+
 /** No axis rules at all. The gridlines already say where the plot is, and a
  * second boundary line is chrome the rest of the app doesn't have. */
 export const gridProps = {
-  stroke: CHART_INK.gridline,
+  get stroke() {
+    return CHART_INK.gridline;
+  },
   vertical: false,
   strokeWidth: 1,
-} as const;
+};
 
-const tick = { fill: CHART_INK.muted, fontSize: 11, fontFamily: 'inherit' } as const;
+const tick = {
+  get fill() {
+    return CHART_INK.muted;
+  },
+  fontSize: 11,
+  fontFamily: 'inherit',
+};
 
 export const xAxisProps = {
   stroke: 'transparent',
@@ -31,7 +49,7 @@ export const xAxisProps = {
   axisLine: false,
   dy: 4,
   minTickGap: 24,
-} as const;
+};
 
 /** Compact ticks, so the y-axis takes 44px instead of ~70 and reads as a quiet
  * scale rather than a column of prices. */
@@ -91,8 +109,18 @@ export function niceScale(max: number, targetTicks = 5): { domain: [number, numb
   return { domain: [0, top], ticks };
 }
 
-export const crosshair = { stroke: CHART_INK.axis, strokeWidth: 1 } as const;
-export const barCursor = { fill: CHART_INK.gridline, opacity: 0.5 } as const;
+export const crosshair = {
+  get stroke() {
+    return CHART_INK.axis;
+  },
+  strokeWidth: 1,
+};
+export const barCursor = {
+  get fill() {
+    return CHART_INK.gridline;
+  },
+  opacity: 0.5,
+};
 
 /** Margins that let the plot sit flush inside the card's own padding instead of
  * adding a second, inconsistent inset. `top` leaves room for endpoint labels. */
