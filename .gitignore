@@ -19,7 +19,7 @@ blob-report/
 playwright.local.config.ts
 
 # Claude Code project config (local paths/permissions, not meant to be shared)
-.claude/
+
 
 # Secrets / environment
 .env
