@@ -64,13 +64,29 @@ export function BackupFolder() {
   };
 
   if (!supported) {
+    // Two different causes, two different fixes, and telling them apart matters:
+    // outside a secure context the API is withheld from *every* browser, so the
+    // old copy sent a Chrome user reached over plain HTTP off to "open MoneyLab
+    // in a Chromium browser" while they were already in one.
+    const insecure = typeof window !== 'undefined' && !window.isSecureContext;
     return (
       <Card>
         <SectionTitle>Automatic backup</SectionTitle>
         <p className="text-sm text-ink-muted">
-          This browser cannot hold a durable handle on a folder — the File System Access API is missing, which is currently the
-          case in Firefox and Safari. Use <strong className="text-ink-secondary">Export</strong> above, or open MoneyLab in a
-          Chromium browser to set this up.
+          {insecure ? (
+            <>
+              This needs a secure context, and this page was not loaded over one — reached over plain HTTP from another
+              machine, the browser withholds the File System Access API whichever browser it is. Over HTTPS (or on{' '}
+              <code className="text-ink-secondary">localhost</code>) it becomes available. Use{' '}
+              <strong className="text-ink-secondary">Export</strong> above in the meantime.
+            </>
+          ) : (
+            <>
+              This browser cannot hold a durable handle on a folder — the File System Access API is missing, which is
+              currently the case in Firefox and Safari. Use <strong className="text-ink-secondary">Export</strong> above, or
+              open MoneyLab in a Chromium browser to set this up.
+            </>
+          )}
         </p>
       </Card>
     );

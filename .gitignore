@@ -12,6 +12,12 @@ test-results/
 blob-report/
 /playwright/.cache/
 
+# A local Playwright config, for running the e2e suite against a browser that
+# is already on the machine instead of one `playwright install` fetched. It
+# pins an absolute executablePath, so it is true for exactly one machine and
+# would break `npm run test:e2e` for everyone else if it were committed.
+playwright.local.config.ts
+
 # Claude Code project config (local paths/permissions, not meant to be shared)
 .claude/
 
