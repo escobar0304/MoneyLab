@@ -20,7 +20,7 @@ Portuguese IRS deductions.
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline%20ready-5A0FC8?logo=pwa&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-486%20passing-3987e5)
+![Tests](https://img.shields.io/badge/tests-493%20passing-3987e5)
 
 <br />
 
@@ -446,6 +446,29 @@ All three are bundled via `@fontsource-variable/*` rather than fetched from a fo
 a CDN request would hand the reader's IP to a third party on every cold load and leave
 the app looking wrong offline, which for an offline-first local-only ledger is a state
 it's expressly built to be used in.
+
+</details>
+
+<details>
+<summary><b>🎞️ Motion</b> — one accent, and it only moves what changed</summary>
+
+Easing and durations live in one place (`lib/core/animation.ts`) so the product moves
+with a single accent instead of each component inventing its own. `power3.out`, never a
+`back.out` overshoot — on informational UI a number that bounces past its value and
+settles back looks like the data changed twice.
+
+The rule that keeps it from becoming noise: **motion marks what changed, nothing else.**
+Logging an entry is the most repeated action in the app and used to produce no feedback
+at all — the row simply existed on the next paint, indistinguishable from the eighty
+already there. `useArrivals` reports which rows appeared since the last render, so that
+one row grows in and the rest stay still. It deliberately says nothing in three cases:
+on first render (or the whole page animates as if it were loading), when more than eight
+arrive at once (a statement import is not something you did one of), and when the list
+merely reordered or shrank.
+
+Every animation is behind `prefers-reduced-motion`, and tweens clear their own inline
+styles — a height left inline by a finished tween breaks the row the next time its
+content reflows.
 
 </details>
 
