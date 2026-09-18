@@ -18,7 +18,10 @@ blob-report/
 # would break `npm run test:e2e` for everyone else if it were committed.
 playwright.local.config.ts
 
-# Claude Code project config (local paths/permissions, not meant to be shared)
+# Claude Code. The skills and the shared project config are committed — they're
+# part of how this repo is worked on. `settings.local.json` stays out: it's the
+# per-machine half, full of absolute paths true for exactly one computer.
+.claude/settings.local.json
 
 
 # Secrets / environment
