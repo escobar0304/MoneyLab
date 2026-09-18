@@ -5,6 +5,7 @@ import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format'
 import { nextRenewalDate } from '../../lib/core/recurrence';
 import type { Recurring, RecurringKind } from '../../lib/core/types';
 import { CategoryPicker } from './CategoryPicker';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
 
 interface Draft {
   label: string;
@@ -202,7 +203,7 @@ export function RecurringManager({ kind }: { kind: RecurringKind }) {
       </SectionTitle>
 
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="t-metric text-ink">{formatMoney(monthlyTotal)}</span>
+        <AnimatedNumber value={monthlyTotal} format={formatMoney} className="t-metric text-ink" />
         <span className="text-xs text-ink-muted">
           {copy.unit}
           {rules.length > 0 && ` · ${rules.filter((r) => r.active).length} active`}

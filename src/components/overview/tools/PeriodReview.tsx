@@ -33,7 +33,9 @@ function ReviewContent({ kind, period }: { kind: ReviewKind; period: string }) {
     <div className="space-y-4">
       <div>
         <p className="t-label">Saved</p>
-        <p className={`t-hero mt-1 ${review.saved < 0 ? 'text-critical-text' : 'text-ink'}`}>{formatMoney(review.saved)}</p>
+        <p className={`t-hero mt-1 ${review.saved < 0 ? 'text-critical-text' : 'text-ink'}`}>
+          <AnimatedNumber value={review.saved} format={formatMoney} />
+        </p>
         <p className="t-caption mt-1">
           <span className="num-col text-ink-secondary">{formatMoney(review.income)}</span> in ·{' '}
           <span className="num-col text-ink-secondary">{formatMoney(review.spend)}</span> out

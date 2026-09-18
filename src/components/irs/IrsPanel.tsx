@@ -5,6 +5,7 @@ import { formatMoney } from '../../lib/core/format';
 import { Button, Card, Input, Select, SectionTitle, Badge, EmptyState } from '../ui/primitives';
 import { IconIrs } from '../ui/icons';
 import { requestNavigate } from '../../lib/core/navigate';
+import { AnimatedNumber } from '../ui/AnimatedNumber';
 
 function Meter({ status }: { status: DeductionStatus }) {
   const setCap = useStore((s) => s.setDeductionCap);
@@ -159,7 +160,9 @@ export function IrsPanel() {
 
       <div className="mb-3">
         <p className="t-label">Deductible in {year}</p>
-        <p className="t-metric text-ink">{formatMoney(total)}</p>
+        <p className="t-metric text-ink">
+          <AnimatedNumber value={total} format={formatMoney} />
+        </p>
       </div>
 
       {categories.length === 0 ? (
