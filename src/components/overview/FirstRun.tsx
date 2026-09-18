@@ -35,7 +35,7 @@ export function FirstRun() {
           <LogoMark className="h-8 w-8 text-ink" />
         </div>
 
-        <h1 className="t-metric text-ink">Your ledger is empty</h1>
+        <h1 className="t-display text-ink">Your ledger is empty</h1>
         <p className="mx-auto mt-3 max-w-xl text-sm text-ink-secondary">
           Log what comes in and what goes out. Budgets, goals, runway, net worth and the IRS
           headings are all derived from that one list — there is nothing else to set up.
