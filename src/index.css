@@ -109,35 +109,57 @@
    their own `text-3xl font-semibold` is exactly how an app ends up with no
    hierarchy at all despite every card being carefully made.
    --------------------------------------------------------------------------- */
-/* Headline figures take the display face, not the mono one — and keep
-   proportional figures, which the original scale was right about.
-   Monospace belongs where numbers stack into columns and have to align; a
-   single 48px balance aligns with nothing, and setting it in mono buys no
-   alignment while costing two real things. Every fixed advance is sized for
-   the widest glyph, so large digits sit loose; and the thousands separator
-   this app's locale emits is a narrow no-break space that a mono face widens
-   to a full advance, which splits `13 131,50` into what reads as two numbers.
-   The columns below still get mono, via `.num-col` — that is where it pays. */
+/* Two jobs, two scales — and they were one before, which is what put the app
+   inside a documented anti-pattern ("a display or serif face on the hero
+   figure reads as off-brand decoration"). `.t-metric` was carrying both a
+   month's total *and* the `<h1>` on the first-run screen, so the figures had
+   to wear whatever face the headings wanted.
+
+   FIGURES (.t-hero/.t-metric/.t-figure) are readouts. They take the same sans
+   as the rest of the interface: a number is content, not branding, and a
+   headline balance in a display face reads as a logo for the balance.
+   Proportional figures, deliberately — every fixed advance is sized for the
+   widest glyph, so large digits sit loose, and the narrow no-break space this
+   locale uses as a thousands separator widens to a full advance in mono,
+   splitting `13 131,50` into what reads as two numbers. Columns still get mono
+   via `.num-col`; that is where fixed advances actually buy alignment.
+
+   HEADINGS (.t-display/.t-title) are chrome. They keep the display face, whose
+   flat terminals and squared bowls are what give the product its voice — spent
+   on the words around the data rather than on the data itself. */
 .t-hero {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 3rem;
   line-height: 1;
-  font-weight: 600;
-  letter-spacing: -0.03em;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  font-variant-numeric: proportional-nums;
 }
 .t-metric {
+  font-family: var(--font-sans);
+  font-size: 1.875rem;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  font-variant-numeric: proportional-nums;
+}
+.t-figure {
+  font-family: var(--font-sans);
+  font-size: 1.25rem;
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.018em;
+  font-variant-numeric: proportional-nums;
+}
+
+/* The heading counterpart to `.t-metric`, for the few places that want that
+   size for words rather than for a number. */
+.t-display {
   font-family: var(--font-display);
   font-size: 1.875rem;
   line-height: 1.1;
   font-weight: 600;
   letter-spacing: -0.025em;
-}
-.t-figure {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  line-height: 1.2;
-  font-weight: 600;
-  letter-spacing: -0.015em;
 }
 .t-title {
   font-family: var(--font-display);
@@ -147,10 +169,6 @@
   letter-spacing: -0.005em;
 }
 
-/* The etched legend. Uppercase, tracked out, in the display face — the label
-   stamped next to a dial rather than a sentence introducing a value. It is
-   deliberately quieter and smaller than what it labels, because on a panel of
-   forty of these the labels are furniture and the figures are the content. */
 .t-label {
   font-family: var(--font-display);
   font-size: 0.6875rem;

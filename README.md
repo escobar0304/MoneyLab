@@ -426,13 +426,21 @@ cooled to match (`--color-ink` `#f4f6f9`), since warm ink on blue-grey reads as 
 
 - **Space Grotesk** for headings, the nav and every etched legend — its drafting-table
   shapes stay distinct at 11px uppercase where a neutral grotesk greys out.
-- **Inter** for running prose, of which this app has a lot.
+- **Inter** for running prose *and for every headline figure*.
 - **JetBrains Mono** for columns of figures and numeric inputs (keyed off
   `input[type=number|date]`, so it holds for fields written later too).
 
-Headline figures take the display face rather than mono: mono buys alignment a lone 48px
-balance doesn't need, and this locale's narrow-no-break thousands separator widens to a
-full advance in a mono face, splitting `13 131,50` into what reads as two numbers.
+**Figures and headings are separate scales**, which they weren't at first — `.t-metric`
+was carrying both a month's total and the first-run `<h1>`, so the numbers had to wear
+whatever face the headings wanted. That put the app inside a documented anti-pattern: a
+display face on a hero figure reads as branding for the number rather than the number.
+Figures now take the interface sans; headings keep the display face. A number is content,
+not a logo.
+
+Figures also stay proportional rather than mono: mono buys alignment a lone 48px balance
+doesn't need, and this locale's narrow-no-break thousands separator widens to a full
+advance in a mono face, splitting `13 131,50` into what reads as two numbers. Columns
+still get mono via `.num-col`, which is where fixed advances actually pay.
 
 All three are bundled via `@fontsource-variable/*` rather than fetched from a font CDN —
 a CDN request would hand the reader's IP to a third party on every cold load and leave
@@ -450,9 +458,9 @@ edge and casts a soft shadow (`.card-material`); one accent tick marks the start
 panel title, in both `SectionTitle` and `ChartCard`, and the sidebar's travelling marker
 is that same tick.
 
-The named type scale (`.t-hero`, `.t-metric`, `.t-figure`, `.t-title`, `.t-label`,
-`.t-caption`) exists so a new panel asks "what is this text for" instead of picking a
-Tailwind size — which is how an app ends up with no hierarchy despite every card being
+The named type scale (`.t-hero`, `.t-metric`, `.t-figure` for figures; `.t-display`,
+`.t-title`, `.t-label`, `.t-caption` for words) exists so a new panel asks "what is this
+text for" instead of picking a Tailwind size — which is how an app ends up with no hierarchy despite every card being
 carefully made.
 
 </details>
