@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { rescueExport } from '../../lib/core/rescue';
+import { isStaleChunkError, recoverFromStaleChunk } from '../../lib/core/staleChunk';
 import { IconWarning, IconRefresh } from './icons';
 
 interface Props {
@@ -16,6 +17,9 @@ interface Props {
 interface State {
   error: Error | null;
   rescue: string | null;
+  /** Set when the error was a view chunk that no longer exists, so the fallback
+   * can say "a new version is installed" instead of "something broke". */
+  stale: boolean;
 }
 
 /**
@@ -34,13 +38,20 @@ interface State {
  * fail for the same reason as the thing it is catching is not a fallback.
  */
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null, rescue: null };
+  state: State = { error: null, rescue: null, stale: false };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    return { error };
+    return { error, stale: isStaleChunkError(error) };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    // A view chunk that 404s is not a crash: the service worker installed a new
+    // version underneath a tab that was left open, and the fix is to reload
+    // onto it. Attempted here rather than in `getDerivedStateFromError`, which
+    // has to stay pure — and guarded against looping, so a genuinely broken
+    // deploy falls through to the message below instead of reloading forever.
+    if (isStaleChunkError(error) && recoverFromStaleChunk()) return;
+
     // No reporting service to send this to — by design, nothing leaves the
     // device — so the console is the whole audit trail.
     console.error('MoneyLab crashed while rendering:', error, info.componentStack);
@@ -48,7 +59,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidUpdate(prev: Props) {
     if (this.state.error && prev.resetKey !== this.props.resetKey) {
-      this.setState({ error: null, rescue: null });
+      this.setState({ error: null, rescue: null, stale: false });
     }
   }
 
@@ -64,7 +75,7 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   render() {
-    const { error, rescue } = this.state;
+    const { error, rescue, stale } = this.state;
     if (!error) return this.props.children;
 
     const whole = this.props.scope !== 'view';
@@ -72,16 +83,37 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div className={whole ? 'flex min-h-screen items-center justify-center p-6' : 'py-12'}>
         <div className="mx-auto w-full max-w-lg rounded-xl border border-hairline bg-surface-1 p-6 text-center">
-          <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-critical/12 text-critical-text ring-1 ring-inset ring-critical/25">
-            <IconWarning className="h-5.5 w-5.5" />
+          {/* Red says "this failed". An update that installed correctly did
+              not fail, so it gets the accent and the refresh mark instead. */}
+          <span
+            className={`mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset ${
+              stale
+                ? 'bg-accent/12 text-accent ring-accent/25'
+                : 'bg-critical/12 text-critical-text ring-critical/25'
+            }`}
+          >
+            {stale ? <IconRefresh className="h-5.5 w-5.5" /> : <IconWarning className="h-5.5 w-5.5" />}
           </span>
 
           <h1 className="t-title text-ink">
-            {whole ? 'Something broke while drawing the page' : 'This tab failed to draw'}
+            {stale
+              ? 'A new version is ready'
+              : whole
+                ? 'Something broke while drawing the page'
+                : 'This tab failed to draw'}
           </h1>
           <p className="mx-auto mt-2 max-w-prose text-sm text-ink-secondary">
-            Your ledger is untouched. It's stored in this browser and nothing here writes to
-            it — {whole ? 'reloading' : 'switching tabs'} should bring everything back.
+            {stale ? (
+              <>
+                This tab was open while an update was installed, so part of it is no longer on
+                disk. Your ledger is untouched — reloading picks up the new version.
+              </>
+            ) : (
+              <>
+                Your ledger is untouched. It's stored in this browser and nothing here writes to
+                it — {whole ? 'reloading' : 'switching tabs'} should bring everything back.
+              </>
+            )}
           </p>
 
           <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
@@ -93,13 +125,17 @@ export class ErrorBoundary extends Component<Props, State> {
               <IconRefresh className="h-4 w-4" />
               Reload
             </button>
-            <button
-              type="button"
-              onClick={this.download}
-              className="font-display cursor-pointer rounded-md border border-border bg-surface-2 px-3 py-1.5 text-sm font-semibold text-ink transition-colors duration-200 hover:border-ink-muted hover:bg-border"
-            >
-              Download a copy of my data
-            </button>
+            {/* Offering a rescue export for an update would imply the data is
+                at risk, which is exactly the wrong thing to suggest here. */}
+            {!stale && (
+              <button
+                type="button"
+                onClick={this.download}
+                className="font-display cursor-pointer rounded-md border border-border bg-surface-2 px-3 py-1.5 text-sm font-semibold text-ink transition-colors duration-200 hover:border-ink-muted hover:bg-border"
+              >
+                Download a copy of my data
+              </button>
+            )}
           </div>
 
           {rescue && <p className="mt-3 text-xs text-ink-muted">{rescue}</p>}
