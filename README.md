@@ -20,7 +20,7 @@ Portuguese IRS deductions.
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline%20ready-5A0FC8?logo=pwa&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-471%20passing-3987e5)
+![Tests](https://img.shields.io/badge/tests-484%20passing-3987e5)
 
 <br />
 
@@ -275,7 +275,7 @@ different rhythms.
 | 📂 **Silent folder backups** | Pick a folder once via the File System Access API, kept in sync with no further prompts (Chromium only). |
 | 🧾 **Receipt photos** | Optional, stored in IndexedDB and exported separately so a routine export stays small. |
 | ⌨️ **Shortcuts** | `g`+letter to jump tabs, `n` for a new expense, `Ctrl`/`⌘Z` to undo, `?` for the list. |
-| 🛟 **Never fails silently** | A refused write or a crashed render both say so, and both offer the data as a download on the spot. |
+| 🛟 **Never fails silently** | A refused write or a crashed render both say so, and both offer the data as a download on the spot. A stale chunk after an update recovers by itself. |
 | 🔒 **Third-party code is contained** | The market embeds run in sandboxed frames with an opaque origin, so they cannot reach the ledger. |
 
 <details>
@@ -297,6 +297,15 @@ with the fact that the ledger is untouched — a failed render cannot write to i
 offers to download it, because being *told* your data is safe is worth much less than
 being handed it. There are two: one per view, which a tab switch clears, and one at the
 root for a crash that takes the shell with it.
+
+**A tab left open across an update.** Every view is a lazily imported chunk and the
+service worker updates itself, so a tab open when a new version installs will ask for a
+chunk that is no longer on disk the moment you open a tab you hadn't visited yet. That is
+not a crash and must not be dressed as one: it's recognised, reloaded onto the version
+already installed, and only if the reload *doesn't* help does it say so — "a new version
+is ready", with no alarming offer to rescue data that was never at risk. The retry is
+capped to one per ten seconds, because a deploy genuinely missing a chunk would otherwise
+reload forever, which is a worse failure than the screen it's avoiding.
 
 Both rescue paths read `localStorage` directly rather than going through the store, since
 in both situations the store is either the suspect or already known not to be saving.
@@ -484,7 +493,8 @@ src/
                     (fold functions: current categories/budgets/accounts from
                     the log), derive.ts (balance, totals), migrations.ts,
                     recurrence.ts, search.ts, shortcuts.ts, navigate.ts,
-                    format.ts, currency.ts, id.ts, animation.ts
+                    format.ts, currency.ts, id.ts, animation.ts,
+                    staleChunk.ts (recovering a tab left open across a deploy)
     money/        accounts.ts, rules.ts (auto-categorization), statements.ts
                     (bank CSV parsing), subscriptions.ts (repeating-charge
                     detection), splitPayment.ts (instalments with optional
