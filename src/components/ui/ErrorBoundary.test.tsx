@@ -98,3 +98,75 @@ describe('ErrorBoundary', () => {
     expect(screen.getByText('This tab failed to draw')).toBeInTheDocument();
   });
 });
+
+/** What React throws when a lazy view's chunk is no longer on disk — the tab
+ * was open while the service worker installed a new version underneath it. */
+function StaleChunk(): React.ReactElement {
+  throw new TypeError('Failed to fetch dynamically imported module: https://app.test/assets/PlanView-Dw4EaKLg.js');
+}
+
+describe('ErrorBoundary and a tab left open across a deploy', () => {
+  let reload: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    sessionStorage.clear();
+    reload = vi.fn();
+    Object.defineProperty(window, 'location', { configurable: true, value: { ...window.location, reload } });
+  });
+
+  afterEach(() => sessionStorage.clear());
+
+  it('reloads onto the installed version rather than showing a crash', () => {
+    render(
+      <ErrorBoundary>
+        <StaleChunk />
+      </ErrorBoundary>
+    );
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  // When the reload cannot help — a chunk missing from the new build, not just
+  // from the old cache — the reader gets told what actually happened.
+  it('says a new version is ready instead of claiming a crash', () => {
+    sessionStorage.setItem('moneylab:chunk-reload-at', String(Date.now()));
+
+    render(
+      <ErrorBoundary>
+        <StaleChunk />
+      </ErrorBoundary>
+    );
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: /A new version is ready/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Something broke/)).not.toBeInTheDocument();
+  });
+
+  // An update puts nothing at risk, and offering a rescue export would imply
+  // it does — which is the opposite of what this screen needs to convey.
+  it('does not offer a data rescue for an update', () => {
+    sessionStorage.setItem('moneylab:chunk-reload-at', String(Date.now()));
+
+    render(
+      <ErrorBoundary>
+        <StaleChunk />
+      </ErrorBoundary>
+    );
+
+    expect(screen.queryByRole('button', { name: /Download a copy of my data/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Reload/ })).toBeInTheDocument();
+  });
+
+  // A genuine crash must keep the old treatment — the detection is a substring
+  // match, so this is the guard against it widening.
+  it('still treats a real crash as a crash', () => {
+    render(
+      <ErrorBoundary>
+        <Boom throws={true} />
+      </ErrorBoundary>
+    );
+
+    expect(reload).not.toHaveBeenCalled();
+    expect(screen.getByText(/Your ledger is untouched/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Download a copy of my data/ })).toBeInTheDocument();
+  });
+});
