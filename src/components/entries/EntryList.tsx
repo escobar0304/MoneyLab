@@ -1,4 +1,6 @@
+import { useRef } from 'react';
 import { formatMoney, formatDate, monthLabel } from '../../lib/core/format';
+import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/core/animation';
 import { formatForeign } from '../../lib/core/currency';
 import { monthKey } from '../../lib/core/derive';
 import type { MoneyEvent } from '../../lib/core/types';
@@ -23,6 +25,7 @@ export function EntryRow({
   onSelect,
   cleared = false,
   onOpen,
+  arrived = false,
 }: {
   entry: MoneyEvent;
   color?: string;
@@ -36,8 +39,33 @@ export function EntryRow({
   onSelect?: () => void;
   cleared?: boolean;
   onOpen: () => void;
+  /** Set on a row that appeared since the last render, so the one entry the
+   * reader just logged announces itself instead of silently existing. */
+  arrived?: boolean;
 }) {
+  const rowRef = useRef<HTMLLIElement>(null);
   const isIncome = entry.type === 'income';
+
+  // Height as well as opacity: a row fading in on top of a list that has
+  // already reflowed reads as a glitch, because everything below it jumped
+  // first and the new row arrived afterwards into a gap it did not make.
+  useGSAP(
+    () => {
+      if (!arrived || prefersReducedMotion() || !rowRef.current) return;
+      gsap.from(rowRef.current, {
+        height: 0,
+        opacity: 0,
+        duration: DUR.base,
+        ease: EASE.out,
+        // Height is animated from 0, so whatever the row's own padding is must
+        // collapse with it or the tween starts taller than nothing.
+        paddingTop: 0,
+        paddingBottom: 0,
+        clearProps: 'height,opacity,paddingTop,paddingBottom',
+      });
+    },
+    { dependencies: [arrived] }
+  );
   const detail = [
     formatDate(entry.timestamp),
     !isIncome && entry.splitCount ? `${entry.splitIndex} of ${entry.splitCount}` : null,
@@ -50,7 +78,7 @@ export function EntryRow({
     .join(' · ');
 
   return (
-    <li className="flex items-center gap-2">
+    <li ref={rowRef} className="flex items-center gap-2">
       {selecting && (
         // Its own control, outside the row button: ticking forty entries against
         // a statement should not open forty overlays on the way.

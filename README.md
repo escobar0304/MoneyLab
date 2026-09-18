@@ -450,6 +450,29 @@ it's expressly built to be used in.
 </details>
 
 <details>
+<summary><b>🎞️ Motion</b> — one accent, and it only moves what changed</summary>
+
+Easing and durations live in one place (`lib/core/animation.ts`) so the product moves
+with a single accent instead of each component inventing its own. `power3.out`, never a
+`back.out` overshoot — on informational UI a number that bounces past its value and
+settles back looks like the data changed twice.
+
+The rule that keeps it from becoming noise: **motion marks what changed, nothing else.**
+Logging an entry is the most repeated action in the app and used to produce no feedback
+at all — the row simply existed on the next paint, indistinguishable from the eighty
+already there. `useArrivals` reports which rows appeared since the last render, so that
+one row grows in and the rest stay still. It deliberately says nothing in three cases:
+on first render (or the whole page animates as if it were loading), when more than eight
+arrive at once (a statement import is not something you did one of), and when the list
+merely reordered or shrank.
+
+Every animation is behind `prefers-reduced-motion`, and tweens clear their own inline
+styles — a height left inline by a finished tween breaks the row the next time its
+content reflows.
+
+</details>
+
+<details>
 <summary><b>🧱 Surface and shape</b> — squared paper, not a void</summary>
 
 A 32px rule grid sits under the page at ~2.5% alpha, fixed attachment, so panels rest on

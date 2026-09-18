@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore, useCleared, useAccounts } from '../../lib/core/store';
 import { monthsWithActivity, monthKey, totalIncomeForMonth, totalOutflowForMonth } from '../../lib/core/derive';
+import { useArrivals } from '../../lib/core/arrivals';
 import { searchEntries } from '../../lib/core/search';
 import { reconcile } from '../../lib/core/entities';
 import { accountIdOf, MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
@@ -73,6 +74,11 @@ export function History() {
       .filter((e) => filter === 'all' || e.type === filter)
       .filter((e) => account === 'all' || accountIdOf(e) === account);
   }, [events, month, filter, account, query, searching]);
+
+  // Which rows showed up since the last render, so the entry the reader just
+  // logged is the one that moves — and a statement import, which arrives in
+  // bulk, stays still.
+  const arrived = useArrivals(useMemo(() => entries.map((e) => e.id), [entries]));
 
   const income = totalIncomeForMonth(events, month);
   const spend = totalOutflowForMonth(events, month);
@@ -281,6 +287,7 @@ export function History() {
           {entries.map((entry) => (
             <EntryRow
               key={entry.id}
+              arrived={arrived.has(entry.id)}
               entry={entry}
               color={entry.type === 'expense' ? colors.get(entry.category) : undefined}
               hasReceipt={withReceipts.has(entry.id)}
