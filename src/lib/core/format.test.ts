@@ -16,6 +16,16 @@ describe('formatDateNumeric', () => {
     expect(formatDateNumeric('2026-01-01')).toBe('01/01/2026');
     expect(formatDateNumeric('2026-12-31')).toBe('31/12/2026');
   });
+
+  // The formatter used to build a Date from whatever it was handed, which is a
+  // RangeError for everything that is not exactly `YYYY-MM-DD` — an empty
+  // field, a half-typed value, a full timestamp. `Intl.format` throws on an
+  // invalid date rather than degrading, and this is called during a render.
+  it('returns an empty string rather than throwing on anything else', () => {
+    for (const value of ['', '2026-09-21T10:00:00.000Z', '2026-9-1', '2026-13-45', 'not a date']) {
+      expect(formatDateNumeric(value)).toBe('');
+    }
+  });
 });
 
 describe('browserDateOrderDiffers', () => {

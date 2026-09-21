@@ -147,7 +147,12 @@ export function DateInput({ value, ...props }: InputHTMLAttributes<HTMLInputElem
 
   return (
     <>
-      <DateInput {...props} value={value} />
+      {/* `Input`, not `DateInput`. Spelling this out because the bulk edit that
+          introduced this component rewrote every `<Input type="date">` in the
+          repo — including the one on this line, which made the component render
+          itself. Nothing caught it: it typechecks, no unit test mounts a date
+          field, and the only screen with no date field on it is the empty one. */}
+      <Input {...props} type="date" value={value} />
       {ambiguous && iso && (
         <p className="t-caption mt-1" aria-hidden="true">
           {formatDateNumeric(iso)}

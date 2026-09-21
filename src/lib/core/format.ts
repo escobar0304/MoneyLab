@@ -80,10 +80,31 @@ const numericDateFormatter = new Intl.DateTimeFormat(LOCALE, {
   day: '2-digit',
 });
 
-/** `21/09/2026` — the same order the native date field uses, for readers whose
- * browser puts the month first. */
+/** `YYYY-MM-DD`, and nothing else. A date input's `value` is defined to be in
+ * this form, but the thing bound to it is ordinary component state, and
+ * elsewhere in this app a date is just as likely to be a full timestamp. */
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * `21/09/2026`, or an empty string for anything this cannot state exactly.
+ *
+ * The empty string matters more than the format does. This used to build a
+ * `Date` from the value unconditionally, which is fine for `2026-09-21` and a
+ * `RangeError` for everything else — an empty field, a value still being typed,
+ * or a full ISO timestamp, all of which reach it — and `Intl.format` throws on
+ * an invalid date rather than returning something harmless. Thrown from a
+ * render, that took down whatever view held the field.
+ *
+ * It cost a whole CI run to find because the caller only renders this for
+ * readers whose browser disagrees with the app about date order: a pt-PT
+ * machine never reaches it, and a CI runner in en-US reaches it every time.
+ */
 export function formatDateNumeric(iso: string): string {
-  return numericDateFormatter.format(new Date(`${iso}T00:00:00`));
+  if (!DATE_ONLY.test(iso)) return '';
+  // Local midnight, not bare ISO: `new Date('2026-09-21')` is midnight UTC,
+  // which is the day before anywhere behind it.
+  const date = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? '' : numericDateFormatter.format(date);
 }
 
 /**
