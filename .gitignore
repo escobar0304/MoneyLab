@@ -33,3 +33,8 @@ playwright.local.config.ts
 *.p12
 *credentials*
 *secret*
+
+# The local Claude permission config: it carries absolute paths from one
+# machine and the list of commands pre-approved on it, neither of which belongs
+# in a public repo. The skills beside it are shared deliberately.
+.claude/settings.json
