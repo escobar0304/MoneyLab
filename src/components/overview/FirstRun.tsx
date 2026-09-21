@@ -93,21 +93,27 @@ export function FirstRun() {
             it is the opposite kind of action: those start a ledger, this one
             says don't start yet, look first. A fourth equal card would read as
             a fourth way to begin. */}
-        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-hairline bg-surface-1/50 px-4 py-3 text-left">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-complement/10 text-complement-hover ring-1 ring-inset ring-complement/20 [&>svg]:h-4.5 [&>svg]:w-4.5">
-            <IconSample />
-          </span>
-          <div className="min-w-0 flex-1">
-            <span className="t-title block text-ink">Not sure yet? Explore with sample data</span>
-            <span className="t-caption mt-0.5 block">
-              Seven months of an invented ledger, so you can see every screen working before typing
-              anything. Marked as sample throughout, and removable in one click.
+        {/* Three columns on a wide screen, stacked on a phone. Flex-wrap was
+            doing neither: at 390px the middle column kept just enough width to
+            break "Not sure yet? Explore with sample data" across three lines
+            while the button dropped to a row of its own anyway. */}
+        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed border-hairline bg-surface-1/50 px-4 py-3 text-left sm:flex-row sm:items-center">
+          <div className="flex items-start gap-3 sm:min-w-0 sm:flex-1 sm:items-center">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-complement/10 text-complement-hover ring-1 ring-inset ring-complement/20 [&>svg]:h-4.5 [&>svg]:w-4.5">
+              <IconSample />
             </span>
+            <div className="min-w-0">
+              <span className="t-title block text-ink">Not sure yet? Explore with sample data</span>
+              <span className="t-caption mt-0.5 block">
+                Seven months of an invented ledger, so you can see every screen working before typing
+                anything. Marked as sample throughout, and removable in one click.
+              </span>
+            </div>
           </div>
           <button
             type="button"
             onClick={() => loadDemo()}
-            className="font-display shrink-0 cursor-pointer rounded-md border border-complement/40 px-3 py-1.5 text-sm font-semibold text-complement-hover transition-colors duration-200 hover:border-complement hover:bg-complement/10"
+            className="font-display w-full shrink-0 cursor-pointer rounded-md border border-complement/40 px-3 py-2 text-sm font-semibold text-complement-hover transition-colors duration-200 hover:border-complement hover:bg-complement/10 sm:w-auto sm:py-1.5"
           >
             Load sample data
           </button>

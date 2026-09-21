@@ -37,19 +37,30 @@ export function SubscriptionAlerts() {
         </Button>
       </div>
 
-      <ul className="mt-3 space-y-1.5">
+      {/* Name and cost stay paired on one line at every width — that is the
+          comparison this panel exists to offer — and the badges drop to a line
+          of their own below the breakpoint. Before, all four competed for one
+          row: at 390px the badges held their width and the name was truncated
+          to "Dinne…", which is the one part of the row you cannot reconstruct
+          from the rest of it. */}
+      <ul className="mt-3 space-y-2.5 sm:space-y-1.5">
         {attention.slice(0, 3).map((sub) => (
-          <li key={sub.key} className="flex items-center justify-between gap-3 text-sm">
-            <span className="flex min-w-0 items-center gap-2 text-ink-secondary">
-              <span className="truncate">{sub.label}</span>
-              {sub.drift && (
-                <Badge tone={sub.drift.pct > 0 ? 'bad' : 'good'}>
-                  {sub.drift.pct > 0 ? '↑' : '↓'} {Math.abs(sub.drift.pct)}%
-                </Badge>
-              )}
-              {!sub.ruled && <Badge>No rule</Badge>}
+          <li key={sub.key} className="text-sm sm:flex sm:items-center sm:justify-between sm:gap-3">
+            <span className="flex items-baseline justify-between gap-3 text-ink-secondary sm:min-w-0 sm:items-center sm:justify-start">
+              <span className="min-w-0 truncate">{sub.label}</span>
+              <span className="num-col shrink-0 text-ink-muted sm:hidden">{formatMoney(sub.yearlyCost)}/yr</span>
             </span>
-            <span className="num-col shrink-0 text-ink-muted">{formatMoney(sub.yearlyCost)}/yr</span>
+            {(sub.drift || !sub.ruled) && (
+              <span className="mt-1 flex flex-wrap items-center gap-2 sm:mt-0 sm:mr-auto sm:ml-2 sm:flex-nowrap">
+                {sub.drift && (
+                  <Badge tone={sub.drift.pct > 0 ? 'bad' : 'good'}>
+                    {sub.drift.pct > 0 ? '↑' : '↓'} {Math.abs(sub.drift.pct)}%
+                  </Badge>
+                )}
+                {!sub.ruled && <Badge>No rule</Badge>}
+              </span>
+            )}
+            <span className="num-col hidden shrink-0 text-ink-muted sm:inline">{formatMoney(sub.yearlyCost)}/yr</span>
           </li>
         ))}
       </ul>

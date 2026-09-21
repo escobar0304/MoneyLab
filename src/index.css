@@ -120,6 +120,12 @@
      print has no drop shadows and a card that floats stops reading as printed. */
   --ml-card-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.9), 0 1px 2px -1px rgb(74 69 61 / 0.1);
   --ml-card-primary-bg: linear-gradient(to bottom, color-mix(in oklab, var(--ml-accent) 4%, #ffffff), #ffffff 180px);
+
+  /* Things that genuinely float — a tooltip, a popover, the undo toast — are the
+     one exception to the no-shadow rule above, because they are not printed on
+     the page, they are held over it. Still the paper's own warm brown rather
+     than black: a 50% black shadow on warm off-white reads as a smudge. */
+  --ml-float-shadow: 0 4px 6px -2px rgb(74 69 61 / 0.1), 0 12px 28px -8px rgb(74 69 61 / 0.18);
 }
 
 :root[data-theme='ink'] {
@@ -164,6 +170,10 @@
     0 1px 2px 0 rgb(6 8 13 / 0.55),
     0 12px 28px -20px rgb(6 8 13 / 0.95);
   --ml-card-primary-bg: linear-gradient(to bottom, color-mix(in oklab, var(--ml-accent) 5%, var(--ml-surface-1)), var(--ml-surface-1) 160px);
+
+  /* Deeper than the panel shadow, because a floating layer has to separate from
+     a panel and not just from the page. Same blue-black as everything else. */
+  --ml-float-shadow: 0 4px 8px -2px rgb(6 8 13 / 0.6), 0 16px 32px -8px rgb(6 8 13 / 0.75);
 }
 
 /* ---------------------------------------------------------------------------
@@ -292,6 +302,13 @@
    entirely and lets the content sit directly on the background. The middle
    level is the unchanged default, which is what most panels should stay.
    --------------------------------------------------------------------------- */
+/* Held over the page rather than printed on it: tooltips, popovers, the undo
+   toast. Replaces a hard-coded `shadow-black/50`, which was written when there
+   was only a dark theme and read as a smudge once Paper existed. */
+.float-material {
+  box-shadow: var(--ml-float-shadow);
+}
+
 /* Every panel now catches a light along its top edge and casts a shadow onto
    the substrate below it. Previously only `primary` did, which left the other
    fourteen panels on a page looking like regions of the background that
@@ -350,6 +367,22 @@
 
 html {
   color-scheme: dark;
+}
+
+/* The phone shell puts a bar at each end of the viewport, and both of them are
+   taken out of the page's flow — so anything the browser scrolls *to* lands
+   underneath one of them. `scroll-padding` is what tells it the usable window
+   is narrower than the viewport: it covers anchor jumps, `scrollIntoView`, and
+   the scroll a browser does when a focused field would otherwise be hidden by
+   the keyboard. Found by watching a click on the first-run screen's sample-data
+   button scroll it exactly under the tab bar, over and over.
+
+   Above the breakpoint neither bar exists, so the padding goes with them. */
+@media (max-width: 639px) {
+  html {
+    scroll-padding-top: 3.5rem;
+    scroll-padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* ---------------------------------------------------------------------------

@@ -238,3 +238,25 @@ export function IconSample(props: SVGProps<SVGSVGElement>) {
     </Icon>
   );
 }
+
+/** More — the rest of the tabs, which is a list rather than a place. Three dots
+ * and not a hamburger: a hamburger claims to be the whole menu, and this opens
+ * only the half of it that did not fit on a phone's tab bar. */
+export function IconMore(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="5" cy="12" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.25" fill="currentColor" stroke="none" />
+    </Icon>
+  );
+}
+
+/** Close — for the sheet the More tab opens. */
+export function IconClose(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </Icon>
+  );
+}

@@ -40,7 +40,19 @@ export function UndoToast() {
       ref={ref}
       role="status"
       aria-live="polite"
-      className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg border border-border bg-surface-2 py-2.5 pl-4 pr-2.5 shadow-lg shadow-black/50"
+      // Two things here are load-bearing on a phone.
+      //
+      // `w-max` and the viewport clamp: a `fixed` box with `left: 50%` and no
+      // width can only grow to half the viewport before it starts wrapping, so
+      // on a 390px screen this was a 195px column reading "Sample / data /
+      // loaded" three words tall. It was invisible on a desktop, where half the
+      // viewport is 720px.
+      //
+      // Top on a phone, bottom everywhere else: the bottom of a small screen
+      // belongs to the tab bar and to whatever primary action is in reach of a
+      // thumb — this toast was landing squarely on the "Log expense" button it
+      // had just been triggered by. There is nothing at the top to collide with.
+      className="fixed left-1/2 top-4 z-50 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg border border-border bg-surface-2 py-2.5 pl-4 pr-2.5 float-material sm:bottom-5 sm:top-auto"
     >
       <span className="text-sm text-ink-secondary">{snapshot.label}</span>
       <button

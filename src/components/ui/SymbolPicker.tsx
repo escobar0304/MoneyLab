@@ -231,7 +231,7 @@ export function SymbolPicker({
             bottom: box.bottom,
             maxHeight: Math.min(box.maxHeight, MAX_LIST_H),
           }}
-          className="z-50 overflow-y-auto rounded-lg border border-border bg-surface-2 py-1 shadow-xl shadow-black/50"
+          className="z-50 overflow-y-auto rounded-lg border border-border bg-surface-2 py-1 float-material"
         >
           {hits.length === 0 && (
             <li className="px-3 py-2 text-xs text-ink-muted">

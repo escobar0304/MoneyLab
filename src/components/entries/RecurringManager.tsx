@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore, useRecurring } from '../../lib/core/store';
-import { Button, Card, Input, Label, SectionTitle } from '../ui/primitives';
+import { Button, Card, DateInput, Input, Label, SectionTitle } from '../ui/primitives';
 import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format';
 import { nextRenewalDate } from '../../lib/core/recurrence';
 import type { Recurring, RecurringKind } from '../../lib/core/types';
@@ -85,10 +85,8 @@ function RuleRow({ rule }: { rule: Recurring }) {
           </div>
           <div>
             <Label htmlFor={`r-start-${rule.id}`}>Starting</Label>
-            <Input
-              id={`r-start-${rule.id}`}
-              type="date"
-              value={draft.startDate}
+            <DateInput
+              id={`r-start-${rule.id}`} value={draft.startDate}
               onChange={(e) => setDraft({ ...draft, startDate: e.target.value })}
             />
           </div>
@@ -237,10 +235,8 @@ export function RecurringManager({ kind }: { kind: RecurringKind }) {
             </div>
             <div>
               <Label htmlFor={`new-${kind}-start`}>Starting</Label>
-              <Input
-                id={`new-${kind}-start`}
-                type="date"
-                value={draft.startDate}
+              <DateInput
+                id={`new-${kind}-start`} value={draft.startDate}
                 onChange={(e) => setDraft({ ...draft, startDate: e.target.value })}
               />
             </div>
@@ -297,7 +293,7 @@ export function RecurringManager({ kind }: { kind: RecurringKind }) {
                 </div>
                 <div>
                   <Label htmlFor="oneoff-date">Date</Label>
-                  <Input id="oneoff-date" type="date" value={oneOff.date} onChange={(e) => setOneOff({ ...oneOff, date: e.target.value })} />
+                  <DateInput id="oneoff-date" value={oneOff.date} onChange={(e) => setOneOff({ ...oneOff, date: e.target.value })} />
                 </div>
               </div>
               <div className="mt-3 flex justify-end gap-2">

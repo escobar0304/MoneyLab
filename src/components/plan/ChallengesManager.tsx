@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useStore, useChallenges, useCategories } from '../../lib/core/store';
 import { challengeProgress, type ChallengeProgress } from '../../lib/planning/challenges';
 import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format';
-import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
+import { Badge, Button, Card, DateInput, EmptyState, Input, Label, SectionTitle } from '../ui/primitives';
 import { IconTrophy } from '../ui/icons';
 
 
@@ -167,19 +167,15 @@ export function ChallengesManager() {
             </div>
             <div>
               <Label htmlFor="challenge-start">Starts</Label>
-              <Input
-                id="challenge-start"
-                type="date"
-                value={draft.startDate}
+              <DateInput
+                id="challenge-start" value={draft.startDate}
                 onChange={(e) => setDraft({ ...draft, startDate: e.target.value })}
               />
             </div>
             <div>
               <Label htmlFor="challenge-end">Ends</Label>
-              <Input
-                id="challenge-end"
-                type="date"
-                min={draft.startDate}
+              <DateInput
+                id="challenge-end" min={draft.startDate}
                 value={draft.endDate}
                 onChange={(e) => setDraft({ ...draft, endDate: e.target.value })}
               />

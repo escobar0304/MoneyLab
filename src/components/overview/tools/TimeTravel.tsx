@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useStore } from '../../../lib/core/store';
 import { monthsWithActivity } from '../../../lib/core/derive';
 import { formatDate, todayInputValue } from '../../../lib/core/format';
-import { Input, Button } from '../../ui/primitives';
+import { Button, DateInput } from '../../ui/primitives';
 
 /**
  * Renders the dashboard as it stood on a chosen date.
@@ -31,9 +31,7 @@ export function TimeTravel() {
     <div className="flex flex-wrap items-center gap-2 border-t border-hairline pt-4 text-xs text-ink-muted">
       <span>See this page as it stood on</span>
       <span className="w-40">
-        <Input
-          type="date"
-          value={asOf ?? todayInputValue()}
+        <DateInput value={asOf ?? todayInputValue()}
           min={earliest}
           max={todayInputValue()}
           onChange={(e) => setAsOf(e.target.value === todayInputValue() ? null : e.target.value || null)}

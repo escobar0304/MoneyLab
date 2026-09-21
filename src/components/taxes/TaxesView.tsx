@@ -4,7 +4,7 @@ import { fiscalCalendar, vehicleDeadlines } from '../../lib/tax/fiscalCalendar';
 import { daysUntil } from '../../lib/core/recurrence';
 import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format';
 import { Reveal } from '../ui/Reveal';
-import { Button, Card, Input, Label, SectionTitle, EmptyState } from '../ui/primitives';
+import { Button, Card, DateInput, EmptyState, Input, Label, SectionTitle } from '../ui/primitives';
 import { IconVehicle } from '../ui/icons';
 import type { IucInstallment, Vehicle } from '../../lib/core/types';
 
@@ -160,10 +160,8 @@ function VehiclesManager() {
             </div>
             <div>
               <Label htmlFor="v-reg">Registration date</Label>
-              <Input
-                id="v-reg"
-                type="date"
-                max={todayInputValue()}
+              <DateInput
+                id="v-reg" max={todayInputValue()}
                 value={draft.registrationDate}
                 onChange={(e) => setDraft({ ...draft, registrationDate: e.target.value })}
               />
@@ -203,9 +201,7 @@ function VehiclesManager() {
                 {draft.installments.map((row, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <div className="w-36">
-                      <Input
-                        type="date"
-                        aria-label={`Payment ${i + 1} date`}
+                      <DateInput aria-label={`Payment ${i + 1} date`}
                         value={row.date}
                         onChange={(e) => updateInstallmentRow(i, { date: e.target.value })}
                       />

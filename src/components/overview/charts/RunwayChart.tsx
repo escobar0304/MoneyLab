@@ -18,7 +18,7 @@ function RunwayTooltip({ active, payload }: { active?: boolean; payload?: { payl
   if (!active || !day) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs shadow-lg shadow-black/50">
+    <div className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs float-material">
       <p className="mb-1.5 text-ink-muted">{shortDate(day.date)}</p>
       <p className="font-semibold text-ink">{formatMoney(day.expected)}</p>
       {day.items.length > 0 && (

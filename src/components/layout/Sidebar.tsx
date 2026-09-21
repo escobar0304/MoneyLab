@@ -2,49 +2,33 @@ import { useEffect, useRef, useState } from 'react';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/core/animation';
 import { usePrivacy } from '../../lib/settings/privacy';
 import { LogoMark, LogoWordmark } from './Logo';
-import {
-  IconOverview,
-  IconEntries,
-  IconPlan,
-  IconIrs,
-  IconTaxes,
-  IconPortfolio,
-  IconMarkets,
-  IconSettings,
-  IconChevronsLeft,
-  IconEye,
-  IconEyeOff,
-} from '../ui/icons';
+import { IconChevronsLeft, IconEye, IconEyeOff } from '../ui/icons';
+import { TABS, type Tab } from './tabs';
 
-export type Tab = 'overview' | 'entries' | 'plan' | 'irs' | 'taxes' | 'portfolio' | 'markets' | 'settings';
-
-const TABS: { id: Tab; label: string; Icon: typeof IconOverview }[] = [
-  { id: 'overview', label: 'Overview', Icon: IconOverview },
-  { id: 'entries', label: 'Entries', Icon: IconEntries },
-  { id: 'plan', label: 'Plan', Icon: IconPlan },
-  { id: 'irs', label: 'IRS', Icon: IconIrs },
-  { id: 'taxes', label: 'Taxes', Icon: IconTaxes },
-  { id: 'portfolio', label: 'Portfolio', Icon: IconPortfolio },
-  { id: 'markets', label: 'Markets', Icon: IconMarkets },
-  { id: 'settings', label: 'Settings', Icon: IconSettings },
-];
+export type { Tab };
 
 const COLLAPSED_KEY = 'moneylab-sidebar-collapsed';
 const EXPANDED_W = 220;
 const COLLAPSED_W = 68;
 
-/** Below this the expanded rail costs more than half the viewport, so it
- * collapses whatever the stored preference says. */
+/**
+ * Below this the phone shell takes over entirely — see `MobileNav`.
+ *
+ * The rail used to stay and collapse to icons here, which is why this matters
+ * beyond hiding a panel: `useGSAP` tweens the aside's width on mount, and a
+ * hidden-but-mounted rail would still be measuring and animating a panel nobody
+ * can see. Returning null is cheaper and, more to the point, leaves exactly one
+ * navigation in the accessibility tree at any width.
+ */
 const NARROW = '(max-width: 639px)';
 
 export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   const [preferCollapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === '1');
   const [narrow, setNarrow] = useState(() => window.matchMedia(NARROW).matches);
 
-  // Forced, not stored: a phone shouldn't silently rewrite the preference the
-  // same person set on their desktop — the ledger syncs through an exported
-  // file, but this key is per-browser and would be theirs to find wrong later.
-  const collapsed = narrow || preferCollapsed;
+  // Only the stored preference now. The forced-collapse case this used to carry
+  // was the phone, and the phone no longer renders this at all.
+  const collapsed = preferCollapsed;
 
   useEffect(() => {
     const mq = window.matchMedia(NARROW);
@@ -109,6 +93,11 @@ export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab
     setCollapsed(next);
     localStorage.setItem(COLLAPSED_KEY, next ? '1' : '0');
   };
+
+  // After every hook, never before: the rail mounts and unmounts as the window
+  // crosses the breakpoint, and an early return above the hooks would change
+  // their order between those two renders.
+  if (narrow) return null;
 
   return (
     <aside
@@ -176,18 +165,14 @@ export function Sidebar({ active, onChange }: { active: Tab; onChange: (tab: Tab
         >
           {hidden ? <IconEyeOff className="h-4 w-4" /> : <IconEye className="h-4 w-4" />}
         </button>
-        {/* Hidden rather than disabled on a narrow screen: the rail is forced
-            collapsed there, so the control has nothing it could do. */}
-        {!narrow && (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors duration-200 hover:bg-surface-2 hover:text-ink"
-          >
-            <IconChevronsLeft className={`h-4 w-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-ink-muted transition-colors duration-200 hover:bg-surface-2 hover:text-ink"
+        >
+          <IconChevronsLeft className={`h-4 w-4 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} />
+        </button>
       </div>
     </aside>
   );

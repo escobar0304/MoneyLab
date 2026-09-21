@@ -4,7 +4,7 @@ import { accountIdOf } from '../../lib/money/accounts';
 import { formatMoney, formatDate, formatDateTime } from '../../lib/core/format';
 import { formatForeign } from '../../lib/core/currency';
 import { categoryColorMap } from '../../lib/insight/chartTheme';
-import { Button, Input, Label, Modal, Select } from '../ui/primitives';
+import { Button, DateInput, Input, Label, Modal, Select } from '../ui/primitives';
 import { CategoryPicker } from './CategoryPicker';
 import { ReceiptAttachment } from './ReceiptAttachment';
 import type { MoneyEvent } from '../../lib/core/types';
@@ -84,7 +84,7 @@ export function EntryDetail({ entry, onClose }: { entry: MoneyEvent; onClose: ()
             </div>
             <div>
               <Label htmlFor={`d-date-${entry.id}`}>Date</Label>
-              <Input id={`d-date-${entry.id}`} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <DateInput id={`d-date-${entry.id}`} value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
           </div>
 

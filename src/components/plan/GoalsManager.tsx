@@ -3,7 +3,7 @@ import { useStore, useGoals } from '../../lib/core/store';
 import { goalProgress, totalReserved, type GoalProgress } from '../../lib/planning/goals';
 import { totalBalance } from '../../lib/core/derive';
 import { formatMoney, monthLabel, todayInputValue } from '../../lib/core/format';
-import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
+import { Badge, Button, Card, DateInput, EmptyState, Input, Label, SectionTitle } from '../ui/primitives';
 import { IconPlan, IconTrophy } from '../ui/icons';
 import { gsap, useGSAP, EASE, DUR, prefersReducedMotion } from '../../lib/core/animation';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
@@ -271,10 +271,8 @@ export function GoalsManager() {
             </div>
             <div>
               <Label htmlFor="goal-date">By (optional)</Label>
-              <Input
-                id="goal-date"
-                type="date"
-                min={todayInputValue()}
+              <DateInput
+                id="goal-date" min={todayInputValue()}
                 value={draft.targetDate}
                 onChange={(e) => setDraft({ ...draft, targetDate: e.target.value })}
               />

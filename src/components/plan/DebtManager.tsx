@@ -3,7 +3,7 @@ import { useStore, useDebts } from '../../lib/core/store';
 import { debtSummary, overpaymentEffect, scheduledPayment, totalOwed } from '../../lib/planning/debt';
 import type { Debt } from '../../lib/core/types';
 import { formatMoney, monthLabel, todayInputValue } from '../../lib/core/format';
-import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
+import { Badge, Button, Card, DateInput, EmptyState, Input, Label, SectionTitle } from '../ui/primitives';
 import { IconChart } from '../ui/icons';
 import { AmortizationChart } from './AmortizationChart';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
@@ -273,10 +273,8 @@ export function DebtManager() {
             </div>
             <div>
               <Label htmlFor="debt-start">First payment</Label>
-              <Input
-                id="debt-start"
-                type="date"
-                value={draft.startDate}
+              <DateInput
+                id="debt-start" value={draft.startDate}
                 onChange={(e) => setDraft({ ...draft, startDate: e.target.value })}
               />
             </div>

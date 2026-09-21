@@ -104,7 +104,7 @@ visitor can't spend everybody else's budget.
 
 <div align="center">
 <img src="docs/screenshots/mobile.png" width="300" alt="MoneyLab on a phone" />
-<br /><em>📱 The rail collapses to icons under 640px.</em>
+<br /><em>📱 Under 640px the rail gives way to a bottom tab bar.</em>
 </div>
 
 ---
@@ -610,9 +610,11 @@ src/
                     prefixed `demo-` so it can be removed without touching
                     anything real)
   components/
-    layout/      AppShell + Sidebar (tab navigation; collapses to an icon rail
-                  under 640px, forced rather than stored so a phone doesn't
-                  rewrite the preference set on a desktop)
+    layout/      AppShell, and the two shells it picks between: Sidebar (the
+                  rail, 640px and up, collapsible to icons and stored) and
+                  MobileNav (below 640px: a thin top bar and a bottom tab bar
+                  of four destinations plus More). tabs.ts holds the tab list
+                  they share and decides which four are the four.
     ui/          Shared primitives (Card, Button, Modal, ChartCard, Segmented,
                   StatTile, EmptyState, ErrorState, Skeleton, icons, …)
     overview/    The dashboard, itself grouped: charts/ (trend charts),
