@@ -3,7 +3,7 @@ import { requestNavigate } from '../../lib/core/navigate';
 import { useStore } from '../../lib/core/store';
 import { LogoMark } from '../layout/Logo';
 import { Reveal } from '../ui/Reveal';
-import { IconEntries, IconSample, IconImport, IconLedger } from '../ui/icons';
+import { IconSample, IconImport, IconLedger } from '../ui/icons';
 
 /**
  * What an empty ledger shows instead of the dashboard.
@@ -14,10 +14,12 @@ import { IconEntries, IconSample, IconImport, IconLedger } from '../ui/icons';
  * page, with no way to go there from the page telling you to. Every route out
  * of here is now a control on this screen.
  *
- * The three steps are ordered by what the rest of the app needs to say anything
- * at all: income sets the denominator every rate and projection is a share of,
- * one expense turns the charts on, and a statement import is the shortcut for
- * anyone who would rather not type six months in by hand.
+ * The three ways in are deliberately not three equal cards. That row is the
+ * most recognisable generated-interface layout there is, and here it would also
+ * be a lie: the steps are not peers. Income is the denominator every rate,
+ * share and projection in the app is taken from, so it gets the width, the
+ * numeral and the weight. Logging one expense and importing a statement are
+ * ways round it, set as ruled rows rather than as boxes arguing with it.
  */
 export function FirstRun() {
   const loadDemo = useStore((s) => s.loadDemo);
@@ -41,26 +43,51 @@ export function FirstRun() {
           headings are all derived from that one list — there is nothing else to set up.
         </p>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-3">
-          <Step
-            icon={<IconEntries />}
-            title="Set your income"
-            description="A salary or anything else that arrives every month."
-            onClick={() => requestNavigate({ tab: 'entries', section: 'log' })}
-          />
-          <Step
-            icon={<IconLedger />}
-            title="Log an expense"
-            description="One is enough for the charts to start."
-            onClick={() => requestNavigate({ tab: 'entries', section: 'log' })}
-          />
-          <Step
-            icon={<IconImport />}
-            title="Import a statement"
-            description="Bring in CSV or OFX history instead of typing it."
-            onClick={() => requestNavigate({ tab: 'entries', section: 'manage' })}
-          />
-        </div>
+        {/* Not three equal cards. Three equal cards in a row is the single most
+            recognisable generated-interface layout there is, and it also lies
+            about this screen: the steps are not peers. Income is the one that
+            has to happen first — every rate, share and projection in the app is
+            a fraction of it — so it takes the width, the number and the weight.
+            The other two are alternatives to it, set as a list of rules rather
+            than as boxes competing with it. */}
+        <ol className="mt-10 text-left">
+          <li>
+            <button
+              type="button"
+              onClick={() => requestNavigate({ tab: 'entries', section: 'log' })}
+              className="group flex w-full cursor-pointer items-start gap-5 rounded-2xl border border-hairline bg-surface-1 p-5 text-left transition-colors duration-200 hover:border-accent/40 hover:bg-surface-2 sm:p-6"
+            >
+              <span className="t-display shrink-0 leading-none text-accent/35 transition-colors duration-200 group-hover:text-accent/55">
+                1
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="t-display block text-[1.35rem] leading-tight text-ink">Set your income</span>
+                <span className="mt-1.5 block max-w-[52ch] text-sm text-ink-secondary">
+                  A salary, or anything else that arrives every month. Everything the app can tell you
+                  — what share you keep, how long the balance lasts, whether a budget holds — is a
+                  fraction of this one number, so it comes first.
+                </span>
+              </span>
+            </button>
+          </li>
+
+          <li className="mt-2 border-t border-hairline pt-2">
+            <NextStep
+              index="2"
+              icon={<IconLedger />}
+              title="Or log an expense"
+              description="One is enough for the charts to start."
+              onClick={() => requestNavigate({ tab: 'entries', section: 'log' })}
+            />
+            <NextStep
+              index="3"
+              icon={<IconImport />}
+              title="Or import a statement"
+              description="Bring in CSV or OFX history instead of typing months of it by hand."
+              onClick={() => requestNavigate({ tab: 'entries', section: 'manage' })}
+            />
+          </li>
+        </ol>
 
         {/* Set apart from the three steps rather than made a fourth one, because
             it is the opposite kind of action: those start a ledger, this one
@@ -102,12 +129,17 @@ export function FirstRun() {
   );
 }
 
-function Step({
+/** The two alternatives to step one. A row with a rule under it rather than a
+ * card: they are ways round the first step, not rivals to it, and a box would
+ * claim otherwise. */
+function NextStep({
+  index,
   icon,
   title,
   description,
   onClick,
 }: {
+  index: string;
   icon: ReactNode;
   title: string;
   description: string;
@@ -117,13 +149,18 @@ function Step({
     <button
       type="button"
       onClick={onClick}
-      className="group card-pad cursor-pointer rounded-xl border border-hairline bg-surface-1 text-left transition-colors duration-200 hover:border-accent/40 hover:bg-surface-2"
+      className="group flex w-full cursor-pointer items-center gap-4 rounded-lg px-3 py-3.5 text-left transition-colors duration-200 hover:bg-surface-1"
     >
-      <span className="mb-2.5 flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-accent ring-1 ring-inset ring-accent/20 transition-colors duration-200 group-hover:bg-accent/15 [&>svg]:h-4.5 [&>svg]:w-4.5">
+      <span className="t-figure w-5 shrink-0 text-right text-ink-muted/60 transition-colors duration-200 group-hover:text-accent/70">
+        {index}
+      </span>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors duration-200 group-hover:text-accent [&>svg]:h-4.5 [&>svg]:w-4.5">
         {icon}
       </span>
-      <span className="t-title block text-ink">{title}</span>
-      <span className="t-caption mt-1 block">{description}</span>
+      <span className="min-w-0 flex-1">
+        <span className="t-title block text-ink">{title}</span>
+        <span className="t-caption mt-0.5 block">{description}</span>
+      </span>
     </button>
   );
 }

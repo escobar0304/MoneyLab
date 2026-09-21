@@ -29,11 +29,14 @@ describe('FirstRun', () => {
     expect(screen.getByText(/derived from that one list/i)).toBeInTheDocument();
   });
 
-  it('offers the three ways in', () => {
+  // Three ways in, deliberately not three equal ones: income is the step the
+  // rest of the app is a fraction of, so it is the one with the weight and the
+  // other two are worded as alternatives to it.
+  it('offers the three ways in, with income leading', () => {
     render(<FirstRun />);
     expect(screen.getByRole('button', { name: /Set your income/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Log an expense/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Import a statement/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Or log an expense/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Or import a statement/i })).toBeInTheDocument();
   });
 
   // The bug this screen was built to fix: it used to say "head to Entries"
@@ -52,7 +55,7 @@ describe('FirstRun', () => {
     stopListening = stop;
     render(<FirstRun />);
 
-    await userEvent.click(screen.getByRole('button', { name: /Import a statement/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Or import a statement/i }));
     expect(requests).toEqual([{ tab: 'entries', section: 'manage' }]);
   });
 

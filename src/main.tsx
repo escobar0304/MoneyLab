@@ -11,8 +11,8 @@ import { applyPrivacy, readPrivacy } from './lib/settings/privacy';
 // the moment it was opened offline — which, for an offline-first PWA, is a
 // state it is expressly built to be used in. Bundled variable faces are one
 // file per family and are cached by the service worker with everything else.
-import '@fontsource-variable/inter';
-import '@fontsource-variable/space-grotesk';
+import '@fontsource-variable/instrument-sans';
+import '@fontsource-variable/fraunces';
 import '@fontsource-variable/jetbrains-mono';
 import './index.css';
 

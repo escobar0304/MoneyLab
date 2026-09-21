@@ -392,7 +392,7 @@ being waved through on three string fields.
 - ⚛️ **Vite + React 19 + TypeScript**
 - 🐻 **Zustand** (`persist` middleware) for state, backed by `localStorage`
 - 🎨 **Tailwind CSS v4**, dark-mode only
-- 🔤 **@fontsource-variable** (Inter, Space Grotesk, JetBrains Mono) — self-hosted, so
+- 🔤 **@fontsource-variable** (Instrument Sans, Fraunces, JetBrains Mono) — self-hosted, so
   nothing is fetched from a font CDN and the PWA looks right offline
 - 📊 **Recharts** for charts, **GSAP** for motion
 - 🧪 **Vitest** + **Testing Library**, **Playwright** for e2e
@@ -443,9 +443,13 @@ cooled to match (`--color-ink` `#f4f6f9`), since warm ink on blue-grey reads as 
 <details>
 <summary><b>🔤 Type</b> — three faces, each with one job</summary>
 
-- **Space Grotesk** for headings, the nav and every etched legend — its drafting-table
-  shapes stay distinct at 11px uppercase where a neutral grotesk greys out.
-- **Inter** for running prose *and for every headline figure*.
+- **Fraunces** for headings — a variable display serif with an optical-size axis, so it
+  holds from 14px to 48px where a static display face would not. Editorial rather than
+  technical, which is the claim: a personal ledger is nearer a document about you than a
+  control panel.
+- **Instrument Sans** for running prose, the chrome *and every headline figure*. Drawn
+  slightly narrow with open apertures, so a dense panel stays legible at 13px without
+  reading as the system default — which is what Inter, the face it replaced, had become.
 - **JetBrains Mono** for columns of figures and numeric inputs (keyed off
   `input[type=number|date]`, so it holds for fields written later too).
 
@@ -453,8 +457,15 @@ cooled to match (`--color-ink` `#f4f6f9`), since warm ink on blue-grey reads as 
 was carrying both a month's total and the first-run `<h1>`, so the numbers had to wear
 whatever face the headings wanted. That put the app inside a documented anti-pattern: a
 display face on a hero figure reads as branding for the number rather than the number.
-Figures now take the interface sans; headings keep the display face. A number is content,
-not a logo.
+Figures take the interface sans; headings take the serif. A number is content, not a logo.
+
+That split is also what makes the serif safe. A display face anywhere near a balance is
+an anti-pattern; a display face on the words *around* the balance is the whole voice of
+the thing. The two scales are what let the app have both.
+
+Labels are **small caps**, not uppercase. Fifty shouted legends is a page with no quiet
+in it; small caps keep the even colour and the stamped feel and read as typeset rather
+than as a CSS transform.
 
 Figures also stay proportional rather than mono: mono buys alignment a lone 48px balance
 doesn't need, and this locale's narrow-no-break thousands separator widens to a full
