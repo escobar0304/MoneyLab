@@ -353,21 +353,31 @@ html {
 }
 
 /* ---------------------------------------------------------------------------
-   The substrate. A 32px rule grid under everything, at an alpha low enough
-   (~2.5%) that you register it as texture rather than read it as lines — the
-   page becomes squared paper the panels are laid on instead of a void they
-   float in, which is most of why the empty states used to look broken.
+   Ruled stock.
 
-   Fixed attachment so the grid belongs to the surface rather than to the
-   content: scrolling a long dashboard slides the cards across a stationary
-   substrate, the way paper moves across a desk.
+   This was a two-axis 32px grid, which the design detector flags as a
+   generated-UI signature — a hairline grid tiled at a fixed cell, reserved in
+   principle for canvas, map or measurement surfaces. It was right, and the
+   reason goes further than the rule does: a ledger is ruled in one direction.
+   Squared paper is for plotting curves; the stock an account is actually kept
+   on has horizontal rules you write lines of entries on. The two-axis version
+   was both the generic pattern and the wrong metaphor.
+
+   The cadence is typographic — a text line plus its leading — rather than
+   aligned to any panel, because panel heights vary with their content and a
+   rule that almost lines up reads worse than one that plainly does not. What it
+   buys is that the page reads as stock the panels are laid on rather than a
+   void they float in, which is most of why the empty states used to look
+   broken.
+
+   Fixed attachment so the rules belong to the surface and not to the content:
+   scrolling a long dashboard slides the cards across stationary paper, the way
+   paper moves across a desk.
    --------------------------------------------------------------------------- */
 body {
   background-color: var(--color-surface-0);
-  background-image:
-    linear-gradient(to right, var(--ml-substrate) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--ml-substrate) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-image: linear-gradient(to bottom, var(--ml-substrate) 1px, transparent 1px);
+  background-size: 100% 28px;
   background-attachment: fixed;
   @apply text-ink antialiased;
 }
