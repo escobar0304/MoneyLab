@@ -4,7 +4,7 @@ import { foldTrades, foldDividends, type Position } from '../../lib/investments/
 import { useLivePrices } from '../../lib/investments/useLiveQuotes';
 import { formatMoney, formatDate, formatTime, todayInputValue } from '../../lib/core/format';
 import { PRIMARY, COMPLEMENT } from '../../lib/insight/chartTheme';
-import { Button, Card, Input, Label, SectionTitle, Badge, EmptyState } from '../ui/primitives';
+import { Badge, Button, Card, DateInput, EmptyState, Input, Label, SectionTitle } from '../ui/primitives';
 import { IconPortfolio, IconWarning } from '../ui/icons';
 import { SymbolPicker } from '../ui/SymbolPicker';
 import { AnimatedNumber } from '../ui/AnimatedNumber';
@@ -150,10 +150,8 @@ function PositionDetail({ position }: { position: Position }) {
           </div>
           <div>
             <Label htmlFor={`date-${position.holding.id}`}>Date</Label>
-            <Input
-              id={`date-${position.holding.id}`}
-              type="date"
-              max={todayInputValue()}
+            <DateInput
+              id={`date-${position.holding.id}`} max={todayInputValue()}
               value={trade.date}
               onChange={(e) => setTrade({ ...trade, date: e.target.value })}
             />
@@ -196,10 +194,8 @@ function PositionDetail({ position }: { position: Position }) {
           </div>
           <div className="w-40">
             <Label htmlFor={`divdate-${position.holding.id}`}>Date</Label>
-            <Input
-              id={`divdate-${position.holding.id}`}
-              type="date"
-              max={todayInputValue()}
+            <DateInput
+              id={`divdate-${position.holding.id}`} max={todayInputValue()}
               value={dividend.date}
               onChange={(e) => setDividend({ ...dividend, date: e.target.value })}
             />

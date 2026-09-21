@@ -37,7 +37,7 @@ export function ChartTooltip({
   return (
     // surface-2, one step above the card it floats over — on surface-1 it would
     // be the same colour as the card and read as a hole rather than a layer.
-    <div className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs shadow-lg shadow-black/50">
+    <div className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs float-material">
       {label !== undefined && <p className="mb-1.5 text-ink-muted">{labelFormatter ? labelFormatter(label) : String(label)}</p>}
       <div className="space-y-1">
         {payload.map((entry, i) => {

@@ -3,7 +3,7 @@ import { useStore, useAccounts, useAccountBalances, useTransfers } from '../../l
 import { MAIN_ACCOUNT_ID, SUGGESTED_ACCOUNTS } from '../../lib/money/accounts';
 import { stableColorMap } from '../../lib/insight/chartTheme';
 import { formatMoney, formatDate, todayInputValue } from '../../lib/core/format';
-import { Button, Card, Input, Label, Modal, SectionTitle, Select, SubsectionLabel } from '../ui/primitives';
+import { Button, Card, DateInput, Input, Label, Modal, SectionTitle, Select, SubsectionLabel } from '../ui/primitives';
 import type { Account, AccountKind } from '../../lib/core/types';
 
 const KINDS: { id: AccountKind; label: string }[] = [
@@ -181,7 +181,7 @@ export function AccountsManager() {
               </div>
               <div>
                 <Label htmlFor="transfer-date">Date</Label>
-                <Input id="transfer-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                <DateInput id="transfer-date" value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
             </div>
             <div className="mt-3">

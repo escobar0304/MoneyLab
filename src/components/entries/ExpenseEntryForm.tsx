@@ -3,7 +3,7 @@ import { useStore, useAccounts, useVehicles } from '../../lib/core/store';
 import { monthKey } from '../../lib/core/derive';
 import { getShownMonth, requestMonth } from '../../lib/core/historyView';
 import { MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
-import { Button, Card, Input, Label, SectionTitle, Select } from '../ui/primitives';
+import { Button, Card, DateInput, Input, Label, SectionTitle, Select } from '../ui/primitives';
 import { todayInputValue, formatMoney, formatDate, monthLabel } from '../../lib/core/format';
 import { CategoryPicker } from './CategoryPicker';
 import { AmountField, type AmountValue } from './AmountField';
@@ -127,7 +127,7 @@ export function ExpenseEntryForm() {
           />
           <div>
             <Label htmlFor="expense-date">Date</Label>
-            <Input id="expense-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DateInput id="expense-date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
         </div>
 

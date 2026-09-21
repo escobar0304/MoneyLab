@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom';
-import { useEffect, useRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type LabelHTMLAttributes, type MouseEvent, type ReactNode, type SelectHTMLAttributes } from 'react';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type LabelHTMLAttributes, type MouseEvent, type ReactNode, type SelectHTMLAttributes } from 'react';
 import { IconWarning } from './icons';
+import { browserDateOrderDiffers, formatDateNumeric } from '../../lib/core/format';
 
 /**
  * How much a panel is meant to matter.
@@ -128,6 +129,34 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
+/**
+ * A date field that says which date it holds when the browser would disagree.
+ *
+ * The native control is kept — it is the right one, and on a phone it is the
+ * only one that opens a real picker — but the browser draws its value in the
+ * browser's locale, which `format.ts` documents as unchangeable from the page.
+ * When that order differs from the app's, the field prints the date underneath
+ * in the app's own format, so no screen ever shows two date orders without
+ * saying which is which. On a browser that already agrees, nothing is added.
+ */
+export function DateInput({ value, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  // Read once per mount rather than per render: the browser's locale does not
+  // change while a form is open, and the check allocates two formatters.
+  const [ambiguous] = useState(browserDateOrderDiffers);
+  const iso = typeof value === 'string' ? value : '';
+
+  return (
+    <>
+      <DateInput {...props} value={value} />
+      {ambiguous && iso && (
+        <p className="t-caption mt-1" aria-hidden="true">
+          {formatDateNumeric(iso)}
+        </p>
+      )}
+    </>
+  );
+}
+
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
@@ -144,7 +173,7 @@ export function Badge({ children, tone = 'neutral' }: { children: ReactNode; ton
     bad: 'bg-complement/15 text-complement',
     warn: 'bg-complement/15 text-complement',
   };
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tones[tone]}`}>{children}</span>;
+  return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${tones[tone]}`}>{children}</span>;
 }
 
 /**

@@ -73,3 +73,44 @@ export function monthLabel(monthKey: string): string {
 export function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' });
 }
+
+const numericDateFormatter = new Intl.DateTimeFormat(LOCALE, {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** `21/09/2026` — the same order the native date field uses, for readers whose
+ * browser puts the month first. */
+export function formatDateNumeric(iso: string): string {
+  return numericDateFormatter.format(new Date(`${iso}T00:00:00`));
+}
+
+/**
+ * Whether `<input type="date">` will disagree with the rest of the app about
+ * which number is the day.
+ *
+ * The native date field is drawn by the browser in the browser's own locale,
+ * and nothing in the page can change that: `lang` on the input, on an ancestor
+ * or on `<html>` is ignored by Chromium — measured, not assumed. So on an en-US
+ * browser the form offers `09/21/2026` while the history beside it lists
+ * `17/09/2026`, and the same screen shows two date orders at once.
+ *
+ * Rather than replace the native control — which is the right control,
+ * especially the picker a phone gives you for free — the field says what date
+ * it holds whenever the two conventions differ. Comparing a day that cannot be
+ * a month (the 22nd) is what makes the two orders distinguishable at all.
+ */
+export function browserDateOrderDiffers(): boolean {
+  const sample = new Date(2026, 0, 22);
+  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit' };
+  try {
+    return (
+      new Intl.DateTimeFormat(undefined, options).format(sample) !==
+      new Intl.DateTimeFormat(LOCALE, options).format(sample)
+    );
+  } catch {
+    // A runtime without a usable default locale is not a reason to break a form.
+    return false;
+  }
+}
