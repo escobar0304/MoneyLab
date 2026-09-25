@@ -8,6 +8,11 @@ services:
     build: .
     ports:
       - "8080:80"
+      # The market embed, on an origin of its own — see the second server block
+      # in nginx.conf for why it cannot share the app's. Change this and the
+      # VITE_EMBED_PORT build arg together, or the app will look for the frame
+      # on a port nothing answers.
+      - "8081:8081"
     restart: unless-stopped
     develop:
       watch:

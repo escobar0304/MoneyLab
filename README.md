@@ -251,9 +251,9 @@ different rhythms.
 - Every embed mounts only once it scrolls near the viewport (an `IntersectionObserver`,
   not a timer) — with five or six on one page, loading them all at once starves the
   browser's per-host connection limit and the lower ones never finish.
-- **🔒 Every embed runs in a frame of its own**, sandboxed without
-  `allow-same-origin`, so TradingView's code gets an opaque origin and cannot read the
-  ledger. See the security note below.
+- **🔒 Every embed runs in a frame of its own**, on a second origin (port `8081`) so
+  that TradingView's code is a cross-origin stranger to the ledger. See the security
+  note below.
 
 ### 📊 Dashboard & insight
 
@@ -316,7 +316,7 @@ different rhythms.
 | 🧾 **Receipt photos** | Optional, stored in IndexedDB and exported separately so a routine export stays small. |
 | ⌨️ **Shortcuts** | `g`+letter to jump tabs, `n` for a new expense, `Ctrl`/`⌘Z` to undo, `?` for the list. |
 | 🛟 **Never fails silently** | A refused write or a crashed render both say so, and both offer the data as a download on the spot. A stale chunk after an update recovers by itself. |
-| 🔒 **Third-party code is contained** | The market embeds run in sandboxed frames with an opaque origin, so they cannot reach the ledger. |
+| 🔒 **Third-party code is contained** | The market embeds run in sandboxed frames on a separate origin, so they cannot reach the ledger. |
 
 <details>
 <summary><b>🛟 Why "never fails silently" needed building</b></summary>
@@ -361,17 +361,35 @@ used to happen by appending `<script src="s3.tradingview.com/…">` straight int
 `localStorage` the whole ledger lives in. The promise that nothing leaves your device was
 worth exactly as much as that CDN was trustworthy on any given day.
 
-Each embed now loads inside `public/embed.html`, framed with `sandbox` and deliberately
-**without** `allow-same-origin`. That single omission gives the frame an opaque origin:
-the widget still draws its chart and still talks to its own servers, and `parent.
-localStorage` throws a `SecurityError` if it reaches for anything of ours. It is a real
-file rather than a `srcdoc` blob so its bootstrap can be an ordinary same-origin script,
-which is what lets the app's own policy forbid inline script entirely.
+Each embed loads inside `public/embed.html`, framed with `sandbox`. It is a real file
+rather than a `srcdoc` blob so its bootstrap can be an ordinary same-origin script, which
+is what lets the app's own policy forbid inline script entirely.
 
-`nginx.conf` carries two Content-Security-Policies, and the split is the point. The app
-gets `script-src 'self'` — it loads no third-party script at all any more. Only
-`/embed.html` may reach TradingView, and it is the only page allowed to be framed
-(`frame-ancestors 'self'`, where the app says `'none'`).
+That frame is served from **its own origin** — the container publishes it on port `8081`,
+beside the app on `8080` — and sandboxed with `allow-same-origin`. The pairing sounds
+backwards and is the whole trick: the frame is same-origin with *port 8081*, not with the
+app, so the widget gets the storage it needs while `parent.localStorage` stays a
+cross-origin access the browser refuses.
+
+The first version withheld `allow-same-origin` instead, which isolated the frame just as
+well and drew nothing at all. Sandbox flags are inherited by nested browsing contexts, so
+TradingView's own inner frame lost its storage too, and the chart came out as a blank
+grey rectangle. The shims in `embed.js` patch our frame; they cannot reach inside theirs.
+
+`allow-same-origin` is granted **only** against an origin the app can prove is not its
+own — see `src/lib/markets/embedOrigin.ts`. Unconfigured, it falls back to same-origin
+and withholds the flag: a misconfiguration has to fail towards isolation, because
+`allow-scripts` plus `allow-same-origin` on a same-origin frame would let the frame reach
+into the parent and strip its own sandbox attribute.
+
+`nginx.conf` carries two Content-Security-Policies on two servers, and the split is the
+point. The app gets `script-src 'self'` — it loads no third-party script at all any more
+— and refuses to serve `/embed.html` itself, so the two origins stay two. Only the embed
+server may reach TradingView.
+
+Changing the port means changing it in two places together: the `8081:8081` mapping in
+`docker-compose.yml` and the `VITE_EMBED_PORT` build arg in the `Dockerfile`. It is the
+host-side port that matters, because the browser is what resolves it.
 
 Exchange rates go through the server too, at `/fx`. Frankfurter is open and needs no key,
 so this is not about access — called from the page it would hand a third party the

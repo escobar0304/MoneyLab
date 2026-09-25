@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ErrorState } from '../ui/primitives';
 import { ChartSkeleton } from '../ui/Skeleton';
+import { embedTarget, sandboxFor } from '../../lib/markets/embedOrigin';
 
 /**
  * A TradingView widget, kept out of this app's origin.
@@ -47,12 +48,13 @@ export function SandboxedEmbed({
   // anything unrelated on the Markets tab re-rendered, losing whatever the
   // reader had zoomed or drawn.
   const configKey = JSON.stringify(config);
+  const target = useMemo(() => embedTarget(), []);
   const src = useMemo(() => {
     const params = new URLSearchParams({ w: widget, h: String(height), c: configKey });
     // `attempt` is in the URL rather than only a key on the element: changing
     // the src is what actually makes the browser fetch the widget again.
-    return `embed.html?${params.toString()}&r=${attempt}`;
-  }, [widget, height, configKey, attempt]);
+    return `${target.origin}/embed.html?${params.toString()}&r=${attempt}`;
+  }, [widget, height, configKey, attempt, target.origin]);
 
   useEffect(() => {
     if (!lazy) return;
@@ -78,13 +80,17 @@ export function SandboxedEmbed({
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (!frame.current || event.source !== frame.current.contentWindow) return;
+      // Once the frame has a real origin of its own, check it. The source-window
+      // test above is what carries the same-origin-less case, where `event.origin`
+      // is the opaque string "null" and identifies nothing.
+      if (target.isolated && event.origin !== target.origin) return;
       const data = event.data as { moneylab?: string; state?: string } | null;
       if (!data || data.moneylab !== 'embed') return;
       if (data.state === 'ready' || data.state === 'error') setStatus(data.state);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, []);
+  }, [target.isolated, target.origin]);
 
   const retry = () => {
     setStatus('loading');
@@ -99,9 +105,11 @@ export function SandboxedEmbed({
           key={attempt}
           src={src}
           title={title}
-          // No allow-same-origin: that single omission is what keeps the
-          // ledger out of reach.
-          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+          // `allow-same-origin` appears only when the frame is served from an
+          // origin that is provably not this app's — see `embedOrigin.ts` for
+          // why the chart needs it and why granting it same-origin would be
+          // worse than no sandbox at all.
+          sandbox={sandboxFor(target)}
           referrerPolicy="no-referrer"
           className="w-full border-0"
           style={{ height }}
