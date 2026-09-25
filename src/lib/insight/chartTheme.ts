@@ -36,7 +36,7 @@ const CATEGORICAL_PAPER = [
   '#e66767',
 ];
 
-function onPaper(): boolean {
+export function onPaper(): boolean {
   // Defaults to paper, matching `readTheme`, so a chart rendered before the
   // root attribute is set (tests, SSR-ish paths) picks the default rather than
   // silently using the other theme's steps.

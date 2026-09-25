@@ -1,4 +1,4 @@
-import { CHART_INK } from '../../lib/insight/chartTheme';
+import { CHART_INK, onPaper } from '../../lib/insight/chartTheme';
 import { SandboxedEmbed } from './SandboxedEmbed';
 
 export type Interval = '5' | '15' | '60' | 'D' | 'W' | 'M';
@@ -38,7 +38,11 @@ export function TradingViewChart({
         symbol,
         interval,
         timezone: 'Europe/Lisbon',
-        theme: 'dark',
+        // Follows the app rather than being pinned to one look. `backgroundColor`
+        // below already tracks the theme — `CHART_INK` is a set of getters — so
+        // leaving this hard-coded put a dark chart on a light page, with the
+        // surface colour correct and everything drawn on it wrong.
+        theme: onPaper() ? 'light' : 'dark',
         style,
         locale: 'en',
         // Match the app's own surface so the embed doesn't read as a foreign panel.
