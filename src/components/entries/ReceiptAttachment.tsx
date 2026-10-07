@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { FileTooLargeError } from '../../lib/core/files';
 import { saveReceipt, getReceipt, deleteReceipt, formatBytes } from '../../lib/money/receipts';
 import { Button, Modal } from '../ui/primitives';
 
@@ -48,8 +49,8 @@ export function ReceiptAttachment({ expenseId, onChange }: { expenseId: string; 
       setUrl(URL.createObjectURL(record.blob));
       setSize(record.size);
       onChange?.(true);
-    } catch {
-      setError("Couldn't save that file.");
+    } catch (e) {
+      setError(e instanceof FileTooLargeError ? e.message : "Couldn't save that file.");
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = '';

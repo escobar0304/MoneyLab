@@ -6,7 +6,17 @@ import { validateImport } from '../../lib/core/importValidation';
 import { formatDateTime } from '../../lib/core/format';
 import { Button, Card, Input, Label, Modal, SectionTitle } from '../ui/primitives';
 import { receiptsFootprint, formatBytes } from '../../lib/money/receipts';
-import { decryptJSON, encryptJSON, encryptionAvailable, isEncryptedEnvelope, passphraseAdvice, WrongPassphraseError } from '../../lib/investments/crypto';
+import {
+  decryptJSON,
+  encryptJSON,
+  encryptionAvailable,
+  envelopeProblem,
+  InvalidBackupError,
+  isEncryptedEnvelope,
+  passphraseAdvice,
+  WrongPassphraseError,
+} from '../../lib/investments/crypto';
+import { FileTooLargeError, MAX_BACKUP_BYTES, readTextFile } from '../../lib/core/files';
 
 /** Nag threshold. Long enough not to be noise, short enough that a browser
  * clearing site data can't cost more than a month of entries. */
@@ -98,9 +108,26 @@ export function ExportImport() {
   const onFileChosen = async (file: File) => {
     setError(null);
     setResult(null);
+    let text: string;
     try {
-      const parsed: unknown = JSON.parse(await file.text());
+      text = await readTextFile(file, MAX_BACKUP_BYTES, 'That file');
+    } catch (e) {
+      // Said plainly rather than as "could not parse": the likeliest cause is
+      // the wrong file picked from the dialog, and the size says so at once.
+      setError(e instanceof FileTooLargeError ? `${e.message} A MoneyLab backup is much smaller.` : 'Could not read that file.');
+      return;
+    }
+    try {
+      const parsed: unknown = JSON.parse(text);
       if (isEncryptedEnvelope(parsed)) {
+        // Before the passphrase prompt, not after: asking for the key to a file
+        // that cannot be opened with any key wastes the reader's time and sends
+        // them off doubting a passphrase that was never the problem.
+        const problem = envelopeProblem(parsed);
+        if (problem) {
+          setError(problem);
+          return;
+        }
         setLocked(parsed);
         return;
       }
@@ -120,7 +147,7 @@ export function ExportImport() {
       setPassphrase('');
       accept(decrypted);
     } catch (e) {
-      setError(e instanceof WrongPassphraseError ? e.message : 'Could not decrypt that file.');
+      setError(e instanceof WrongPassphraseError || e instanceof InvalidBackupError ? e.message : 'Could not decrypt that file.');
     } finally {
       setBusy(false);
     }
