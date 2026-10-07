@@ -8,6 +8,14 @@ on:
   # leaves a branch with no CI and no way to ask for one. This is that way.
   workflow_dispatch:
 
+# Read-only, stated rather than inherited. Left unset, GITHUB_TOKEN gets
+# whatever the repository's default is — on older repositories that is write
+# access to contents, issues and pull requests — handed to every step,
+# including `npm ci`, which runs install scripts from a few hundred packages.
+# Nothing here writes back to the repository, so nothing here needs to.
+permissions:
+  contents: read
+
 # A new push makes the run in progress irrelevant, so cancel it rather than
 # queueing behind work that is already superseded.
 concurrency:
@@ -20,6 +28,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # By default the token is written into .git/config and stays there
+          # for every later step. Nothing after the checkout pushes or fetches.
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -44,6 +56,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # By default the token is written into .git/config and stays there
+          # for every later step. Nothing after the checkout pushes or fetches.
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
