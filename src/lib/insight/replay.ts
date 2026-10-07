@@ -28,6 +28,24 @@ function endOfDayUtc(year: number, month: number, day: number): string {
   return new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999)).toISOString();
 }
 
+/** The earlier of an ISO cutoff and `now`. */
+function clampToNow(cutoff: string, now: Date): string {
+  return new Date(cutoff).getTime() > now.getTime() ? now.toISOString() : cutoff;
+}
+
+/** Income and spend with timestamps inside [from, to]. */
+function flowsBetween(events: LedgerEvent[], from: number, to: number): { income: number; spend: number } {
+  let income = 0;
+  let spend = 0;
+  for (const e of events) {
+    const t = new Date(e.timestamp).getTime();
+    if (t < from || t > to) continue;
+    if (e.type === 'income') income += e.amount;
+    else if (e.type === 'expense') spend += e.amount;
+  }
+  return { income, spend };
+}
+
 function biggestExpense(events: LedgerEvent[], from: number, to: number): { category: string; amount: number } | null {
   let biggest: { category: string; amount: number } | null = null;
   for (const e of events) {
@@ -48,6 +66,13 @@ function biggestExpense(events: LedgerEvent[], from: number, to: number): { cate
  * Stops at `now` rather than running past it: a replay of the current,
  * still-in-progress period has nothing to show for days or months that
  * haven't happened yet.
+ *
+ * The point for the day (or month) that contains `now` is included, valued as
+ * of `now`. It used to be skipped, because its end-of-day cutoff lies in the
+ * future — which threw away exactly the part of the period the reader is
+ * looking at. Anything logged this morning was missing from the replay while
+ * the recap beside it counted it, so the replay ended on a different total from
+ * the one it claims to be walking towards.
  */
 export function buildReplay(events: LedgerEvent[], kind: ReviewKind, period: string, now: Date = new Date()): ReplayPoint[] {
   const points: ReplayPoint[] = [];
@@ -56,9 +81,12 @@ export function buildReplay(events: LedgerEvent[], kind: ReviewKind, period: str
     const year = Number(period);
     for (let m = 1; m <= 12; m++) {
       const monthStr = `${year}-${String(m).padStart(2, '0')}`;
-      const cutoff = endOfMonth(monthStr);
-      if (new Date(cutoff).getTime() > now.getTime()) break;
       const from = new Date(Date.UTC(year, m - 1, 1)).getTime();
+      if (from > now.getTime()) break;
+      // The balance of the month in progress is taken as of `now`. Income and
+      // spend stay the month totals the recap itself uses, so the replay's
+      // last frame lands on the recap's figures instead of a near-miss.
+      const cutoff = clampToNow(endOfMonth(monthStr), now);
       points.push({
         label: MONTH_NAMES[m - 1],
         date: cutoff,
@@ -73,18 +101,10 @@ export function buildReplay(events: LedgerEvent[], kind: ReviewKind, period: str
     const total = daysInMonth(year, month);
     for (let day = 1; day <= total; day++) {
       const from = Date.UTC(year, month - 1, day, 0, 0, 0, 0);
-      const cutoff = endOfDayUtc(year, month, day);
+      if (from > now.getTime()) break;
+      const cutoff = clampToNow(endOfDayUtc(year, month, day), now);
       const cutoffMs = new Date(cutoff).getTime();
-      if (cutoffMs > now.getTime()) break;
-
-      let income = 0;
-      let spend = 0;
-      for (const e of events) {
-        const t = new Date(e.timestamp).getTime();
-        if (t < from || t > cutoffMs) continue;
-        if (e.type === 'income') income += e.amount;
-        else if (e.type === 'expense') spend += e.amount;
-      }
+      const { income, spend } = flowsBetween(events, from, cutoffMs);
 
       points.push({
         label: String(day),
