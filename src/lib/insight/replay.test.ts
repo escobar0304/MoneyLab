@@ -25,16 +25,38 @@ describe('buildReplay', () => {
   });
 
   it('stops at now instead of running through a future day', () => {
-    // Noon on day 5: day 5 itself hasn't finished yet, so its point (valued
-    // as of the end of the day) isn't there yet either — only days 1-4 are.
     const points = buildReplay([], 'month', '2026-08', new Date('2026-08-05T12:00:00.000Z'));
-    expect(points).toHaveLength(4);
-    expect(points[points.length - 1].label).toBe('4');
+    expect(points).toHaveLength(5);
+    expect(points[points.length - 1].label).toBe('5');
+  });
+
+  // Today used to be dropped entirely, because its end-of-day cutoff is in the
+  // future. That hid exactly what the reader had just logged, and left the
+  // replay ending on a different total from the recap beside it.
+  it('includes today, valued as of now — this morning in, this evening out', () => {
+    const now = new Date('2026-08-05T12:00:00.000Z');
+    const events: LedgerEvent[] = [
+      income(1000, '2026-08-01T09:00:00.000Z'),
+      expense(40, '2026-08-05T08:00:00.000Z', 'Breakfast'),
+      expense(300, '2026-08-05T20:00:00.000Z', 'Dinner'),
+    ];
+    const today = buildReplay(events, 'month', '2026-08', now).at(-1)!;
+    expect(today).toMatchObject({ label: '5', spend: 40, balance: 960, date: now.toISOString() });
+    expect(today.topExpense).toEqual({ category: 'Breakfast', amount: 40 });
+  });
+
+  it('includes the month in progress in a year, its balance as of now', () => {
+    const now = new Date('2026-03-10T12:00:00.000Z');
+    const events: LedgerEvent[] = [income(1000, '2026-01-15T00:00:00.000Z'), expense(200, '2026-03-02T00:00:00.000Z')];
+    const points = buildReplay(events, 'year', '2026', now);
+    expect(points.map((p) => p.label)).toEqual(['Jan', 'Feb', 'Mar']);
+    expect(points[2]).toMatchObject({ balance: 800, date: now.toISOString() });
   });
 
   it('produces one point per month for a year, labeled by month name', () => {
     const events: LedgerEvent[] = [income(1000, '2026-01-15T00:00:00.000Z'), expense(200, '2026-02-15T00:00:00.000Z')];
-    const points = buildReplay(events, 'year', '2026', new Date('2026-03-01T00:00:00.000Z'));
+    // The last instant of February: March has not begun, so it has no point.
+    const points = buildReplay(events, 'year', '2026', new Date('2026-02-28T23:59:59.999Z'));
     expect(points.map((p) => p.label)).toEqual(['Jan', 'Feb']);
     expect(points[0]).toMatchObject({ income: 1000, spend: 0, balance: 1000 });
     expect(points[1]).toMatchObject({ income: 0, spend: 200, balance: 800 });
