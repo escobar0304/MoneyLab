@@ -38,7 +38,17 @@ test.describe('period review', () => {
   });
 
   test('replay walks the balance forward to the same total the recap shows, and back', async ({ page }) => {
-    await seed(page, base);
+    // Dated now rather than with `dayIn(0)`, which is the 15th. For the first
+    // two weeks of every month that put both entries in the future: the recap
+    // counted them, the replay correctly stopped at today, and the test failed
+    // on the 7th having passed on the 21st. Timestamped at seed time they are
+    // always just in the past, on whatever day this runs.
+    const now = new Date().toISOString();
+    await seed(page, [
+      category('Groceries'),
+      income(2000, 'Salary', now),
+      expense(500, 'Groceries', now),
+    ]);
     await page.goto('/');
     await page.getByRole('button', { name: 'Year & month in review' }).click();
 
