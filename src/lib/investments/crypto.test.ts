@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { encryptJSON, decryptJSON, isEncryptedEnvelope, passphraseAdvice, encryptionAvailable, WrongPassphraseError } from './crypto';
+import {
+  encryptJSON,
+  decryptJSON,
+  envelopeProblem,
+  isEncryptedEnvelope,
+  passphraseAdvice,
+  encryptionAvailable,
+  InvalidBackupError,
+  WrongPassphraseError,
+  MAX_ITERATIONS,
+  MIN_ITERATIONS,
+  type EncryptedEnvelope,
+} from './crypto';
 
 const events = [
   { id: '1', type: 'expense', timestamp: '2026-08-01T10:00:00.000Z', amount: 42.5, category: 'Groceries' },
@@ -78,5 +90,63 @@ describe('passphraseAdvice', () => {
     expect(passphraseAdvice('short').ok).toBe(false);
     expect(passphraseAdvice('12345678').ok).toBe(true);
     expect(passphraseAdvice('a properly long passphrase').ok).toBe(true);
+  });
+});
+
+/**
+ * A backup is a file anyone can hand you, and it names its own key-derivation
+ * cost. These pin down that a hostile or damaged one is refused on sight —
+ * before any derivation, which is the part that costs CPU.
+ */
+describe('envelopeProblem', () => {
+  let real: EncryptedEnvelope;
+  const withKdf = (kdf: Partial<EncryptedEnvelope['kdf']>): EncryptedEnvelope => ({ ...real, kdf: { ...real.kdf, ...kdf } });
+
+  it('passes a backup this app wrote', SLOW, async () => {
+    real = await encryptJSON(events, 'a good long passphrase');
+    expect(envelopeProblem(real)).toBeNull();
+  });
+
+  it('refuses an iteration count outside the range any real backup uses', () => {
+    for (const iterations of [2_000_000_000, MAX_ITERATIONS + 1, MIN_ITERATIONS - 1, 0, -600_000, 1.5, Number.NaN, Infinity]) {
+      expect(envelopeProblem(withKdf({ iterations })), String(iterations)).not.toBeNull();
+    }
+  });
+
+  it('accepts the edges of that range', () => {
+    expect(envelopeProblem(withKdf({ iterations: MIN_ITERATIONS }))).toBeNull();
+    expect(envelopeProblem(withKdf({ iterations: MAX_ITERATIONS }))).toBeNull();
+  });
+
+  it('refuses a key derivation it does not implement', () => {
+    expect(envelopeProblem(withKdf({ hash: 'SHA-1' as 'SHA-256' }))).not.toBeNull();
+    expect(envelopeProblem(withKdf({ name: 'scrypt' as 'PBKDF2' }))).not.toBeNull();
+  });
+
+  it('refuses malformed salt, IV or ciphertext instead of throwing from atob', () => {
+    expect(envelopeProblem({ ...real, iv: 'not base64 !!' })).not.toBeNull();
+    expect(envelopeProblem({ ...real, iv: btoa('short') })).not.toBeNull();
+    expect(envelopeProblem(withKdf({ salt: btoa('tiny') }))).not.toBeNull();
+    expect(envelopeProblem({ ...real, data: btoa('x') })).not.toBeNull();
+  });
+
+  // Distinct from "damaged": the reader's fix is to update, not to look for
+  // another file.
+  it('says when a backup comes from a newer version', () => {
+    const problem = envelopeProblem({ ...real, v: 2 as 1 });
+    expect(problem).toMatch(/newer version/);
+  });
+});
+
+describe('decryptJSON on a hostile file', () => {
+  // The point of the test is the clock as much as the error. Two billion
+  // PBKDF2 rounds would not finish inside the default five-second budget, so
+  // this passing at all is the proof that nothing was derived.
+  it('refuses an absurd iteration count without deriving a key', SLOW, async () => {
+    const real = await encryptJSON(events, 'a good long passphrase');
+    const hostile = { ...real, kdf: { ...real.kdf, iterations: 2_000_000_000 } };
+    const started = performance.now();
+    await expect(decryptJSON(hostile, 'a good long passphrase')).rejects.toBeInstanceOf(InvalidBackupError);
+    expect(performance.now() - started).toBeLessThan(1_000);
   });
 });

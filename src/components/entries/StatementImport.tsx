@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { FileTooLargeError, MAX_STATEMENT_BYTES, readTextFile } from '../../lib/core/files';
 import { useStore, useAccounts, useRules, useCategories } from '../../lib/core/store';
 import { MAIN_ACCOUNT_ID } from '../../lib/money/accounts';
 import {
@@ -74,7 +75,13 @@ export function StatementImport() {
   const read = async (file: File) => {
     setError(null);
     setDone(null);
-    const text = await file.text();
+    let text: string;
+    try {
+      text = await readTextFile(file, MAX_STATEMENT_BYTES, 'That file');
+    } catch (e) {
+      setError(e instanceof FileTooLargeError ? `${e.message} A bank statement export is far smaller — it may be the wrong file.` : 'Could not read that file.');
+      return;
+    }
 
     if (/\.ofx$|\.qfx$/i.test(file.name) || /<STMTTRN>/i.test(text)) {
       const rows = parseOfx(text);

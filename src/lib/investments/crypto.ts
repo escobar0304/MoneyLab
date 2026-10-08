@@ -28,6 +28,35 @@ export interface EncryptedEnvelope {
   data: string;
 }
 
+/**
+ * The iteration counts a backup is allowed to ask for.
+ *
+ * The count is read from the file, deliberately — raising `ITERATIONS` later
+ * must not lock anyone out of a backup taken today. But "read from the file"
+ * meant the file decided how long the browser spent deriving a key, with no
+ * bound at all: a crafted backup saying two billion froze the tab for hours,
+ * and `NaN` or a negative number threw from outside the error handling below.
+ *
+ * Every backup this app has ever written uses 600,000. The floor refuses files
+ * that would have been trivially weak; the ceiling leaves room for the constant
+ * to grow sixteen-fold — still only seconds — and no further.
+ */
+export const MIN_ITERATIONS = 100_000;
+export const MAX_ITERATIONS = 10_000_000;
+
+/** AES-GCM appends a 16-byte authentication tag, so a shorter payload cannot be
+ * a ciphertext of anything. */
+const GCM_TAG_BYTES = 16;
+
+/** The file is not something this app can decrypt, whatever the passphrase.
+ * Kept apart from a wrong passphrase so the reader is not sent off retyping it. */
+export class InvalidBackupError extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = 'InvalidBackupError';
+  }
+}
+
 /** Thrown for the one failure the user can act on, so the UI can say "wrong
  * passphrase" instead of surfacing a bare OperationError. */
 export class WrongPassphraseError extends Error {
@@ -55,6 +84,40 @@ function toBase64(bytes: Uint8Array): string {
     binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   }
   return btoa(binary);
+}
+
+/** `null` for anything that is not valid base64, rather than the DOMException
+ * `atob` throws — the caller needs a reason it can show, not a stack. */
+function decodeBase64(value: string): Uint8Array | null {
+  try {
+    return fromBase64(value);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Why this envelope cannot be decrypted, or `null` if its parameters are sane.
+ *
+ * Run before any key derivation, and before the reader is asked for a
+ * passphrase at all: there is no point asking for the key to a file that is
+ * broken, and every check here is cheap where the derivation is not.
+ */
+export function envelopeProblem(envelope: EncryptedEnvelope): string | null {
+  const damaged = 'This backup is damaged, or was not made by MoneyLab.';
+  if (envelope.v !== 1) return 'This backup was made by a newer version of MoneyLab.';
+  if (envelope.kdf.name !== 'PBKDF2' || envelope.kdf.hash !== 'SHA-256') return damaged;
+
+  const { iterations } = envelope.kdf;
+  if (!Number.isInteger(iterations) || iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) return damaged;
+
+  const salt = decodeBase64(envelope.kdf.salt);
+  const iv = decodeBase64(envelope.iv);
+  const data = decodeBase64(envelope.data);
+  if (!salt || salt.length < SALT_BYTES || salt.length > 64) return damaged;
+  if (!iv || iv.length !== IV_BYTES) return damaged;
+  if (!data || data.length < GCM_TAG_BYTES) return damaged;
+  return null;
 }
 
 function fromBase64(value: string): Uint8Array {
@@ -97,8 +160,13 @@ export async function encryptJSON(value: unknown, passphrase: string): Promise<E
 
 export async function decryptJSON(envelope: EncryptedEnvelope, passphrase: string): Promise<unknown> {
   if (!encryptionAvailable()) throw new Error('Decryption is unavailable in this context.');
+  // Checked here as well as by the UI before it asks for a passphrase. This is
+  // the function that spends the CPU, so it is the one that must refuse.
+  const problem = envelopeProblem(envelope);
+  if (problem) throw new InvalidBackupError(problem);
   // Iterations come from the file, not from the constant above: raising the
-  // constant later must not lock the user out of backups taken today.
+  // constant later must not lock the user out of backups taken today — within
+  // the bounds `envelopeProblem` has just enforced.
   const key = await deriveKey(passphrase, fromBase64(envelope.kdf.salt), envelope.kdf.iterations);
   try {
     const plaintext = await crypto.subtle.decrypt(

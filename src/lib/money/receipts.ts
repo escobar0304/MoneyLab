@@ -10,6 +10,8 @@
  * Attachments are keyed by expense id, so an expense without one costs nothing.
  */
 
+import { assertFileSize, MAX_RECEIPT_INPUT_BYTES, MAX_RECEIPT_STORED_BYTES } from '../core/files';
+
 const DB_NAME = 'moneylab-receipts';
 const STORE = 'receipts';
 const DB_VERSION = 1;
@@ -86,7 +88,13 @@ export async function compressImage(file: File): Promise<Blob> {
 }
 
 export async function saveReceipt(expenseId: string, file: File): Promise<ReceiptRecord> {
+  // Two ceilings, because the two risks are different. Before decoding: an
+  // image is decoded into raw pixels at full size, so an enormous file is a
+  // way to exhaust the tab's memory before compression gets to help. After:
+  // a PDF passes through untouched, and what is stored is what fills the quota.
+  assertFileSize(file, MAX_RECEIPT_INPUT_BYTES, 'That file');
   const blob = await compressImage(file);
+  assertFileSize(blob, MAX_RECEIPT_STORED_BYTES, 'That receipt, even compressed,');
   const record: ReceiptRecord = {
     expenseId,
     blob,
