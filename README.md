@@ -387,6 +387,13 @@ point. The app gets `script-src 'self'` — it loads no third-party script at al
 — and refuses to serve `/embed.html` itself, so the two origins stay two. Only the embed
 server may reach TradingView.
 
+That policy forbids inline script in the app too, so the snippet that sets the theme before
+first paint is a file, `public/theme-init.js`, loaded synchronously in `<head>`. It was
+inline once, and nothing noticed: the dev server sends no policy, so it ran in every local
+check and was silently refused behind nginx — exactly where the flash it prevents shows.
+`index.html`, the service worker and that script are served `no-cache`, so a deploy is
+picked up on the next load instead of a cached shell asking for chunks that are gone.
+
 Changing the port means changing it in two places together: the `8081:8081` mapping in
 `docker-compose.yml` and the `VITE_EMBED_PORT` build arg in the `Dockerfile`. It is the
 host-side port that matters, because the browser is what resolves it.

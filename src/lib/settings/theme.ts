@@ -22,16 +22,34 @@ const CHANGED = 'moneylab-theme-changed';
  * where the tokens read it.
  */
 export function readTheme(): Theme {
-  return localStorage.getItem(KEY) === 'ink' ? 'ink' : 'paper';
+  try {
+    return localStorage.getItem(KEY) === 'ink' ? 'ink' : 'paper';
+  } catch {
+    // Same fallback as public/theme-init.js when storage is refused. If they
+    // disagreed here, the page would paint one theme and swap to the other.
+    return 'paper';
+  }
 }
+
+/**
+ * Each theme's --color-surface-0, for the browser chrome that CSS cannot reach:
+ * the phone's address bar and the installed app's title bar. Repeated in
+ * public/theme-init.js, which runs before any module can be imported.
+ */
+export const THEME_SURFACE: Record<Theme, string> = { paper: '#faf8f5', ink: '#0b0d12' };
 
 /**
  * Exported so the entry point can call it before React mounts. Flipping the
  * theme after first paint would flash the wrong one on every single load —
  * and a white flash on a dark theme is the worst version of that.
+ *
+ * The metas follow the choice too, or switching to ink mid-session would leave
+ * a light browser bar over a dark page until the next reload.
  */
 export function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
+  document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', theme === 'ink' ? 'dark' : 'light');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', THEME_SURFACE[theme]);
 }
 
 /** The theme setting, kept in step across every component that shows it. */
