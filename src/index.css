@@ -365,10 +365,6 @@
   filter: blur(0.4em);
 }
 
-html {
-  color-scheme: dark;
-}
-
 /* The phone shell puts a bar at each end of the viewport, and both of them are
    taken out of the page's flow — so anything the browser scrolls *to* lands
    underneath one of them. `scroll-padding` is what tells it the usable window

@@ -5,29 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>MoneyLab</title>
     <meta name="description" content="Personal finance, kept entirely on your own device." />
-    <!-- Matches --color-surface-0, so the browser chrome and the PWA splash
-         don't flash a different colour than the app behind them. -->
-    <meta name="theme-color" content="#0b0d12" />
-    <meta name="color-scheme" content="dark" />
+    <!-- Paper's --color-surface-0 and scheme, the default. theme-init.js
+         swaps both for ink before first paint, so the browser chrome and the
+         canvas behind the page match whichever theme is about to be drawn. -->
+    <meta name="theme-color" content="#faf8f5" />
+    <meta name="color-scheme" content="light" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- After the metas it rewrites, before anything is painted. Why it is a
+         file and not inline is written at the top of it. -->
+    <script src="/theme-init.js"></script>
   </head>
   <body>
-    <!-- Before anything is painted or any module is evaluated. A deferred module
-         script runs after the browser has already drawn the page, so setting the
-         theme there flashes the wrong one on every load — and a white flash on
-         the dark theme is the worst version of that. It also means module-scope
-         constants that read the theme resolve against the right one. Kept in
-         step with `readTheme()` in lib/settings/theme.ts. -->
-    <script>
-      try {
-        document.documentElement.dataset.theme = localStorage.getItem('moneylab-theme') === 'ink' ? 'ink' : 'paper';
-      } catch (e) {
-        document.documentElement.dataset.theme = 'paper';
-      }
-    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

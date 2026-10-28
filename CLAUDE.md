@@ -67,8 +67,11 @@ slot, and check any new ink step for WCAG AA against all three surfaces of its t
 Anything colour-bearing at module scope must read the theme **lazily** — a getter, not a
 value. ES imports evaluate before the importing module's body, so a constant that read
 the theme resolved before it was set, and every chart in the dark theme drew a light
-gridline. `index.html` also sets `data-theme` in an inline script before first paint,
-which is what stops the wrong theme flashing on load.
+gridline. `public/theme-init.js` sets `data-theme` (and the `color-scheme` and
+`theme-color` metas) before first paint, which is what stops the wrong theme flashing on
+load. It is a classic, synchronous, same-origin file on purpose: an inline script is
+refused by the app's `script-src 'self'`, and that failure only shows behind nginx, never
+on the dev server.
 
 ## Things this codebase cares about
 

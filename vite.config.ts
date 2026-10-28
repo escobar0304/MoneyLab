@@ -75,10 +75,12 @@ export default defineConfig({
         name: 'MoneyLab',
         short_name: 'MoneyLab',
         description: 'Personal finance, kept entirely on your own device.',
-        // Matches --color-surface-0 so the splash screen doesn't flash a
-        // different colour than the app it's about to show.
-        background_color: '#0b0d12',
-        theme_color: '#0b0d12',
+        // Paper's --color-surface-0, because Paper is the default. The manifest
+        // is read once at install and cannot follow a later choice of theme;
+        // the theme-color meta, which theme-init.js keeps in step, takes over
+        // once the page is running.
+        background_color: '#faf8f5',
+        theme_color: '#faf8f5',
         display: 'standalone',
         orientation: 'portrait-primary',
         start_url: '/',
