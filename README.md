@@ -56,6 +56,8 @@ npm run test:e2e   # 🎭 Playwright end-to-end
 npm run build      # 📦 type-check + production build
 ```
 
+The dev command starts the app on port `5173` and the isolated TradingView embeds on `5174`.
+
 > 💡 There's nothing to configure and no account to make. Open it and start logging.
 
 ---
